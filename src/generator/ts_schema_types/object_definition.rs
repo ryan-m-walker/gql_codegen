@@ -1,5 +1,3 @@
-use std::borrow::BorrowMut;
-
 use apollo_compiler::{hir::TypeExtension, HirDatabase, RootDatabase};
 use apollo_parser::cst::{CstNode, ObjectTypeDefinition};
 
