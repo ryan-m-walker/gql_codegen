@@ -1,0 +1,7 @@
+interface Test {
+    id: String
+}
+
+extend interface Test {
+    name: String
+}
