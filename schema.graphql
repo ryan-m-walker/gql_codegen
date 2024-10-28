@@ -1,7 +1,47 @@
-interface Test {
-    id: String
+enum Role {
+    ADMIN
+    USER
 }
 
-extend interface Test {
-    name: String
+enum Species {
+    DOG
+    CAT
 }
+
+interface Animal {
+    id: ID!
+    species: Species!
+    name: String!
+}
+
+type Dog implements Animal {
+    id: ID!
+    species: Species!
+    name: String!
+    breed: String!
+}
+
+type Cat implements Animal {
+    id: ID!
+    species: Species!
+    name: String!
+    color: String!
+}
+
+union Pet = Cat | Dog
+
+type Person {
+    id: ID!
+    name: String!
+    role: Role
+    friends: [Person!]!
+    pets: [Animal!]
+}
+
+type Query {
+    person(id: ID!): Person
+    persons: [Person!]!
+    hello: String!
+    hellos: [String!]!
+}
+

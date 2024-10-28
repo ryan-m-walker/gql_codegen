@@ -1,4 +1,4 @@
-use apollo_compiler::RootDatabase;
+use apollo_compiler::{HirDatabase, RootDatabase};
 use apollo_parser::cst::{Definition, Document};
 
 use self::{
@@ -14,7 +14,6 @@ pub struct TsSchemaTypesGenerator;
 
 pub(self) mod descriptions;
 pub(self) mod enum_definition;
-pub(self) mod helpers;
 pub(self) mod input_object_definition;
 pub(self) mod interface_definition;
 pub(self) mod object_definition;
@@ -27,7 +26,7 @@ impl CodeGenerator for TsSchemaTypesGenerator {
         for definition in document.definitions() {
             let rendered_definition = match definition {
                 Definition::EnumTypeDefinition(definition) => {
-                    render_enum_definition(&definition, &db)
+                    render_enum_definition(&definition, db)
                 }
 
                 Definition::ObjectTypeDefinition(definition) => {
@@ -39,11 +38,11 @@ impl CodeGenerator for TsSchemaTypesGenerator {
                 }
 
                 Definition::UnionTypeDefinition(definition) => {
-                    render_union_definition(&definition, &db)
+                    render_union_definition(&definition, db)
                 }
 
                 Definition::InterfaceTypeDefinition(definition) => {
-                    render_interface_definition(&definition, &db)
+                    render_interface_definition(&definition, db)
                 }
 
                 Definition::ScalarTypeDefinition(definition) => {
@@ -54,7 +53,6 @@ impl CodeGenerator for TsSchemaTypesGenerator {
                     }
                 }
 
-                // TODO: interfaces
                 _ => None,
             };
 

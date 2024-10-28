@@ -1,7 +1,7 @@
 use apollo_compiler::{hir::TypeExtension, HirDatabase, RootDatabase};
 use apollo_parser::cst::{CstNode, InputObjectTypeDefinition};
 
-use crate::generator::ts_schema_types::helpers::render_type;
+use crate::generator::common::render_type;
 
 use super::descriptions::render_description_comment;
 

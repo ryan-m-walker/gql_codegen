@@ -1,5 +1,24 @@
-query Person {
-   person {
+query TestQuery {
+    hello
+    hello
+    yo: hello
+
+    persons {
         id
-    } 
+        friends {
+            id
+        }
+        pets {
+            species
+        }
+    }
+
+    persons {
+        name
+        role
+        friends {
+            name
+            role
+        }
+    }
 }

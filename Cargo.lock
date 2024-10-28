@@ -261,6 +261,7 @@ dependencies = [
  "apollo-parser 0.8.3",
  "clap",
  "graphql-parser",
+ "indexmap 2.6.0",
  "serde",
  "serde_json",
 ]

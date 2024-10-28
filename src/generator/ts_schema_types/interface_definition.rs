@@ -1,7 +1,7 @@
 use apollo_compiler::{hir::TypeExtension, HirDatabase, RootDatabase};
 use apollo_parser::cst::InterfaceTypeDefinition;
 
-use super::helpers::render_type;
+use crate::generator::common::render_type;
 
 pub fn render_interface_definition(
     definition: &InterfaceTypeDefinition,
