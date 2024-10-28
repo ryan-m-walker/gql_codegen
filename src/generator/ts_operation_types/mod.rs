@@ -19,7 +19,7 @@ impl CodeGenerator for TsOperationsTypeGenerator {
                 result.push_str(&format!("export type {} = {{\n", operation.name().unwrap()));
                 let rendered = render_operation_tree(&tree, 1);
                 result.push_str(&rendered);
-                result.push_str("};\n\n");
+                result.push_str("\n};\n\n");
             }
         }
 

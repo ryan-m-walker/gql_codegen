@@ -31,7 +31,7 @@ pub fn render_object_definition(
     }
 
     output.push_str("{\n");
-    output.push_str(&format!("  __typename?: '{}';\n", object_type.name()));
+    output.push_str(&format!("  __typename: '{}';\n", object_type.name()));
 
     for field in fields_definition.field_definitions() {
         let field_name = field.name()?.text();

@@ -6,7 +6,6 @@ pub(self) mod common;
 mod tests;
 pub mod ts_operation_types;
 pub mod ts_schema_types;
-pub mod typescript;
 
 pub trait CodeGenerator {
     fn generate(&self, document: &Document, db: &RootDatabase) -> String;

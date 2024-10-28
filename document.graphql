@@ -1,24 +1,16 @@
 query TestQuery {
-    hello
-    hello
-    yo: hello
-
     persons {
-        id
-        friends {
-            id
-        }
-        pets {
-            species
+        ...TestFragment
+
+        ... on Person {
+            friends {
+                ...TestFragment
+            }
         }
     }
+}
 
-    persons {
-        name
-        role
-        friends {
-            name
-            role
-        }
-    }
+fragment TestFragment on Person {
+    id
+    name
 }

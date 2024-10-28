@@ -1,4 +1,4 @@
-use apollo_compiler::{HirDatabase, RootDatabase};
+use apollo_compiler::RootDatabase;
 use apollo_parser::cst::{Definition, Document};
 
 use self::{

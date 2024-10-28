@@ -1,48 +1,54 @@
 use super::operation_tree::{OperationField, OperationTree};
 
 pub fn render_operation_tree(operation_tree: &OperationTree, depth: usize) -> String {
-    let mut output = String::new();
+    let mut fields: Vec<String> = vec![];
 
     let indentation = "  ".repeat(depth);
 
     for field in operation_tree.fields.values() {
         match field {
             OperationField::Field(value) => {
-                output.push_str(indentation.as_str());
-                output.push_str(&value);
-                output.push_str("\n");
+                let mut rendered_field = String::new();
+
+                rendered_field.push_str(indentation.as_str());
+                rendered_field.push_str(&value);
+
+                fields.push(rendered_field);
             }
             OperationField::Selection(selection_set) => {
-                output.push_str(&format!("{indentation}{}: ", selection_set.field_name).as_str());
+                let mut rendered_field = String::new();
+
+                rendered_field
+                    .push_str(&format!("{indentation}{}: ", selection_set.field_name).as_str());
 
                 if selection_set.is_list {
-                    output.push_str("Array<");
+                    rendered_field.push_str("Array<");
                 }
 
-                output.push_str("{");
-                output.push_str("\n");
+                rendered_field.push_str("{");
+                rendered_field.push_str("\n");
 
-                output.push_str(&render_operation_tree(&selection_set, depth + 1));
+                rendered_field.push_str(&render_operation_tree(&selection_set, depth + 1));
 
-                output.push_str("\n");
-                output.push_str(indentation.as_str());
+                rendered_field.push_str("\n");
+                rendered_field.push_str(indentation.as_str());
 
-                output.push_str("}");
+                rendered_field.push_str("}");
 
                 if selection_set.is_list {
-                    output.push_str(">");
+                    rendered_field.push_str(">");
                 }
 
                 if !selection_set.is_non_null {
-                    output.push_str(" | null");
+                    rendered_field.push_str(" | null");
                 }
 
-                output.push_str(";");
+                rendered_field.push_str(";");
 
-                output.push_str("\n");
+                fields.push(rendered_field);
             }
         }
     }
 
-    output
+    fields.join("\n")
 }

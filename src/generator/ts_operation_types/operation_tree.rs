@@ -1,5 +1,3 @@
-use std::usize;
-
 use apollo_compiler::{
     hir::{OperationDefinition, Selection, SelectionSet},
     RootDatabase,
@@ -15,6 +13,8 @@ pub enum OperationField {
 }
 
 #[derive(Debug, Clone)]
+/// The compiler does not merge or deduplicate fields so we we need to walk the operations CSTs
+/// and build a tree of the fields that are selected.
 pub struct OperationTree {
     pub is_non_null: bool,
     pub is_list: bool,
@@ -56,8 +56,6 @@ fn populate_operation_tree(
                 let field_type = parent.field(db, field.name())?.ty();
 
                 if field.selection_set().selection().len() > 0 {
-                    dbg!(&field_type);
-
                     if let Some(selection) = render_tree.fields.get_mut(name) {
                         if let OperationField::Selection(ref mut render_tree) = selection {
                             populate_operation_tree(&field.selection_set(), db, render_tree);
@@ -79,10 +77,20 @@ fn populate_operation_tree(
                     continue;
                 }
 
+                // TODO: make this configurable
                 if !render_tree.fields.contains_key("__typename") {
                     let rendered_field = format!("__typename?: '{}';", parent.name());
                     render_tree.fields.insert(
                         "__typename".to_string(),
+                        OperationField::Field(rendered_field.to_string()),
+                    );
+                }
+
+                // override typename with non-nullable value if specifically selected
+                if name == "__typename" {
+                    let rendered_field = format!("__typename: '{}';", parent.name());
+                    render_tree.fields.insert(
+                        name.to_string(),
                         OperationField::Field(rendered_field.to_string()),
                     );
                 }
@@ -100,7 +108,17 @@ fn populate_operation_tree(
                 );
             }
 
-            _ => {}
+            Selection::FragmentSpread(fragment_spread) => {
+                populate_operation_tree(
+                    &fragment_spread.fragment(db)?.selection_set(),
+                    db,
+                    render_tree,
+                );
+            }
+
+            Selection::InlineFragment(inline_fragment) => {
+                populate_operation_tree(&inline_fragment.selection_set(), db, render_tree);
+            }
         }
     }
 
