@@ -35,7 +35,8 @@ type Person {
     name: String!
     role: Role
     friends: [Person!]!
-    pets: [Animal!]
+    pets: [Animal]
+    emails: [String!]
 }
 
 type Query {
@@ -45,3 +46,8 @@ type Query {
     hellos: [String!]!
 }
 
+extend union Pet = Person
+
+extend type Person {
+    age: Int
+} 

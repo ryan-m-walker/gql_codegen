@@ -22,7 +22,7 @@ fn main() {
         .process();
 
     if let Some(result) = result {
-        // println!("\n{}", &result);
+        println!("\n{}", &result);
         let write_result = fs::write("output.ts", result);
 
         if let Err(error) = write_result {

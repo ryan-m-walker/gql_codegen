@@ -1,5 +1,4 @@
-use apollo_compiler::RootDatabase;
-use apollo_parser::cst::{Definition, Document};
+use apollo_compiler::{HirDatabase, RootDatabase};
 
 use self::{
     enum_definition::render_enum_definition,
@@ -20,45 +19,46 @@ pub(self) mod object_definition;
 pub(self) mod union_definition;
 
 impl CodeGenerator for TsSchemaTypesGenerator {
-    fn generate(&self, document: &Document, db: &RootDatabase) -> String {
+    fn generate(&self, db: &RootDatabase) -> String {
         let mut result = String::new();
 
-        for definition in document.definitions() {
-            let rendered_definition = match definition {
-                Definition::EnumTypeDefinition(definition) => {
-                    render_enum_definition(&definition, db)
-                }
-
-                Definition::ObjectTypeDefinition(definition) => {
-                    render_object_definition(&definition, db)
-                }
-
-                Definition::InputObjectTypeDefinition(definition) => {
-                    render_input_object_definition(&definition, db)
-                }
-
-                Definition::UnionTypeDefinition(definition) => {
-                    render_union_definition(&definition, db)
-                }
-
-                Definition::InterfaceTypeDefinition(definition) => {
-                    render_interface_definition(&definition, db)
-                }
-
-                Definition::ScalarTypeDefinition(definition) => {
-                    if let Some(name) = definition.name() {
-                        Some(format!("export type {} = unknown;\n\n", name.text()))
-                    } else {
-                        None
-                    }
-                }
-
-                _ => None,
-            };
-
-            if let Some(rendered) = rendered_definition {
-                result.push_str(&rendered);
+        for enum_definition in db.type_system_definitions().enums.values() {
+            if enum_definition.is_introspection() {
+                continue;
             }
+
+            result.push_str(&render_enum_definition(&enum_definition));
+        }
+
+        for object_definition in db.type_system_definitions().objects.values() {
+            if object_definition.is_introspection() {
+                continue;
+            }
+
+            result.push_str(&render_object_definition(&object_definition));
+        }
+
+        for input_object_definition in db.type_system_definitions().input_objects.values() {
+            result.push_str(&render_input_object_definition(&input_object_definition));
+        }
+
+        for interface_definition in db.type_system_definitions().interfaces.values() {
+            result.push_str(&render_interface_definition(&interface_definition));
+        }
+
+        for union_definition in db.type_system_definitions().unions.values() {
+            result.push_str(&render_union_definition(&union_definition));
+        }
+
+        for scalar_definition in db.type_system_definitions().scalars.values() {
+            if !scalar_definition.is_custom() {
+                continue;
+            }
+
+            result.push_str(&format!(
+                "export type {} = unknown;\n\n",
+                scalar_definition.name()
+            ));
         }
 
         result

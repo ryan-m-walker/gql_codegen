@@ -1,25 +1,35 @@
 use apollo_compiler::{
-    hir::{OperationDefinition, Selection, SelectionSet},
+    hir::{OperationDefinition, Selection, SelectionSet, Type},
     RootDatabase,
 };
 use indexmap::IndexMap;
 
-use crate::generator::common::render_type;
+#[derive(Debug, Clone)]
+pub struct TypenameField {
+    pub name: String,
+    pub nullable: bool,
+}
+
+#[derive(Debug, Clone)]
+pub struct ScalarField {
+    pub name: String,
+    pub ty: Type,
+}
 
 #[derive(Debug, Clone)]
 pub enum OperationField {
     Selection(OperationTree),
-    Field(String),
+    Scalar(ScalarField),
+    Typename(TypenameField),
 }
 
 #[derive(Debug, Clone)]
 /// The compiler does not merge or deduplicate fields so we we need to walk the operations CSTs
 /// and build a tree of the fields that are selected.
 pub struct OperationTree {
-    pub is_non_null: bool,
-    pub is_list: bool,
     pub fields: IndexMap<String, OperationField>,
     pub field_name: String,
+    pub ty: Option<Type>,
 }
 
 pub fn build_operation_tree(
@@ -27,10 +37,9 @@ pub fn build_operation_tree(
     db: &RootDatabase,
 ) -> Option<OperationTree> {
     let mut render_tree = OperationTree {
-        is_non_null: false,
-        is_list: false,
         fields: IndexMap::new(),
         field_name: operation.name()?.to_string(),
+        ty: None,
     };
 
     populate_operation_tree(&operation.selection_set(), db, &mut render_tree);
@@ -62,10 +71,9 @@ fn populate_operation_tree(
                         }
                     } else {
                         let mut new_render_tree = OperationTree {
-                            is_non_null: field_type.is_non_null(),
-                            is_list: field_type.is_list(),
                             fields: IndexMap::new(),
                             field_name: name.to_string(),
+                            ty: Some(field_type.clone()),
                         };
 
                         populate_operation_tree(&field.selection_set(), db, &mut new_render_tree);
@@ -79,19 +87,23 @@ fn populate_operation_tree(
 
                 // TODO: make this configurable
                 if !render_tree.fields.contains_key("__typename") {
-                    let rendered_field = format!("__typename?: '{}';", parent.name());
                     render_tree.fields.insert(
                         "__typename".to_string(),
-                        OperationField::Field(rendered_field.to_string()),
+                        OperationField::Typename(TypenameField {
+                            name: parent.name().to_string(),
+                            nullable: true,
+                        }),
                     );
                 }
 
                 // override typename with non-nullable value if specifically selected
                 if name == "__typename" {
-                    let rendered_field = format!("__typename: '{}';", parent.name());
                     render_tree.fields.insert(
                         name.to_string(),
-                        OperationField::Field(rendered_field.to_string()),
+                        OperationField::Typename(TypenameField {
+                            name: parent.name().to_string(),
+                            nullable: false,
+                        }),
                     );
                 }
 
@@ -99,12 +111,12 @@ fn populate_operation_tree(
                     continue;
                 }
 
-                let rendered_type = render_type(&field_type, false);
-                let rendered_field = format!("{name}: {rendered_type};");
-
                 render_tree.fields.insert(
                     name.to_string(),
-                    OperationField::Field(rendered_field.to_string()),
+                    OperationField::Scalar(ScalarField {
+                        name: name.to_string(),
+                        ty: field_type.clone(),
+                    }),
                 );
             }
 

@@ -1,3 +1,4 @@
 /target
 
 codegen_sandbox/*
+output.ts

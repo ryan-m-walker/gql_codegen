@@ -1,5 +1,4 @@
 use apollo_compiler::ApolloCompiler;
-use apollo_parser::Parser;
 
 use crate::generator::CodeGenerator;
 
@@ -61,13 +60,7 @@ impl<'a, 'b> Processor<'a, 'b> {
         let mut output = String::new();
 
         for generator in &self.generators {
-            let schema = Parser::new(self.schema).parse().document();
-            output.push_str(&generator.generate(&schema, &compiler.db));
-
-            for source in &self.documents {
-                let document = Parser::new(source.document).parse().document();
-                output.push_str(&generator.generate(&document, &compiler.db));
-            }
+            output.push_str(&generator.generate(&compiler.db));
         }
 
         Some(output)

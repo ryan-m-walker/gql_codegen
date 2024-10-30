@@ -2,12 +2,6 @@ export type Role = 'ADMIN' | 'USER' | '%future added value';
 
 export type Species = 'DOG' | 'CAT' | '%future added value';
 
-export type Animal = {
-  id: string;
-  species: Species;
-  name: string;
-};
-
 export type Dog = Animal & {
   __typename: 'Dog';
   id: string;
@@ -24,15 +18,15 @@ export type Cat = Animal & {
   color: string;
 };
 
-export type Pet = Cat | Dog;
-
 export type Person = {
   __typename: 'Person';
   id: string;
   name: string;
   role: Role | null;
   friends: Array<Person>;
-  pets: Array<Animal> | null;
+  pets: Array<Animal | null> | null;
+  emails: Array<string> | null;
+  age: number | null;
 };
 
 export type Query = {
@@ -43,15 +37,21 @@ export type Query = {
   hellos: Array<string>;
 };
 
-export type TestQuery = {
-  persons: {
-    __typename?: 'Person';
-    id: string;
-    name: string;
-    friends: {
-      __typename?: 'Person';
-      id: string;
-      name: string;
-    };
-  };
+export type Animal = {
+  id: string;
+  species: Species;
+  name: string;
 };
+
+export type Pet = Cat | Dog | Person;
+
+export type TestQuery = {
+  persons: Array<{
+    pets: Array<{
+      __typename?: 'Dog';
+      breed: string;
+      color: string;
+    } | null> | null;
+  }>;
+};
+

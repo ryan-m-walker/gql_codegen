@@ -1,16 +1,13 @@
 query TestQuery {
     persons {
-        ...TestFragment
+        pets {
+            ... on Dog {
+                breed
+            }
 
-        ... on Person {
-            friends {
-                ...TestFragment
+            ... on Cat {
+                color
             }
         }
     }
-}
-
-fragment TestFragment on Person {
-    id
-    name
 }

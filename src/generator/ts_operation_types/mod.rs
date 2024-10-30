@@ -1,5 +1,4 @@
 use apollo_compiler::{HirDatabase, RootDatabase};
-use apollo_parser::cst::Document;
 
 use self::{operation_tree::build_operation_tree, render_tree::render_operation_tree};
 
@@ -11,7 +10,7 @@ pub(self) mod render_tree;
 pub struct TsOperationsTypeGenerator;
 
 impl CodeGenerator for TsOperationsTypeGenerator {
-    fn generate(&self, _document: &Document, db: &RootDatabase) -> String {
+    fn generate(&self, db: &RootDatabase) -> String {
         let mut result = String::new();
 
         for operation in db.all_operations().as_ref() {
