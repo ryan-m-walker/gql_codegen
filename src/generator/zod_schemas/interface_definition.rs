@@ -7,7 +7,10 @@ pub fn render_interface_definition(definition: &InterfaceTypeDefinition) -> Stri
 
     let name = definition.name();
 
-    output.push_str(&format!("export const {}Schema = z.object({{\n", name));
+    output.push_str(&format!(
+        "export const {}Schema: z.ZodType<{}> = z.object({{\n",
+        name, name
+    ));
 
     for field in definition.fields() {
         let field_name = field.name();

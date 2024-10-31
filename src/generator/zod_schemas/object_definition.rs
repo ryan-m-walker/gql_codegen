@@ -12,7 +12,14 @@ pub fn render_object_definition(definition: &ObjectTypeDefinition) -> String {
         output.push_str(&render_description_comment(&description, 0));
     }
 
-    output.push_str(&format!("export const {}Schema = z.object({{\n", &name));
+    output.push_str(&format!(
+        "export const {}Schema: z.ZodType<{}> = z.object({{\n",
+        name, name
+    ));
+    output.push_str(&format!(
+        "  __typename: z.literal('{}').nullish(),\n",
+        definition.name()
+    ));
 
     for field in definition.fields() {
         let field_name = field.name();

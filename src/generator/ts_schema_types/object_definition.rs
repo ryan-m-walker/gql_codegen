@@ -20,7 +20,7 @@ pub fn render_object_definition(definition: &ObjectTypeDefinition) -> String {
     }
 
     output.push_str("{\n");
-    output.push_str(&format!("  __typename: '{}';\n", definition.name()));
+    output.push_str(&format!("  __typename?: '{}';\n", definition.name()));
 
     for field in definition.fields() {
         let field_name = field.name();

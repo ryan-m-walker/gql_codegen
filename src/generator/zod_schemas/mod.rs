@@ -30,6 +30,14 @@ impl CodeGenerator for ZodSchemasGenerator {
             result.push_str(&render_enum_definition(&enum_definition));
         }
 
+        for interface_definition in db.type_system_definitions().interfaces.values() {
+            result.push_str(&render_interface_definition(&interface_definition));
+        }
+
+        for union_definition in db.type_system_definitions().unions.values() {
+            result.push_str(&render_union_definition(&union_definition));
+        }
+
         for object_definition in db.type_system_definitions().objects.values() {
             if object_definition.is_introspection() {
                 continue;
@@ -40,14 +48,6 @@ impl CodeGenerator for ZodSchemasGenerator {
 
         for input_object_definition in db.type_system_definitions().input_objects.values() {
             result.push_str(&render_input_object_definition(&input_object_definition));
-        }
-
-        for interface_definition in db.type_system_definitions().interfaces.values() {
-            result.push_str(&render_interface_definition(&interface_definition));
-        }
-
-        for union_definition in db.type_system_definitions().unions.values() {
-            result.push_str(&render_union_definition(&union_definition));
         }
 
         for scalar_definition in db.type_system_definitions().scalars.values() {

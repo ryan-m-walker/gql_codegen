@@ -19,8 +19,8 @@ fn main() {
 
     let result = Processor::new(&schema_src)
         .add_document("query.graphql", &document_src)
-        // .add_generator(Box::new(ts_schema_types_generator))
-        // .add_generator(Box::new(ts_operations_type_generator))
+        .add_generator(Box::new(ts_schema_types_generator))
+        .add_generator(Box::new(ts_operations_type_generator))
         .add_generator(Box::new(zod_schema_generator))
         .process();
 

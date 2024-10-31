@@ -1,5 +1,7 @@
 use apollo_compiler::hir::InputObjectTypeDefinition;
 
+use crate::generator::common::render_description_comment;
+
 use super::render_type::render_type;
 
 pub fn render_input_object_definition(definition: &InputObjectTypeDefinition) -> String {
@@ -7,13 +9,18 @@ pub fn render_input_object_definition(definition: &InputObjectTypeDefinition) ->
 
     let name = definition.name();
 
-    // if let Some(description) = definition.description() {
-    //     output.push_str(&render_description_comment(&description, 0));
-    // }
+    if let Some(description) = definition.description() {
+        output.push_str(&render_description_comment(&description, 0));
+    }
 
     output.push_str(&format!(
-        "export const {}InputSchema = z.object({{\n",
-        &name
+        "export const {}InputSchema: z.ZodType<{}> = z.object({{\n",
+        name, name,
+    ));
+
+    output.push_str(&format!(
+        "  __typename: z.literal('{}').nullish(),\n",
+        definition.name()
     ));
 
     for field in definition.fields() {
@@ -21,9 +28,9 @@ pub fn render_input_object_definition(definition: &InputObjectTypeDefinition) ->
         let field_type = field.ty();
         let rendered_type = render_type(&field_type, false);
 
-        // if let Some(description) = field.description() {
-        //     output.push_str(&render_description_comment(&description, 1));
-        // }
+        if let Some(description) = field.description() {
+            output.push_str(&render_description_comment(&description, 1));
+        }
 
         output.push_str(&format!("  {}: {},\n", field_name, rendered_type));
     }
