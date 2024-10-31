@@ -1,57 +1,60 @@
-export type Role = 'ADMIN' | 'USER' | '%future added value';
+import { z } from 'zod';
 
-export type Species = 'DOG' | 'CAT' | '%future added value';
+export const RoleSchema = z.enum(['ADMIN', 'USER']);
 
-export type Dog = Animal & {
-  __typename: 'Dog';
-  id: string;
-  species: Species;
-  name: string;
-  breed: string;
-};
+export const SpeciesSchema = z.enum(['DOG', 'CAT']);
 
-export type Cat = Animal & {
-  __typename: 'Cat';
-  id: string;
-  species: Species;
-  name: string;
-  color: string;
-};
+export const AnimalSchema = z.object({
+  id: z.string(),
+  species: SpeciesSchema,
+  name: z.string(),
+});
 
-export type Person = {
-  __typename: 'Person';
-  id: string;
-  name: string;
-  role: Role | null;
-  friends: Array<Person>;
-  pets: Array<Animal | null> | null;
-  emails: Array<string> | null;
-  age: number | null;
-};
+export const DogSchema = z.object({
+  id: z.string(),
+  species: SpeciesSchema,
+  name: z.string(),
+  breed: z.string(),
+}).merge(AnimalSchema);
 
-export type Query = {
-  __typename: 'Query';
-  person: Person | null;
-  persons: Array<Person>;
-  hello: string;
-  hellos: Array<string>;
-};
+export const CatSchema = z.object({
+  id: z.string(),
+  species: SpeciesSchema,
+  name: z.string(),
+  color: z.string(),
+}).merge(AnimalSchema);
 
-export type Animal = {
-  id: string;
-  species: Species;
-  name: string;
-};
+/**
+ *  They is just peoples 
+ */
+export const PersonSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  role: RoleSchema.nullish(),
+  friends: PersonSchema.array(),
+  /**
+   *  They is just pets 
+   */
+  pets: AnimalSchema.nullish().array().nullish(),
+  emails: z.string().array().nullish(),
+  age: z.number().int().nullish(),
+});
 
-export type Pet = Cat | Dog | Person;
+export const QuerySchema = z.object({
+  person: PersonSchema.nullish(),
+  persons: PersonSchema.array(),
+  hello: z.string(),
+  hellos: z.string().array(),
+  pets: AnimalSchema.array(),
+});
 
-export type TestQuery = {
-  persons: Array<{
-    pets: Array<{
-      __typename?: 'Dog';
-      breed: string;
-      color: string;
-    } | null> | null;
-  }>;
-};
+export const TestInputInputSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  role: RoleSchema.nullish(),
+});
+
+export const PetSchema = z.union([CatSchema, DogSchema, PersonSchema]);
+
+export const DateSchema = z.unknown();
 

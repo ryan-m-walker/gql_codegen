@@ -2,6 +2,7 @@ use std::fs;
 
 use generator::{
     ts_operation_types::TsOperationsTypeGenerator, ts_schema_types::TsSchemaTypesGenerator,
+    zod_schemas::ZodSchemasGenerator,
 };
 use processor::Processor;
 
@@ -14,11 +15,13 @@ fn main() {
 
     let ts_schema_types_generator = TsSchemaTypesGenerator;
     let ts_operations_type_generator = TsOperationsTypeGenerator;
+    let zod_schema_generator = ZodSchemasGenerator;
 
     let result = Processor::new(&schema_src)
         .add_document("query.graphql", &document_src)
-        .add_generator(Box::new(ts_schema_types_generator))
-        .add_generator(Box::new(ts_operations_type_generator))
+        // .add_generator(Box::new(ts_schema_types_generator))
+        // .add_generator(Box::new(ts_operations_type_generator))
+        .add_generator(Box::new(zod_schema_generator))
         .process();
 
     if let Some(result) = result {

@@ -6,12 +6,12 @@ pub fn render_type(ty: &Type, non_null: bool) -> String {
 
 pub fn render_scalar(value: &str) -> String {
     match value {
-        "ID" => String::from("string"),
-        "String" => String::from("string"),
-        "Boolean" => String::from("boolean"),
-        "Int" => String::from("number"),
-        "Float" => String::from("number"),
-        _ => value.to_string(),
+        "ID" => String::from("z.string()"),
+        "String" => String::from("z.string()"),
+        "Boolean" => String::from("z.boolean()"),
+        "Int" => String::from("z.number().int()"),
+        "Float" => String::from("z.number()"),
+        _ => format!("{}Schema", value).to_string(),
     }
 }
 
@@ -27,32 +27,20 @@ where
                 return text;
             }
 
-            return format!("{} | null", text);
+            return format!("{}.nullish()", text);
         }
         Type::NonNull { ty, loc: _ } => {
             return render_wrapped_type(ty, true, type_renderer);
         }
         Type::List { ty, loc: _ } => {
             if non_null {
-                return format!("Array<{}>", render_wrapped_type(ty, false, type_renderer));
+                return format!("{}.array()", render_wrapped_type(ty, false, type_renderer));
             }
 
             return format!(
-                "Array<{}> | null",
+                "{}.array().nullish()",
                 render_wrapped_type(ty, false, type_renderer)
             );
         }
     }
-}
-
-pub fn render_description_comment(description: &str, indentation: usize) -> String {
-    let indentation = "  ".repeat(indentation);
-
-    let description_value = description
-        .lines()
-        .map(|line| format!("{indentation} * {}", line))
-        .collect::<Vec<String>>()
-        .join("\n");
-
-    format!("{indentation}/**\n{description_value}\n{indentation} */\n")
 }

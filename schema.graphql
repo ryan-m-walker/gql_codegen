@@ -30,11 +30,13 @@ type Cat implements Animal {
 
 union Pet = Cat | Dog
 
+""" They is just peoples """
 type Person {
     id: ID!
     name: String!
     role: Role
     friends: [Person!]!
+    """ They is just pets """
     pets: [Animal]
     emails: [String!]
 }
@@ -44,6 +46,7 @@ type Query {
     persons: [Person!]!
     hello: String!
     hellos: [String!]!
+    pets: [Animal!]!
 }
 
 extend union Pet = Person
@@ -51,3 +54,11 @@ extend union Pet = Person
 extend type Person {
     age: Int
 } 
+
+input TestInput {
+    id: ID!
+    name: String!
+    role: Role
+}
+
+scalar Date

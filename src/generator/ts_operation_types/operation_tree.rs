@@ -1,6 +1,6 @@
 use apollo_compiler::{
-    hir::{OperationDefinition, Selection, SelectionSet, Type},
-    RootDatabase,
+    hir::{OperationDefinition, Selection, SelectionSet, Type, TypeDefinition},
+    HirDatabase, RootDatabase,
 };
 use indexmap::IndexMap;
 
@@ -21,6 +21,7 @@ pub enum OperationField {
     Selection(OperationTree),
     Scalar(ScalarField),
     Typename(TypenameField),
+    CompositeField(IndexMap<String, OperationTree>),
 }
 
 #[derive(Debug, Clone)]
@@ -50,7 +51,7 @@ pub fn build_operation_tree(
 fn populate_operation_tree(
     selection_set: &SelectionSet,
     db: &RootDatabase,
-    render_tree: &mut OperationTree,
+    operation_tree: &mut OperationTree,
 ) -> Option<()> {
     for field in selection_set.selection() {
         match field {
@@ -64,8 +65,11 @@ fn populate_operation_tree(
                 let parent = field.parent_type(db)?;
                 let field_type = parent.field(db, field.name())?.ty();
 
+                // dbg!(&field_type);
+                // let by_name = db.types_definitions_by_name();
+
                 if field.selection_set().selection().len() > 0 {
-                    if let Some(selection) = render_tree.fields.get_mut(name) {
+                    if let Some(selection) = operation_tree.fields.get_mut(name) {
                         if let OperationField::Selection(ref mut render_tree) = selection {
                             populate_operation_tree(&field.selection_set(), db, render_tree);
                         }
@@ -77,7 +81,7 @@ fn populate_operation_tree(
                         };
 
                         populate_operation_tree(&field.selection_set(), db, &mut new_render_tree);
-                        render_tree
+                        operation_tree
                             .fields
                             .insert(name.to_string(), OperationField::Selection(new_render_tree));
                     }
@@ -85,9 +89,8 @@ fn populate_operation_tree(
                     continue;
                 }
 
-                // TODO: make this configurable
-                if !render_tree.fields.contains_key("__typename") {
-                    render_tree.fields.insert(
+                if !operation_tree.fields.contains_key("__typename") {
+                    operation_tree.fields.insert(
                         "__typename".to_string(),
                         OperationField::Typename(TypenameField {
                             name: parent.name().to_string(),
@@ -98,7 +101,7 @@ fn populate_operation_tree(
 
                 // override typename with non-nullable value if specifically selected
                 if name == "__typename" {
-                    render_tree.fields.insert(
+                    operation_tree.fields.insert(
                         name.to_string(),
                         OperationField::Typename(TypenameField {
                             name: parent.name().to_string(),
@@ -107,11 +110,11 @@ fn populate_operation_tree(
                     );
                 }
 
-                if render_tree.fields.contains_key(name) {
+                if operation_tree.fields.contains_key(name) {
                     continue;
                 }
 
-                render_tree.fields.insert(
+                operation_tree.fields.insert(
                     name.to_string(),
                     OperationField::Scalar(ScalarField {
                         name: name.to_string(),
@@ -124,12 +127,13 @@ fn populate_operation_tree(
                 populate_operation_tree(
                     &fragment_spread.fragment(db)?.selection_set(),
                     db,
-                    render_tree,
+                    operation_tree,
                 );
             }
 
             Selection::InlineFragment(inline_fragment) => {
-                populate_operation_tree(&inline_fragment.selection_set(), db, render_tree);
+                // TODO: unions for interfaces
+                populate_operation_tree(&inline_fragment.selection_set(), db, operation_tree);
             }
         }
     }

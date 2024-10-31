@@ -1,9 +1,9 @@
-use apollo_compiler::hir::InputObjectTypeDefinition;
+use apollo_compiler::hir::ObjectTypeDefinition;
 
+use super::render_type::render_type;
 use crate::generator::common::render_description_comment;
-use crate::generator::common::render_type;
 
-pub fn render_input_object_definition(definition: &InputObjectTypeDefinition) -> String {
+pub fn render_object_definition(definition: &ObjectTypeDefinition) -> String {
     let mut output = String::new();
 
     let name = definition.name();
@@ -12,9 +12,7 @@ pub fn render_input_object_definition(definition: &InputObjectTypeDefinition) ->
         output.push_str(&render_description_comment(&description, 0));
     }
 
-    output.push_str(&format!("export type {} = {{\n", &name));
-
-    output.push_str(&format!("  __typename?: '{}';\n", name));
+    output.push_str(&format!("export const {}Schema = z.object({{\n", &name));
 
     for field in definition.fields() {
         let field_name = field.name();
@@ -25,10 +23,16 @@ pub fn render_input_object_definition(definition: &InputObjectTypeDefinition) ->
             output.push_str(&render_description_comment(&description, 1));
         }
 
-        output.push_str(&format!("  {}: {};\n", field_name, rendered_type));
+        output.push_str(&format!("  {}: {},\n", field_name, rendered_type));
     }
 
-    output.push_str("};\n\n");
+    output.push_str("})");
+
+    for interface in definition.implements_interfaces() {
+        output.push_str(&format!(".merge({}Schema)", interface.interface()));
+    }
+
+    output.push_str(";\n\n");
 
     output
 }

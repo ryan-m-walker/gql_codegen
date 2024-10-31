@@ -1,8 +1,7 @@
 use apollo_compiler::hir::ObjectTypeDefinition;
 
+use crate::generator::common::render_description_comment;
 use crate::generator::common::render_type;
-
-use super::descriptions::render_description_comment;
 
 pub fn render_object_definition(definition: &ObjectTypeDefinition) -> String {
     let mut output = String::new();

@@ -5,6 +5,7 @@ pub(self) mod common;
 mod tests;
 pub mod ts_operation_types;
 pub mod ts_schema_types;
+pub mod zod_schemas;
 
 pub trait CodeGenerator {
     fn generate(&self, db: &RootDatabase) -> String;

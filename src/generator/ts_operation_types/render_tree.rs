@@ -64,6 +64,7 @@ pub fn render_operation_tree(operation_tree: &OperationTree, depth: usize) -> St
                 rendered_field.push_str(&format!(": '{}';", typename.name));
                 fields.push(rendered_field);
             }
+            _ => {}
         }
     }
 
