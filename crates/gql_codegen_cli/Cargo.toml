@@ -1,0 +1,14 @@
+[package]
+name = "gql_codegen_cli"
+authors.workspace = true
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+gql_codegen_config = { workspace = true }
+gql_codegen_js = { workspace = true }
+gql_codegen_errors = { workspace = true }
+clap = { workspace = true }
+glob = { workspace = true }
+oxc = { workspace = true }
