@@ -9,6 +9,12 @@ license.workspace = true
 gql_codegen_config = { workspace = true }
 gql_codegen_js = { workspace = true }
 gql_codegen_errors = { workspace = true }
+gql_codegen_types = { workspace = true }
+gql_codegen_generators = { workspace = true }
+
+apollo-compiler = { workspace = true }
+apollo-parser = { workspace = true }
 clap = { workspace = true }
 glob = { workspace = true }
 oxc = { workspace = true }
+rayon = { workspace = true }

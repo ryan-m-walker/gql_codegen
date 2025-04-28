@@ -1,8 +1,8 @@
-use std::fs;
+use std::{collections::HashMap, fs};
 
 use generator::{
     ts_operation_types::TsOperationsTypeGenerator, ts_schema_types::TsSchemaTypesGenerator,
-    zod_schemas::ZodSchemasGenerator,
+    zod_schemas::ZodSchemasGenerator, CodeGenerator,
 };
 use processor::Processor;
 
@@ -10,8 +10,13 @@ mod generator;
 mod processor;
 
 fn main() {
-    let schema_src = fs::read_to_string("schema.graphql").expect("Unable to read file");
-    let document_src = fs::read_to_string("document.graphql").expect("Unable to read file");
+    // let schema_src = fs::read_to_string("schema.graphql").expect("Unable to read file");
+    // let document_src = fs::read_to_string("document.graphql").expect("Unable to read file");
+
+    // let generators = HashMap::new();
+    // generators.insert("ts_schema_types", Box::new(TsSchemaTypesGenerator));
+    // generators.insert("ts_operations_type", Box::new(TsOperationsTypeGenerator));
+    // generators.insert("zod_schemas", Box::new(ZodSchemasGenerator));
 
     let ts_schema_types_generator = TsSchemaTypesGenerator;
     let ts_operations_type_generator = TsOperationsTypeGenerator;

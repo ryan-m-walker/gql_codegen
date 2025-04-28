@@ -2,6 +2,18 @@ export type Role = 'ADMIN' | 'USER' | '%future added value';
 
 export type Species = 'DOG' | 'CAT' | '%future added value';
 
+interface Foo {
+  name: string
+}
+
+interface Bar {
+  age: number
+}
+
+interface Fizz extends Foo, Bar {
+  
+}
+
 export type Dog = Animal & {
   __typename?: 'Dog';
   id: string;

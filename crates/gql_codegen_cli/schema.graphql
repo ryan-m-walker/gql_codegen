@@ -1,0 +1,29 @@
+scalar Date
+
+enum Status {
+    ACTIVE
+    INACTIVE
+}
+
+interface Node {
+    named: String!
+    nullable_named: String
+    list: [String!]!
+    list_2: [String]
+    list_3: [String!]
+    list_4: [String]!
+}
+
+extend interface Node {
+    id: ID!
+    name: String!
+}
+
+type Person {
+    id: ID!
+    name: String!
+}
+
+type Query {
+    me: Person!
+}
