@@ -22,10 +22,10 @@ pub enum QuoteStyle {
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone, Copy)]
 pub struct FormatterConfig {
-    pub indent_style: IndentStyle,
-    pub indent_width: usize,
-    pub quote_style: QuoteStyle,
-    pub semicolons: bool,
+    pub indent_style: Option<IndentStyle>,
+    pub indent_width: Option<usize>,
+    pub quote_style: Option<QuoteStyle>,
+    pub semicolons: Option<bool>,
 }
 
 #[derive(Debug, Default)]
@@ -44,31 +44,39 @@ impl Formatter {
     }
 
     pub fn with_indent_style(mut self, indent_style: IndentStyle) -> Self {
-        self.config.indent_style = indent_style;
+        self.config.indent_style = Some(indent_style);
         self
     }
 
     pub fn with_indent_width(mut self, indent_width: usize) -> Self {
-        self.config.indent_width = indent_width;
+        self.config.indent_width = Some(indent_width);
         self
     }
 
     pub fn with_quote_style(mut self, quote_style: QuoteStyle) -> Self {
-        self.config.quote_style = quote_style;
+        self.config.quote_style = Some(quote_style);
         self
     }
 
     pub fn with_semicolons(mut self, semicolons: bool) -> Self {
-        self.config.semicolons = semicolons;
+        self.config.semicolons = Some(semicolons);
         self
+    }
+
+    pub fn indent_style(&self) -> IndentStyle {
+        self.config.indent_style.unwrap_or_default()
+    }
+
+    pub fn indent_width(&self) -> usize {
+        self.config.indent_width.unwrap_or(2)
     }
 
     pub fn indent(&self, input: &str) -> String {
         let mut indent = String::new();
 
-        match self.config.indent_style {
+        match self.indent_style() {
             IndentStyle::Space => {
-                indent.push_str(&" ".repeat(self.config.indent_width));
+                indent.push_str(&" ".repeat(self.indent_width()));
             }
             IndentStyle::Tab => {
                 indent.push('\t');
@@ -87,5 +95,17 @@ impl Formatter {
         if self.indent_level > 0 {
             self.indent_level -= 1;
         }
+    }
+
+    pub fn semicolon(&self) -> String {
+        if self.config.semicolons.unwrap_or(true) {
+            ";".to_string()
+        } else {
+            "".to_string()
+        }
+    }
+
+    pub fn indent_with_semicolon(&self, input: &str) -> String {
+        format!("{}{}", self.indent(input), self.semicolon())
     }
 }

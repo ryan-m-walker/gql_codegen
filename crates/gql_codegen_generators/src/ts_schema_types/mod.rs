@@ -45,9 +45,8 @@ impl<'a, 'b> TsSchemaTypesGenerator<'a, 'b> {
     }
 
     fn generate<T: Write>(&mut self, writer: &mut T, schema: &Valid<Schema>) -> Result<()> {
-        self.generate_scalars(writer)?;
-
         self.formatter.increment_indent();
+        self.generate_scalars(writer)?;
 
         for schema_type in schema.types.values() {
             if schema_type.is_built_in() {
@@ -78,17 +77,17 @@ impl<'a, 'b> TsSchemaTypesGenerator<'a, 'b> {
                     .as_ref()
                     .map(|s| s.get(node.name.as_str()));
 
-                write!(writer, "{}", self.formatter.indent(""))?;
-                if let Some(custom_value) = custom_value.flatten() {
-                    writeln!(writer, "readonly {}: {};", node.name, custom_value)?;
-                } else {
-                    writeln!(
-                        writer,
-                        "readonly {}: {};",
-                        node.name,
-                        get_scalar_type(&node.name)
-                    )?;
-                }
+                let default_value = get_scalar_type(node.name.as_str());
+                let scalar_value = custom_value.flatten().unwrap_or(&default_value);
+
+                writeln!(
+                    writer,
+                    "{}",
+                    self.formatter.indent_with_semicolon(&format!(
+                        "readonly {}: {}",
+                        node.name, scalar_value
+                    ))
+                )?;
             }
         }
 
@@ -202,24 +201,29 @@ impl<'a, 'b> TsSchemaTypesGenerator<'a, 'b> {
 
         writeln!(writer, " {{")?;
 
-        write!(writer, "{}", self.formatter.indent(""))?;
-        if readonly {
-            write!(writer, "readonly ")?;
-        }
-        writeln!(writer, "__typename: \"{}\";", node.name)?;
+        let prefix = if readonly { "readonly " } else { "" };
+        writeln!(
+            writer,
+            "{}",
+            self.formatter
+                .indent_with_semicolon(&format!("{}__typename: \"{}\"", prefix, node.name))
+        )?;
 
         for (name, field) in &node.fields {
             if field.description.is_some() {
                 self.render_description(writer, &field.description, "  ")?;
             }
 
-            write!(writer, "  ")?;
-
-            if readonly {
-                write!(writer, "readonly ")?;
-            }
-
-            writeln!(writer, "{}: {};", name, self.render_type(&field.ty))?;
+            writeln!(
+                writer,
+                "{}",
+                self.formatter.indent_with_semicolon(&format!(
+                    "{}{}: {}",
+                    prefix,
+                    name,
+                    self.render_type(&field.ty)
+                ))
+            )?;
         }
 
         writeln!(writer, "}}")?;

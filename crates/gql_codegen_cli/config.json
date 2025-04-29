@@ -1,5 +1,5 @@
 {
-    "schema": "/Users/ryan/lindy/apps/web/src/schema.graphql",
+    "schema": "",
     "documents": "./test_docs/**/*.graphql",
     "outputs":  {
         "./__generated__/schema.d.ts": {
@@ -14,8 +14,10 @@
                             "ID": "ObjectId"
                         },
                         "future_proof_enums": true,
+                        "readonly": true,
                         "formatting": {
-                            "indent_width": 4
+                            "indent_width": 4,
+                            "semicolons": false
                         }
                     }
                 }
