@@ -16,7 +16,7 @@ use gql_codegen_generators::{
 };
 use gql_codegen_js::parse_from_js_file;
 
-use apollo_compiler::{Schema, parser};
+use apollo_compiler::Schema;
 use gql_codegen_types::ReadResult;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
@@ -34,13 +34,7 @@ fn main() -> Result<(), CodegenError> {
         return Err(CodegenError::FileReadError);
     };
 
-    // let schema = Schema::parse_and_validate(schema_source, &schema_path).unwrap();
-    // SchemaBuilder::new().
-
-    let gql_parser = parser::Parser::default();
-
-    let mut schema_builder = Schema::builder();
-    gql_parser.parse_into_schema_builder(schema_source, &schema_path, &mut schema_builder);
+    let schema = Schema::parse_and_validate(schema_source, &schema_path).unwrap();
 
     println!("Scanning for documents...");
 
@@ -100,34 +94,19 @@ fn main() -> Result<(), CodegenError> {
 
     println!("Found {} documents", read_results.len());
 
-    for read_result in &read_results {
-        for (i, source_text) in read_result.documents.iter().enumerate() {
-            let path = if i == 0 {
-                read_result.path.clone()
-            } else {
-                format!("{}#{}", read_result.path, i + 1)
-            };
-
-            let ast = gql_parser.parse_ast(source_text, path).unwrap();
-            schema_builder.add_ast(&ast);
-        }
-    }
-
-    let schema = schema_builder.build().unwrap();
-
     config
         .outputs
         .par_iter()
         .for_each(|(output_path, output_config)| {
             // TODO: create output directory if it doesn't exist
 
-            let mut _writer = OpenOptions::new()
+            let mut writer = OpenOptions::new()
                 .write(true)
                 .truncate(true)
                 .open(output_path)
                 .unwrap();
 
-            let mut writer = std::io::stdout();
+            // let mut writer = std::io::stdout();
 
             if let Some(config) = &output_config.prelude {
                 writeln!(writer, "{config}\n").unwrap();

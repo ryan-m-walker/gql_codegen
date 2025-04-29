@@ -3,4 +3,4 @@
 codegen_sandbox/*
 output.ts
 
-__generated__/*
+**/__generated__/**

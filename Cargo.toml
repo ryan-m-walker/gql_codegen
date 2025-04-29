@@ -14,6 +14,7 @@ gql_codegen_cli = { path = "crates/gql_codegen_cli" }
 gql_codegen_config = { path = "crates/gql_codegen_config" }
 gql_codegen_js = { path = "crates/gql_codegen_js" }
 gql_codegen_errors = { path = "crates/gql_codegen_errors" }
+gql_codegen_formatter = { path = "crates/gql_codegen_formatter" }
 gql_codegen_types = { path = "crates/gql_codegen_types" }
 gql_codegen_generators = { path = "crates/gql_codegen_generators" }
 

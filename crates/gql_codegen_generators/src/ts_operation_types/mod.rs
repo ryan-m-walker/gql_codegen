@@ -4,12 +4,14 @@ use std::{
 };
 
 use apollo_compiler::{
-    ExecutableDocument, Node, Schema, ast::OperationType, executable::Operation,
+    ExecutableDocument, Node, Schema,
+    ast::{OperationType, Type},
+    executable::{Field, Operation, Selection, SelectionSet},
+    schema,
+    validation::Valid,
 };
 use gql_codegen_types::ReadResult;
 use serde::{Deserialize, Serialize};
-
-use crate::Codegenerator;
 
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct TsOperationTypesGeneratorConfig {
@@ -19,23 +21,22 @@ pub struct TsOperationTypesGeneratorConfig {
 }
 
 #[derive(Debug)]
-struct TsOperationTypesGenerator<'a> {
+struct TsOperationTypesGenerator<'a, 'b> {
     config: &'a TsOperationTypesGeneratorConfig,
+    schema: &'b Valid<Schema>,
+    formatter: Formatter,
 }
 
-impl<'a> TsOperationTypesGenerator<'a> {
-    pub fn new(config: &'a TsOperationTypesGeneratorConfig) -> Self {
-        Self { config }
+impl<'a, 'b> TsOperationTypesGenerator<'a, 'b> {
+    pub fn new(config: &'a TsOperationTypesGeneratorConfig, schema: &'b Valid<Schema>) -> Self {
+        Self {
+            config,
+            schema,
+            formatter: Formatter::new(2),
+        }
     }
-}
 
-impl Codegenerator for TsOperationTypesGenerator<'_> {
-    fn generate<T: Write>(
-        &self,
-        writer: &mut T,
-        schema: &Schema,
-        read_results: &[ReadResult],
-    ) -> Result<()> {
+    fn generate<T: Write>(&mut self, writer: &mut T, read_results: &[ReadResult]) -> Result<()> {
         let mut anonymous_op_count = 0;
 
         let mut op_names = HashSet::new();
@@ -49,7 +50,7 @@ impl Codegenerator for TsOperationTypesGenerator<'_> {
                 };
 
                 let document =
-                    ExecutableDocument::parse_and_validate(schema, source_text, path).unwrap();
+                    ExecutableDocument::parse_and_validate(self.schema, source_text, path).unwrap();
 
                 for op in document.operations.iter() {
                     let add_operation_type_suffix =
@@ -62,6 +63,8 @@ impl Codegenerator for TsOperationTypesGenerator<'_> {
                     };
 
                     let op_prefix = self.config.operation_name_prefix.as_deref().unwrap_or("");
+
+                    writeln!(writer)?;
 
                     let name = match &op.name {
                         Some(name) => name.to_string(),
@@ -79,14 +82,72 @@ impl Codegenerator for TsOperationTypesGenerator<'_> {
 
                     op_names.insert(op_name.clone());
 
-                    writeln!(writer, "export interface {op_name} {{")?;
-
-                    writeln!(writer, "}};")?;
+                    write!(writer, "export interface {op_name}")?;
+                    self.render_selection_set(writer, &op.selection_set)?;
+                    writeln!(writer, ";\n")?;
                 }
             }
         }
 
         Ok(())
+    }
+
+    fn render_selection_set<T: Write>(
+        &mut self,
+        writer: &mut T,
+        selection_set: &SelectionSet,
+    ) -> Result<()> {
+        let selection_type = self.schema.get_object(selection_set.ty.as_str());
+
+        if let Some(selection_type) = selection_type {
+            self.formatter.increment_indent();
+            writeln!(writer, " {{")?;
+
+            // TODO: make non-nulll if selected
+            write!(writer, "{}: ", self.formatter.indent("__typename"))?;
+            writeln!(writer, "\"{}\";", selection_type.name)?;
+
+            for selection in &selection_set.selections {
+                match selection {
+                    Selection::Field(field) => {
+                        self.render_field(writer, &field)?;
+                    }
+                    _ => {}
+                }
+            }
+
+            self.formatter.decrement_indent();
+            write!(writer, "{}", self.formatter.indent("}"))?;
+        }
+
+        Ok(())
+    }
+
+    fn render_field<T: Write>(&mut self, writer: &mut T, field: &Field) -> Result<()> {
+        let field_name = field.alias.clone().unwrap_or(field.name.clone());
+
+        write!(writer, "{}:", self.formatter.indent(&field_name),)?;
+
+        if !field.selection_set.selections.is_empty() {
+            self.render_selection_set(writer, &field.selection_set)?;
+            writeln!(writer, ";")?;
+        } else {
+            let ty = self.render_type(field.ty());
+            writeln!(writer, " {ty};")?;
+        }
+
+        Ok(())
+    }
+
+    fn render_type(&self, ty: &Type) -> String {
+        match ty {
+            Type::Named(name) => format!("{name} | null | undefined"),
+            Type::NonNullNamed(name) => name.to_string(),
+            Type::List(inner) => {
+                format!("Array<{}> | null | undefined", self.render_type(inner))
+            }
+            Type::NonNullList(inner) => format!("Array<{}>", self.render_type(inner)),
+        }
     }
 }
 
@@ -100,11 +161,46 @@ fn get_op_type_name(op: &Node<Operation>) -> String {
 
 pub fn generate_operation_types(
     writer: &mut impl Write,
-    schema: &Schema,
+    schema: &Valid<Schema>,
     read_results: &[ReadResult],
     config: &TsOperationTypesGeneratorConfig,
 ) -> Result<()> {
-    let generator = TsOperationTypesGenerator::new(config);
-    generator.generate(writer, schema, read_results)?;
+    let mut generator = TsOperationTypesGenerator::new(config, schema);
+    generator.generate(writer, read_results)?;
     Ok(())
+}
+
+#[derive(Debug)]
+struct Formatter {
+    tab_size: usize,
+    indent_level: u8,
+}
+
+impl Formatter {
+    pub fn new(tab_size: usize) -> Self {
+        Self {
+            tab_size,
+            indent_level: 0,
+        }
+    }
+
+    pub fn indent(&self, input: &str) -> String {
+        let mut indent = String::new();
+
+        for _ in 0..self.indent_level {
+            indent.push_str(&" ".repeat(self.tab_size));
+        }
+
+        format!("{}{}", indent, input)
+    }
+
+    pub fn increment_indent(&mut self) {
+        self.indent_level += 1;
+    }
+
+    pub fn decrement_indent(&mut self) {
+        if self.indent_level > 0 {
+            self.indent_level -= 1;
+        }
+    }
 }

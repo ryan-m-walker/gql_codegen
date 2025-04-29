@@ -433,10 +433,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "gql_codegen_formatter"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "gql_codegen_generators"
 version = "0.1.0"
 dependencies = [
  "apollo-compiler",
+ "gql_codegen_formatter",
  "gql_codegen_types",
  "serde",
  "serde_json",

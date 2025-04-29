@@ -1,24 +1,22 @@
 {
-    "schema": "test",
-    "documents": "test",
+    "schema": "/Users/ryan/lindy/apps/web/src/schema.graphql",
+    "documents": "./test_docs/**/*.graphql",
     "outputs":  {
         "./__generated__/schema.d.ts": {
-            "prelude": "// This is an automatically generated file. Do not edit.",
+            "prelude": "// This is an automatically generated file. Do not edit.\n\nimport { type ObjectId } from 'mongodb'",
             "generators": [
                 {
                     "name": "ts_schema_types",
                     "config": {
                         "scalars": {
                             "Date": "Date",
-                            "Float": "BigInt"
+                            "DateTime": "Date",
+                            "ID": "ObjectId"
                         },
-                        "future_proof_enums": true
-                    }
-                },
-                {
-                    "name": "ts_operation_types",
-                    "config": {
-                        "readonly": true
+                        "future_proof_enums": true,
+                        "formatting": {
+                            "indent_width": 4
+                        }
                     }
                 }
             ]

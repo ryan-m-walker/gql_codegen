@@ -1,5 +1,16 @@
 query TestQuery {
     me {
         id
+        name
+        age
+        friends {
+            id
+            name
+            savings 
+            friends {
+                name
+                age
+            }
+        }
     }
 }

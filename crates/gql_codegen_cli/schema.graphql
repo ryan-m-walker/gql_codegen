@@ -1,29 +1,24 @@
 scalar Date
+scalar DateTime
+scalar BigInt
 
-enum Status {
-    ACTIVE
-    INACTIVE
-}
-
-interface Node {
-    named: String!
-    nullable_named: String
-    list: [String!]!
-    list_2: [String]
-    list_3: [String!]
-    list_4: [String]!
-}
-
-extend interface Node {
-    id: ID!
-    name: String!
-}
-
+"""
+Just a person
+"""
 type Person {
     id: ID!
     name: String!
+    age: Int
+    birthDate: Date
+    createdAt: DateTime!
+    updatedAt: DateTime!
+    savings: BigInt!
+    friends: [Person!]!
 }
 
 type Query {
     me: Person!
+    person(id: ID!): Person
+    people: [Person!]!
 }
+

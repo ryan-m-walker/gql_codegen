@@ -1,14 +1,10 @@
 [package]
-name = "gql_codegen_generators"
+name = "gql_codegen_formatter"
 authors.workspace = true
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 
 [dependencies]
-gql_codegen_types = { workspace = true }
-gql_codegen_formatter = { workspace = true }
-
-apollo-compiler = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
