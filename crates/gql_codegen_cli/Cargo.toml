@@ -18,3 +18,5 @@ clap = { workspace = true }
 glob = { workspace = true }
 oxc = { workspace = true }
 rayon = { workspace = true }
+anyhow = { workspace = true }
+colored = { workspace = true }

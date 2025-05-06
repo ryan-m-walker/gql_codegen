@@ -10,13 +10,14 @@ use file::{FileType, get_file_type};
 use glob::glob;
 
 use gql_codegen_config::{Config, Generator};
-use gql_codegen_errors::CodegenError;
 use gql_codegen_generators::{
     ts_operation_types::generate_operation_types, ts_schema_types::generate_ts_schema_types,
 };
 use gql_codegen_js::parse_from_js_file;
 
+use anyhow::{Context, Result, anyhow};
 use apollo_compiler::Schema;
+use colored::Colorize;
 use gql_codegen_types::ReadResult;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
@@ -24,24 +25,30 @@ mod args;
 mod file;
 mod generate;
 
-fn main() -> Result<(), CodegenError> {
+fn main() {
+    if let Err(e) = run_cli() {
+        eprintln!("{}", format!("Error ✖︎ {}", e));
+        std::process::exit(1);
+    }
+}
+
+fn run_cli() -> Result<()> {
     let args = Args::parse();
     let config = Config::from_path(&args.config);
 
     let schema_path = PathBuf::from(&config.schema);
-    let Ok(schema_source) = fs::read_to_string(&schema_path) else {
-        println!("Unable to read schema file");
-        return Err(CodegenError::FileReadError);
-    };
 
+    let schema_source = fs::read_to_string(&schema_path)
+            .context("Failed to read schema file. Please ensure that your configuration schema value is pointing to a valid file.")?;
+
+    // TODO: validation errors reporting
     let schema = Schema::parse_and_validate(schema_source, &schema_path).unwrap();
 
     println!("Scanning for documents...");
 
-    let Ok(matches) = glob(&config.documents) else {
-        println!("Invalid glob pattern: {}", config.documents);
-        return Err(CodegenError::InvalidGlobPattern(config.documents));
-    };
+    let matches = glob(&config.documents).context(
+        "Invalid documents glob pattern. Please check your \"documents\" configuraton value.",
+    )?;
 
     let matches_vec = matches.collect::<Vec<_>>();
 
@@ -49,50 +56,59 @@ fn main() -> Result<(), CodegenError> {
 
     let read_results = matches_vec
         .par_iter()
-        .map(|entry| {
+        .map(|entry| -> Result<Option<ReadResult>> {
             let Ok(path) = entry else {
-                panic!("Invalid glob pattern: {}", config.documents);
+                return Err(anyhow!("Invalid glob pattern."));
             };
 
             let Some(extension) = path.extension() else {
-                panic!("File has no extension: {}", path.display());
+                // TODO: better error message
+                return Err(anyhow!("File has no extension: {}", path.display()));
             };
 
             let extension = extension.to_string_lossy();
 
             let Some(file_type) = get_file_type(&extension) else {
-                panic!("Unsupported file type: {extension}");
+                return Err(anyhow!("Unsupported file type: {extension}"));
             };
 
             match file_type {
                 FileType::GraphQL => {
-                    let Ok(document) = fs::read_to_string(path) else {
-                        panic!("Unable to read file: {}", path.to_string_lossy());
-                    };
+                    let document = fs::read_to_string(path).with_context(|| {
+                        format!("Failed to read file {}", path.to_string_lossy())
+                    })?;
 
-                    Some(ReadResult {
+                    Ok(Some(ReadResult {
                         path: path.to_string_lossy().to_string(),
                         documents: vec![document],
-                    })
+                    }))
                 }
                 FileType::JavaScript | FileType::TypeScript => {
                     let documents = parse_from_js_file(path.to_path_buf());
 
                     if documents.is_empty() {
-                        return None;
+                        return Ok(None);
                     }
 
-                    Some(ReadResult {
+                    Ok(Some(ReadResult {
                         path: path.to_string_lossy().to_string(),
                         documents,
-                    })
+                    }))
                 }
             }
         })
-        .filter_map(|entry| entry)
         .collect::<Vec<_>>();
 
-    println!("Found {} documents", read_results.len());
+    let mut checked_read_results = Vec::new();
+
+    for result in read_results {
+        match result? {
+            Some(result) => checked_read_results.push(result),
+            None => {}
+        }
+    }
+
+    println!("Found {} documents", checked_read_results.len());
 
     config
         .outputs
@@ -118,12 +134,21 @@ fn main() -> Result<(), CodegenError> {
                         generate_ts_schema_types(&mut writer, &schema, config).unwrap();
                     }
                     Generator::TsOperationTypes { config } => {
-                        generate_operation_types(&mut writer, &schema, &read_results, config)
-                            .unwrap();
+                        generate_operation_types(
+                            &mut writer,
+                            &schema,
+                            &checked_read_results,
+                            config,
+                        )
+                        .unwrap();
                     }
                 }
             }
         });
 
     Ok(())
+}
+
+fn make_error() -> Result<()> {
+    Err(anyhow!("Error!"))
 }

@@ -6,11 +6,11 @@ query TestQuery {
         friends {
             id
             name
-            savings 
+            savings
             friends {
                 name
                 age
             }
         }
-    }
+
 }
