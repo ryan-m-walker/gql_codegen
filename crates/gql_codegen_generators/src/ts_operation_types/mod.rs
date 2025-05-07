@@ -1,17 +1,20 @@
-use std::{collections::HashSet, io::Write};
+use std::{collections::HashMap, io::Write};
 
-use anyhow::Result;
+use anyhow::{Result, anyhow};
 use apollo_compiler::{
-    ExecutableDocument, Node, Schema,
+    Name, Node, Schema,
     ast::{OperationType, Type},
-    executable::{Field, Operation, Selection, SelectionSet},
+    executable::{Field, Fragment, Operation, Selection, SelectionSet},
     validation::Valid,
 };
 use gql_codegen_logger::Logger;
+use indexmap::IndexSet;
+use operation_tree::OperationTree;
 use serde::{Deserialize, Serialize};
 
 use gql_codegen_formatter::{Formatter, FormatterConfig};
-use gql_codegen_types::ReadResult;
+
+mod operation_tree;
 
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct TsOperationTypesGeneratorConfig {
@@ -22,74 +25,46 @@ pub struct TsOperationTypesGeneratorConfig {
 }
 
 #[derive(Debug)]
-struct TsOperationTypesGenerator<'a, 'b> {
+struct TsOperationTypesGenerator<'a> {
     config: &'a TsOperationTypesGeneratorConfig,
-    schema: &'b Valid<Schema>,
+    schema: &'a Valid<Schema>,
+    operations: &'a HashMap<Name, Node<Operation>>,
+    fragments: &'a HashMap<Name, Node<Fragment>>,
+    logger: &'a Logger,
     formatter: Formatter,
 }
 
-impl<'a, 'b> TsOperationTypesGenerator<'a, 'b> {
-    pub fn new(config: &'a TsOperationTypesGeneratorConfig, schema: &'b Valid<Schema>) -> Self {
+impl<'a> TsOperationTypesGenerator<'a> {
+    pub fn new(
+        config: &'a TsOperationTypesGeneratorConfig,
+        schema: &'a Valid<Schema>,
+        operations: &'a HashMap<Name, Node<Operation>>,
+        fragments: &'a HashMap<Name, Node<Fragment>>,
+        logger: &'a Logger,
+    ) -> Self {
         let formatter_config = config.formatting.unwrap_or_default();
 
         Self {
             config,
             schema,
+            operations,
+            fragments,
+            logger,
             formatter: Formatter::from_config(formatter_config),
         }
     }
 
-    fn generate<T: Write>(&mut self, writer: &mut T, read_results: &[ReadResult]) -> Result<()> {
-        let mut anonymous_op_count = 0;
+    fn generate<T: Write>(&mut self, writer: &mut T) -> Result<()> {
+        for (name, operation) in self.operations {
+            let operation_tree = OperationTree::new(operation, self.fragments)?;
 
-        let mut op_names = HashSet::new();
-
-        for read_result in read_results {
-            for (i, source_text) in read_result.documents.iter().enumerate() {
-                let path = if i == 0 {
-                    read_result.path.clone()
-                } else {
-                    format!("{}#{}", read_result.path, i + 1)
-                };
-
-                let document =
-                    ExecutableDocument::parse_and_validate(self.schema, source_text, path).unwrap();
-
-                for op in document.operations.iter() {
-                    let add_operation_type_suffix =
-                        self.config.add_operation_type_suffix.unwrap_or(false);
-
-                    let op_type_name = if add_operation_type_suffix {
-                        get_op_type_name(op)
-                    } else {
-                        String::new()
-                    };
-
-                    let op_prefix = self.config.operation_name_prefix.as_deref().unwrap_or("");
-
-                    writeln!(writer)?;
-
-                    let name = match &op.name {
-                        Some(name) => name.to_string(),
-                        None => {
-                            anonymous_op_count += 1;
-                            format!("Anonymous{anonymous_op_count}{op_type_name}")
-                        }
-                    };
-
-                    let op_name = format!("{op_prefix}{name}{op_type_name}");
-
-                    if op_names.contains(&op_name) {
-                        panic!("Duplicate operation name: {op_name}");
-                    }
-
-                    op_names.insert(op_name.clone());
-
-                    write!(writer, "export interface {op_name}")?;
-                    self.render_selection_set(writer, &op.selection_set)?;
-                    writeln!(writer, ";\n")?;
-                }
-            }
+            writeln!(writer, "\nexport interface {name} {{")?;
+            self.render_selection_set(
+                writer,
+                &operation_tree,
+                &operation_tree.root_selection_refs,
+            )?;
+            writeln!(writer, "}}")?;
         }
 
         Ok(())
@@ -98,47 +73,38 @@ impl<'a, 'b> TsOperationTypesGenerator<'a, 'b> {
     fn render_selection_set<T: Write>(
         &mut self,
         writer: &mut T,
-        selection_set: &SelectionSet,
+        operation_tree: &OperationTree,
+        selection_refs: &IndexSet<String>,
     ) -> Result<()> {
-        let selection_type = self.schema.get_object(selection_set.ty.as_str());
+        self.formatter.inc_indent_level();
 
-        if let Some(selection_type) = selection_type {
-            self.formatter.inc_indent_level();
-            writeln!(writer, " {{")?;
+        for selection_ref in selection_refs {
+            let Some(field) = operation_tree.normalized_fields.get(selection_ref) else {
+                continue;
+            };
 
-            // TODO: make non-nulll if selected
-            write!(writer, "{}: ", self.formatter.indent("__typename"))?;
-            writeln!(writer, "\"{}\";", selection_type.name)?;
+            let rendered_key = format!("{}: ", field.field_name);
+            write!(writer, "{}", self.formatter.indent(&rendered_key))?;
 
-            for selection in &selection_set.selections {
-                match selection {
-                    Selection::Field(field) => {
-                        self.render_field(writer, &field)?;
-                    }
-                    _ => {}
+            if field.selection_refs.is_empty() {
+                if field.field_name == "__typename" {
+                    write!(writer, "\"{}\"", &field.parent_type_name)?;
+                    writeln!(writer, "{}", self.formatter.semicolon())?;
+                    continue;
                 }
+
+                let rendered_type = self.render_type(&field.field_type);
+                write!(writer, "Scalars[\"{rendered_type}\"]",)?;
+                writeln!(writer, "{}", self.formatter.semicolon())?;
+                continue;
             }
 
-            self.formatter.dec_indent_level();
-            write!(writer, "{}", self.formatter.indent("}"))?;
+            writeln!(writer, "{{")?;
+            self.render_selection_set(writer, operation_tree, &field.selection_refs)?;
+            writeln!(writer, "{}", self.formatter.indent_with_semicolon("}"))?;
         }
 
-        Ok(())
-    }
-
-    fn render_field<T: Write>(&mut self, writer: &mut T, field: &Field) -> Result<()> {
-        let field_name = field.alias.clone().unwrap_or(field.name.clone());
-
-        write!(writer, "{}:", self.formatter.indent(&field_name),)?;
-
-        if !field.selection_set.selections.is_empty() {
-            self.render_selection_set(writer, &field.selection_set)?;
-            writeln!(writer, ";")?;
-        } else {
-            let ty = self.render_type(field.ty());
-            writeln!(writer, " {ty};")?;
-        }
-
+        self.formatter.dec_indent_level();
         Ok(())
     }
 
@@ -165,12 +131,13 @@ fn get_op_type_name(op: &Node<Operation>) -> String {
 pub fn generate_operation_types(
     writer: &mut impl Write,
     schema: &Valid<Schema>,
-    read_results: &[ReadResult],
+    operations: &HashMap<Name, Node<Operation>>,
+    fragments: &HashMap<Name, Node<Fragment>>,
     config: &TsOperationTypesGeneratorConfig,
     logger: &Logger,
 ) -> Result<()> {
-    logger.debug("Running ts_operation_types generator...");
-    let mut generator = TsOperationTypesGenerator::new(config, schema);
-    generator.generate(writer, read_results)?;
+    let mut generator =
+        TsOperationTypesGenerator::new(config, schema, operations, fragments, logger);
+    generator.generate(writer)?;
     Ok(())
 }

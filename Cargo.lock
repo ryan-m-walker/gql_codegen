@@ -466,6 +466,7 @@ dependencies = [
  "gql_codegen_formatter",
  "gql_codegen_logger",
  "gql_codegen_types",
+ "indexmap",
  "serde",
  "serde_json",
 ]

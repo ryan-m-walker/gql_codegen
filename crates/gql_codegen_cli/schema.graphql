@@ -2,6 +2,18 @@ scalar Date
 scalar DateTime
 scalar BigInt
 
+enum Theme {
+    LIGHT
+    DARK
+    SYSTEM
+}
+
+
+type Settings {
+    theme: Theme!
+    language: String!
+}
+
 """
 Just a person
 """
@@ -14,6 +26,7 @@ type Person {
     updatedAt: DateTime!
     savings: BigInt!
     friends: [Person!]!
+    settings: Settings!
 }
 
 type Query {

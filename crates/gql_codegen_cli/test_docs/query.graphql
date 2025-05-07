@@ -1,10 +1,17 @@
 query TestQuery {
     me {
+        __typename
+
+        settings @include(if: true) {
+            language
+        }
         ...person
     }
 }
 
 fragment person on Person {
-    id
-    name
+    settings {
+        theme
+        language
+    }
 }

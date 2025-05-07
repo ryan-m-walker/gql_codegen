@@ -88,4 +88,8 @@ impl Formatter {
     pub fn indent_with_semicolon(&self, input: &str) -> String {
         format!("{}{}", self.indent(input), self.semicolon())
     }
+
+    pub fn with_semicolon(&self, input: &str) -> String {
+        format!("{input}{}", self.semicolon())
+    }
 }
