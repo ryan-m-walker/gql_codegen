@@ -1,9 +1,6 @@
-use std::{
-    default,
-    fmt::format,
-    io::{Result, Write},
-};
+use std::io::Write;
 
+use anyhow::Result;
 use apollo_compiler::{
     Node, Schema,
     ast::Type,
@@ -12,6 +9,7 @@ use apollo_compiler::{
     validation::Valid,
 };
 use gql_codegen_formatter::{Formatter, FormatterConfig};
+use gql_codegen_logger::Logger;
 use helpers::get_scalar_type;
 use serde::{Deserialize, Serialize};
 
@@ -27,25 +25,30 @@ pub struct TsSchemaTypesGeneratorConfig {
 }
 
 #[derive(Debug)]
-struct TsSchemaTypesGenerator<'a, 'b> {
+struct TsSchemaTypesGenerator<'a> {
     config: &'a TsSchemaTypesGeneratorConfig,
-    schema: &'b Valid<Schema>,
+    schema: &'a Valid<Schema>,
     formatter: Formatter,
+    logger: &'a Logger,
 }
 
-impl<'a, 'b> TsSchemaTypesGenerator<'a, 'b> {
-    pub fn new(config: &'a TsSchemaTypesGeneratorConfig, schema: &'b Valid<Schema>) -> Self {
+impl<'a, 'b> TsSchemaTypesGenerator<'a> {
+    pub fn new(
+        config: &'a TsSchemaTypesGeneratorConfig,
+        schema: &'a Valid<Schema>,
+        logger: &'a Logger,
+    ) -> Self {
         let formatter_config = config.formatting.unwrap_or_default();
 
         Self {
             config,
             schema,
-            formatter: Formatter::with_config(formatter_config),
+            logger,
+            formatter: Formatter::from_config(formatter_config),
         }
     }
 
     fn generate<T: Write>(&mut self, writer: &mut T, schema: &Valid<Schema>) -> Result<()> {
-        self.formatter.increment_indent();
         self.generate_scalars(writer)?;
 
         for schema_type in schema.types.values() {
@@ -66,8 +69,9 @@ impl<'a, 'b> TsSchemaTypesGenerator<'a, 'b> {
         Ok(())
     }
 
-    fn generate_scalars<T: Write>(&self, writer: &mut T) -> Result<()> {
+    fn generate_scalars<T: Write>(&mut self, writer: &mut T) -> Result<()> {
         writeln!(writer, "export type Scalars = {{")?;
+        self.formatter.inc_indent_level();
 
         for schema_type in self.schema.types.values() {
             if let ExtendedType::Scalar(node) = schema_type {
@@ -91,7 +95,8 @@ impl<'a, 'b> TsSchemaTypesGenerator<'a, 'b> {
             }
         }
 
-        writeln!(writer, "}};")?;
+        self.formatter.dec_indent_level();
+        writeln!(writer, "}}{}", self.formatter.semicolon())?;
 
         Ok(())
     }
@@ -176,12 +181,12 @@ impl<'a, 'b> TsSchemaTypesGenerator<'a, 'b> {
         Ok(())
     }
 
-    fn generate_object<T: Write>(&self, writer: &mut T, node: &Node<ObjectType>) -> Result<()> {
+    fn generate_object<T: Write>(&mut self, writer: &mut T, node: &Node<ObjectType>) -> Result<()> {
         let readonly = self.config.readonly.unwrap_or(false);
 
         writeln!(writer)?;
 
-        self.render_description(writer, &node.description, "")?;
+        self.render_description(writer, &node.description)?;
 
         write!(writer, "export interface {}", node.name)?;
 
@@ -201,6 +206,8 @@ impl<'a, 'b> TsSchemaTypesGenerator<'a, 'b> {
 
         writeln!(writer, " {{")?;
 
+        self.formatter.inc_indent_level();
+
         let prefix = if readonly { "readonly " } else { "" };
         writeln!(
             writer,
@@ -211,7 +218,7 @@ impl<'a, 'b> TsSchemaTypesGenerator<'a, 'b> {
 
         for (name, field) in &node.fields {
             if field.description.is_some() {
-                self.render_description(writer, &field.description, "  ")?;
+                self.render_description(writer, &field.description)?;
             }
 
             writeln!(
@@ -226,36 +233,48 @@ impl<'a, 'b> TsSchemaTypesGenerator<'a, 'b> {
             )?;
         }
 
+        self.formatter.dec_indent_level();
         writeln!(writer, "}}")?;
 
         Ok(())
     }
 
     fn generate_input_object<T: Write>(
-        &self,
+        &mut self,
         writer: &mut T,
         node: &Node<InputObjectType>,
     ) -> Result<()> {
         let readonly = self.config.readonly.unwrap_or(false);
 
         writeln!(writer, "\nexport interface {} {{", node.name)?;
+        self.formatter.inc_indent_level();
 
-        write!(writer, "  ")?;
-        if readonly {
-            write!(writer, "readonly ")?;
-        }
-        writeln!(writer, "__typename: \"{}\";", node.name)?;
+        let prefix = if readonly { "readonly " } else { "" };
+        writeln!(
+            writer,
+            "{}",
+            self.formatter
+                .indent_with_semicolon(&format!("{}__typename: \"{}\"", prefix, node.name))
+        )?;
 
         for (name, field) in &node.fields {
-            write!(writer, "  ")?;
-
-            if readonly {
-                write!(writer, "readonly ")?;
+            if field.description.is_some() {
+                self.render_description(writer, &field.description)?;
             }
 
-            writeln!(writer, "{}: {};", name, self.render_type(&field.ty))?;
+            writeln!(
+                writer,
+                "{}",
+                self.formatter.indent_with_semicolon(&format!(
+                    "{}{}: {}",
+                    prefix,
+                    name,
+                    self.render_type(&field.ty)
+                ))
+            )?;
         }
 
+        self.formatter.dec_indent_level();
         writeln!(writer, "}}")?;
 
         Ok(())
@@ -285,16 +304,15 @@ impl<'a, 'b> TsSchemaTypesGenerator<'a, 'b> {
         &self,
         writer: &mut T,
         description: &Option<Node<str>>,
-        padding: &str,
     ) -> Result<()> {
         if let Some(description) = description {
-            writeln!(writer, "{padding}/**")?;
+            writeln!(writer, "{}", self.formatter.indent("/**"))?;
 
             for line in description.lines() {
-                writeln!(writer, "{padding} * {line}")?;
+                writeln!(writer, "{}", self.formatter.indent(&format!(" * {line}")))?;
             }
 
-            writeln!(writer, "{padding} */")?;
+            writeln!(writer, "{}", self.formatter.indent(" */"))?;
         }
 
         Ok(())
@@ -305,8 +323,10 @@ pub fn generate_ts_schema_types(
     writer: &mut impl Write,
     schema: &Valid<Schema>,
     config: &TsSchemaTypesGeneratorConfig,
+    logger: &Logger,
 ) -> Result<()> {
-    let mut generator = TsSchemaTypesGenerator::new(config, schema);
+    logger.debug("Running ts_schema_types generator...");
+    let mut generator = TsSchemaTypesGenerator::new(config, schema, &logger);
     generator.generate(writer, schema)?;
     Ok(())
 }

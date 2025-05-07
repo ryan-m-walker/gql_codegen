@@ -8,7 +8,9 @@ license.workspace = true
 [dependencies]
 gql_codegen_types = { workspace = true }
 gql_codegen_formatter = { workspace = true }
+gql_codegen_logger = { workspace = true }
 
 apollo-compiler = { workspace = true }
+anyhow = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

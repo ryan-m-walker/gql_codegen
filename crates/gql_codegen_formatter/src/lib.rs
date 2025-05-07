@@ -36,31 +36,11 @@ pub struct Formatter {
 
 // TODO: escape quotes
 impl Formatter {
-    pub fn with_config(config: FormatterConfig) -> Self {
+    pub fn from_config(config: FormatterConfig) -> Self {
         Self {
             config,
             indent_level: 0,
         }
-    }
-
-    pub fn with_indent_style(mut self, indent_style: IndentStyle) -> Self {
-        self.config.indent_style = Some(indent_style);
-        self
-    }
-
-    pub fn with_indent_width(mut self, indent_width: usize) -> Self {
-        self.config.indent_width = Some(indent_width);
-        self
-    }
-
-    pub fn with_quote_style(mut self, quote_style: QuoteStyle) -> Self {
-        self.config.quote_style = Some(quote_style);
-        self
-    }
-
-    pub fn with_semicolons(mut self, semicolons: bool) -> Self {
-        self.config.semicolons = Some(semicolons);
-        self
     }
 
     pub fn indent_style(&self) -> IndentStyle {
@@ -87,11 +67,11 @@ impl Formatter {
         format!("{indentation}{input}")
     }
 
-    pub fn increment_indent(&mut self) {
+    pub fn inc_indent_level(&mut self) {
         self.indent_level += 1;
     }
 
-    pub fn decrement_indent(&mut self) {
+    pub fn dec_indent_level(&mut self) {
         if self.indent_level > 0 {
             self.indent_level -= 1;
         }

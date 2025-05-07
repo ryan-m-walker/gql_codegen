@@ -81,6 +81,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "anyhow"
+version = "1.0.98"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e16d2d3311acee920a9eb8d33b8cbc1787ce4a264e85f964c2404b969bdcd487"
+
+[[package]]
 name = "apollo-compiler"
 version = "1.28.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -238,6 +244,15 @@ name = "colorchoice"
 version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5b63caa9aa9397e2d9480a9b13673856c78d8ac123288526c37d7839f2a86990"
+
+[[package]]
+name = "colored"
+version = "3.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fde0e0ec90c9dfb3b4b1a0891a7dcd0e2bffde2f7efed5fe7c9bb00e5bfb915e"
+dependencies = [
+ "windows-sys 0.59.0",
+]
 
 [[package]]
 name = "compact_str"
@@ -403,6 +418,7 @@ checksum = "a8d1add55171497b4705a648c6b583acafb01d58050a51727785f0b2c8e0a2b2"
 name = "gql_codegen_cli"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "apollo-compiler",
  "apollo-parser",
  "clap",
@@ -411,6 +427,7 @@ dependencies = [
  "gql_codegen_errors",
  "gql_codegen_generators",
  "gql_codegen_js",
+ "gql_codegen_logger",
  "gql_codegen_types",
  "oxc",
  "rayon",
@@ -444,8 +461,10 @@ dependencies = [
 name = "gql_codegen_generators"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "apollo-compiler",
  "gql_codegen_formatter",
+ "gql_codegen_logger",
  "gql_codegen_types",
  "serde",
  "serde_json",
@@ -455,8 +474,16 @@ dependencies = [
 name = "gql_codegen_js"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "gql_codegen_types",
  "oxc",
+]
+
+[[package]]
+name = "gql_codegen_logger"
+version = "0.1.0"
+dependencies = [
+ "colored",
 ]
 
 [[package]]

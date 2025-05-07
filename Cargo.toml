@@ -17,6 +17,7 @@ gql_codegen_errors = { path = "crates/gql_codegen_errors" }
 gql_codegen_formatter = { path = "crates/gql_codegen_formatter" }
 gql_codegen_types = { path = "crates/gql_codegen_types" }
 gql_codegen_generators = { path = "crates/gql_codegen_generators" }
+gql_codegen_logger = { path = "crates/gql_codegen_logger" }
 
 apollo-compiler = { version = "1.28.0" }
 apollo-parser = { version = "0.8.4" }
@@ -28,3 +29,5 @@ rayon = { version = "1.10.0" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0.128" }
 thiserror = { version = "2.0.12" }
+anyhow = { version = "1.0.98" }
+colored = { version = "3.0.0" }

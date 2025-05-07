@@ -1,23 +1,24 @@
-use std::{
-    collections::HashSet,
-    io::{Result, Write},
-};
+use std::{collections::HashSet, io::Write};
 
+use anyhow::Result;
 use apollo_compiler::{
     ExecutableDocument, Node, Schema,
     ast::{OperationType, Type},
     executable::{Field, Operation, Selection, SelectionSet},
-    schema,
     validation::Valid,
 };
-use gql_codegen_types::ReadResult;
+use gql_codegen_logger::Logger;
 use serde::{Deserialize, Serialize};
+
+use gql_codegen_formatter::{Formatter, FormatterConfig};
+use gql_codegen_types::ReadResult;
 
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct TsOperationTypesGeneratorConfig {
     readonly: Option<bool>,
     operation_name_prefix: Option<String>,
     add_operation_type_suffix: Option<bool>,
+    formatting: Option<FormatterConfig>,
 }
 
 #[derive(Debug)]
@@ -29,10 +30,12 @@ struct TsOperationTypesGenerator<'a, 'b> {
 
 impl<'a, 'b> TsOperationTypesGenerator<'a, 'b> {
     pub fn new(config: &'a TsOperationTypesGeneratorConfig, schema: &'b Valid<Schema>) -> Self {
+        let formatter_config = config.formatting.unwrap_or_default();
+
         Self {
             config,
             schema,
-            formatter: Formatter::new(2),
+            formatter: Formatter::from_config(formatter_config),
         }
     }
 
@@ -100,7 +103,7 @@ impl<'a, 'b> TsOperationTypesGenerator<'a, 'b> {
         let selection_type = self.schema.get_object(selection_set.ty.as_str());
 
         if let Some(selection_type) = selection_type {
-            self.formatter.increment_indent();
+            self.formatter.inc_indent_level();
             writeln!(writer, " {{")?;
 
             // TODO: make non-nulll if selected
@@ -116,7 +119,7 @@ impl<'a, 'b> TsOperationTypesGenerator<'a, 'b> {
                 }
             }
 
-            self.formatter.decrement_indent();
+            self.formatter.dec_indent_level();
             write!(writer, "{}", self.formatter.indent("}"))?;
         }
 
@@ -164,43 +167,10 @@ pub fn generate_operation_types(
     schema: &Valid<Schema>,
     read_results: &[ReadResult],
     config: &TsOperationTypesGeneratorConfig,
+    logger: &Logger,
 ) -> Result<()> {
+    logger.debug("Running ts_operation_types generator...");
     let mut generator = TsOperationTypesGenerator::new(config, schema);
     generator.generate(writer, read_results)?;
     Ok(())
-}
-
-#[derive(Debug)]
-struct Formatter {
-    tab_size: usize,
-    indent_level: u8,
-}
-
-impl Formatter {
-    pub fn new(tab_size: usize) -> Self {
-        Self {
-            tab_size,
-            indent_level: 0,
-        }
-    }
-
-    pub fn indent(&self, input: &str) -> String {
-        let mut indent = String::new();
-
-        for _ in 0..self.indent_level {
-            indent.push_str(&" ".repeat(self.tab_size));
-        }
-
-        format!("{}{}", indent, input)
-    }
-
-    pub fn increment_indent(&mut self) {
-        self.indent_level += 1;
-    }
-
-    pub fn decrement_indent(&mut self) {
-        if self.indent_level > 0 {
-            self.indent_level -= 1;
-        }
-    }
 }

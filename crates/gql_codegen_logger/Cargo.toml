@@ -1,12 +1,9 @@
 [package]
-name = "gql_codegen_js"
+name = "gql_codegen_logger"
 authors.workspace = true
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 
 [dependencies]
-gql_codegen_types = { workspace = true }
-
-oxc = { workspace = true }
-anyhow = { workspace = true }
+colored = { workspace = true }
