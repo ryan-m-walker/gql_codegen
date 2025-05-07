@@ -1,4 +1,5 @@
 use std::{
+    collections::HashMap,
     fs::{self, OpenOptions},
     io::Write,
     path::PathBuf,
@@ -16,7 +17,12 @@ use gql_codegen_generators::{
 use gql_codegen_js::parse_from_js_file;
 
 use anyhow::{Context, Result, anyhow};
-use apollo_compiler::Schema;
+use apollo_compiler::{
+    ExecutableDocument, Name, Node, Schema,
+    collections::IndexMap,
+    executable::{Fragment, Operation},
+    parser,
+};
 use gql_codegen_logger::{LogLevel, Logger};
 use gql_codegen_types::ReadResult;
 use rayon::{
@@ -35,9 +41,9 @@ fn main() {
 
     if let Err(e) = run_cli(&args, &logger) {
         if logger.level == LogLevel::Debug {
-            logger.error(&format!("{:?}", e));
+            logger.error(&format!("{e:?}"));
         } else {
-            logger.error(&format!("{}", e));
+            logger.error(&format!("{e}"));
         }
         println!();
 
@@ -138,22 +144,57 @@ fn run_cli(args: &Args, logger: &Logger) -> Result<()> {
         })
         .collect::<Vec<_>>();
 
-    let mut checked_read_results = Vec::new();
+    let mut fragment_map: HashMap<Name, Node<Fragment>> = HashMap::new();
+    let mut operations_map: HashMap<Name, Node<Operation>> = HashMap::new();
+    let mut anonymous_operation_count = 0;
 
-    for result in read_results {
-        // TODO: errors
-        match result? {
-            Some(result) => checked_read_results.push(result),
-            None => {}
+    for read_result in read_results {
+        if let Some(result) = read_result? {
+            for (i, document) in result.documents.iter().enumerate() {
+                let path = if i == 0 {
+                    result.path.clone()
+                } else {
+                    format!("{}#{}", result.path, i + 1)
+                };
+
+                let parsed = parser::Parser::new()
+                    .parse_executable(&schema, document, path)
+                    .unwrap();
+
+                for (name, fragment) in parsed.fragments {
+                    if fragment_map.contains_key(&name) {
+                        logger.warn(&format!(
+                            "Duplicate fragment name \"{}\" found in file \"{}\". Skipping.",
+                            name, result.path
+                        ));
+                        continue;
+                    }
+
+                    fragment_map.insert(name, fragment);
+                }
+
+                for (name, operation) in parsed.operations.named {
+                    if operations_map.contains_key(&name) {
+                        logger.warn(&format!(
+                            "Duplicate operation name \"{}\" found in file \"{}\". Skipping.",
+                            name, result.path
+                        ));
+                        continue;
+                    }
+
+                    operations_map.insert(name, operation);
+                }
+
+                if let Some(operation) = parsed.operations.anonymous {
+                    operations_map.insert(
+                        Name::new(&format!("AnonymousOperation{anonymous_operation_count}"))?,
+                        operation,
+                    );
+                    anonymous_operation_count += 1;
+                }
+            }
         }
     }
-
-    let document_count = checked_read_results.len();
-    logger.info(&format!(
-        "Found {} {}.",
-        document_count,
-        pluralize("document", document_count)
-    ));
 
     let codegen_results = config
         .outputs
@@ -184,7 +225,8 @@ fn run_cli(args: &Args, logger: &Logger) -> Result<()> {
                         generate_operation_types(
                             &mut writer,
                             &schema,
-                            &checked_read_results,
+                            &operations_map,
+                            &fragment_map,
                             config,
                             logger,
                         )?;
@@ -197,7 +239,7 @@ fn run_cli(args: &Args, logger: &Logger) -> Result<()> {
         .collect::<Vec<_>>();
 
     for result in codegen_results {
-        if result.is_err() {
+        if result.as_ref().is_err() {
             return result;
         }
     }

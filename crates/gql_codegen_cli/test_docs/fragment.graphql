@@ -1,0 +1,4 @@
+fragment person on Person {
+    id
+    name
+}

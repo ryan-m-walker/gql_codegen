@@ -17,6 +17,8 @@ type Person {
 }
 
 type Query {
+    ping: String!
+    pong: String!
     me: Person!
     person(id: ID!): Person
     people: [Person!]!
