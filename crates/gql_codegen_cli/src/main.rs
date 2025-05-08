@@ -18,9 +18,8 @@ use gql_codegen_js::parse_from_js_file;
 
 use anyhow::{Context, Result, anyhow};
 use apollo_compiler::{
-    ExecutableDocument, Name, Node, Schema,
-    collections::IndexMap,
-    executable::{Fragment, Operation},
+    Name, Node, Schema,
+    ast::{Definition, FragmentDefinition, OperationDefinition},
     parser,
 };
 use gql_codegen_logger::{LogLevel, Logger};
@@ -57,18 +56,23 @@ fn main() {
 fn run_cli(args: &Args, logger: &Logger) -> Result<()> {
     let config = Config::from_path(&args.config);
 
-    let schema_path = PathBuf::from(&config.schema);
+    let mut schema = Schema::builder();
 
-    let schema_source = fs::read_to_string(&schema_path)
-            .context("Failed to read schema file. Please ensure that your configuration schema value is pointing to a valid file.")?;
+    for schema_path in &config.schemas {
+        let path = PathBuf::from(schema_path);
 
-    logger.info("Parsing schema file...");
-    logger.debug(&format!(
-        "Using schema filepath path {}",
-        schema_path.to_string_lossy()
-    ));
+        logger.info("Parsing schema file...");
+        logger.debug(&format!(
+            "Using schema filepath path {}",
+            path.to_string_lossy()
+        ));
 
-    let schema = match Schema::parse_and_validate(schema_source, &schema_path) {
+        let schema_source = fs::read_to_string(&schema_path)
+                .context("Failed to read schema file. Please ensure that your configuration schema value is pointing to a valid file.")?;
+        schema = schema.parse(schema_source, path);
+    }
+
+    let schema = match schema.build().unwrap().validate() {
         Ok(valid) => valid,
         Err(with_errors) => {
             let mut message = String::from("Error parsing schema:\n");
@@ -144,8 +148,8 @@ fn run_cli(args: &Args, logger: &Logger) -> Result<()> {
         })
         .collect::<Vec<_>>();
 
-    let mut fragment_map: HashMap<Name, Node<Fragment>> = HashMap::new();
-    let mut operations_map: HashMap<Name, Node<Operation>> = HashMap::new();
+    let mut fragment_map: HashMap<Name, Node<FragmentDefinition>> = HashMap::new();
+    let mut operations_map: HashMap<Name, Node<OperationDefinition>> = HashMap::new();
     let mut anonymous_operation_count = 0;
 
     for read_result in read_results {
@@ -157,40 +161,43 @@ fn run_cli(args: &Args, logger: &Logger) -> Result<()> {
                     format!("{}#{}", result.path, i + 1)
                 };
 
-                let parsed = parser::Parser::new()
-                    .parse_executable(&schema, document, path)
-                    .unwrap();
+                let ast = parser::Parser::new().parse_ast(document, &path).unwrap();
 
-                for (name, fragment) in parsed.fragments {
-                    if fragment_map.contains_key(&name) {
-                        logger.warn(&format!(
-                            "Duplicate fragment name \"{}\" found in file \"{}\". Skipping.",
-                            name, result.path
-                        ));
-                        continue;
+                for definition in ast.definitions {
+                    match definition {
+                        Definition::OperationDefinition(operation) => {
+                            if let Some(name) = &operation.name {
+                                if operations_map.contains_key(name) {
+                                    logger.warn(&format!("Duplicate operation name \"{name}\" found in file \"{}\". Skipping.", result.path));
+                                    continue;
+                                }
+
+                                operations_map.insert(name.clone(), operation);
+                                continue;
+                            }
+
+                            operations_map.insert(
+                                Name::new(&format!(
+                                    "AnonymousOperation{anonymous_operation_count}"
+                                ))?,
+                                operation,
+                            );
+
+                            anonymous_operation_count += 1;
+                        }
+                        Definition::FragmentDefinition(fragment) => {
+                            if fragment_map.contains_key(&fragment.name) {
+                                logger.warn(&format!(
+                                    "Duplicate fragment name \"{}\" found in file \"{}\". Skipping.",
+                                    fragment.name, result.path
+                                ));
+                                continue;
+                            }
+
+                            fragment_map.insert(fragment.name.clone(), fragment);
+                        }
+                        _ => {}
                     }
-
-                    fragment_map.insert(name, fragment);
-                }
-
-                for (name, operation) in parsed.operations.named {
-                    if operations_map.contains_key(&name) {
-                        logger.warn(&format!(
-                            "Duplicate operation name \"{}\" found in file \"{}\". Skipping.",
-                            name, result.path
-                        ));
-                        continue;
-                    }
-
-                    operations_map.insert(name, operation);
-                }
-
-                if let Some(operation) = parsed.operations.anonymous {
-                    operations_map.insert(
-                        Name::new(&format!("AnonymousOperation{anonymous_operation_count}"))?,
-                        operation,
-                    );
-                    anonymous_operation_count += 1;
                 }
             }
         }

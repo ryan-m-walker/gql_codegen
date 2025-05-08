@@ -27,11 +27,12 @@ type Person {
     savings: BigInt!
     friends: [Person!]!
     settings: Settings!
+    pets: [String!]
 }
 
 type Query {
     ping: String!
-    pong: String!
+    pong: String
     me: Person!
     person(id: ID!): Person
     people: [Person!]!

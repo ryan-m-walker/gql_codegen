@@ -27,7 +27,7 @@ pub struct Output {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Config {
-    pub schema: String,
+    pub schemas: Vec<String>,
     pub documents: String,
     pub outputs: HashMap<String, Output>,
 }

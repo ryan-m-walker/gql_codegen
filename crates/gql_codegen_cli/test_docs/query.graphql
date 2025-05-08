@@ -1,17 +1,34 @@
 query TestQuery {
     me {
-        __typename
-
-        settings @include(if: true) {
-            language
+        id
+        age
+        pets
+        settings {
+            theme
         }
-        ...person
+        friends {
+            id
+            name
+            settings {
+                language
+            }
+        }
+    }
+    me {
+        ... on Person {
+
+            name
+            settings {
+                language
+            }
+            friends {
+                age
+                settings {
+                    theme
+                }
+                pets
+            }
+                }
     }
 }
 
-fragment person on Person {
-    settings {
-        theme
-        language
-    }
-}

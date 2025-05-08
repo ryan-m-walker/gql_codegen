@@ -1,6 +1,8 @@
 {
-    "schema": "./schema.graphql",
-    "documents": "./test_docs/*.graphql",
+    "schemas": [
+        "./schema.graphql"
+    ],
+    "documents": "./test_docs/**/*.graphql",
     "outputs": {
         "./__generated__/schema.d.ts": {
             "prelude": "// This is an automatically generated file. Do not edit.\n\nimport { type ObjectId } from 'mongodb'",
@@ -13,7 +15,7 @@
                             "DateTime": "Date",
                             "ID": "ObjectId"
                         },
-                         "future_proof_enums": true,
+                        "future_proof_enums": true,
                         "readonly": true,
                         "formatting": {
                             "indent_width": 4,
@@ -23,7 +25,12 @@
                 },
                 {
                     "name": "ts_operation_types",
-                    "config": {}
+                    "config": {
+                        "formatting": {
+                            "indent_width": 4,
+                            "semicolons": false
+                        }
+                    }
                 }
             ]
         }
