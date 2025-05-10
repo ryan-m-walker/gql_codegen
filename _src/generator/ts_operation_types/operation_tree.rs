@@ -65,7 +65,6 @@ fn populate_operation_tree(
                 let parent = field.parent_type(db)?;
                 let field_type = parent.field(db, field.name())?.ty();
 
-                // dbg!(&field_type);
                 // let by_name = db.types_definitions_by_name();
 
                 if field.selection_set().selection().len() > 0 {

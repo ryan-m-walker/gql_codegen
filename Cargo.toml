@@ -23,6 +23,7 @@ apollo-compiler = { version = "1.28.0" }
 apollo-parser = { version = "0.8.4" }
 clap = { version = "4.5.20", features = ["derive"] }
 glob = { version = "0.3.2" }
+globset = { version = "0.4.16" }
 indexmap = { version = "2.6.0" }
 oxc = { version = "0.66.0", features = ["full"] }
 rayon = { version = "1.10.0" }
@@ -31,3 +32,4 @@ serde_json = { version = "1.0.128" }
 thiserror = { version = "2.0.12" }
 anyhow = { version = "1.0.98" }
 colored = { version = "3.0.0" }
+walkdir = { version = "2.5.0" }

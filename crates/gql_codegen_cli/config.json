@@ -1,8 +1,8 @@
 {
     "schemas": [
-        "./schema.graphql"
+        ""
     ],
-    "documents": "./test_docs/**/*.graphql",
+    "documents": "apps/web/src/**/*.{tsx,ts}",
     "outputs": {
         "./__generated__/schema.d.ts": {
             "prelude": "// This is an automatically generated file. Do not edit.\n\nimport { type ObjectId } from 'mongodb'",

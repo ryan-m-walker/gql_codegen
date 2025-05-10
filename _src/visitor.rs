@@ -17,9 +17,7 @@ impl Default for JSVisitor {
 impl<'a> Visit<'a> for JSVisitor {
     fn visit_call_expression(&mut self, it: &CallExpression<'a>) {
         if let Expression::Identifier(id) = &it.callee {
-            if id.name == "graphql" || id.name == "gql" {
-                dbg!(it);
-            }
+            if id.name == "graphql" || id.name == "gql" {}
         }
     }
 
@@ -47,6 +45,5 @@ impl JSVisitor {
         let cst = parser.parse();
 
         let doc = cst.document();
-        dbg!(doc);
     }
 }

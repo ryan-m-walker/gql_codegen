@@ -67,11 +67,11 @@ impl Formatter {
         format!("{indentation}{input}")
     }
 
-    pub fn inc_indent_level(&mut self) {
+    pub fn inc_indent(&mut self) {
         self.indent_level += 1;
     }
 
-    pub fn dec_indent_level(&mut self) {
+    pub fn dec_indent(&mut self) {
         if self.indent_level > 0 {
             self.indent_level -= 1;
         }

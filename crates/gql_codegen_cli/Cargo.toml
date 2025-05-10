@@ -20,3 +20,5 @@ glob = { workspace = true }
 oxc = { workspace = true }
 rayon = { workspace = true }
 anyhow = { workspace = true }
+globset = { workspace = true }
+walkdir = { workspace = true }

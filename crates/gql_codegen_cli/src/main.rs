@@ -2,7 +2,7 @@ use std::{
     collections::HashMap,
     fs::{self, OpenOptions},
     io::Write,
-    path::PathBuf,
+    path::{Path, PathBuf},
 };
 
 use args::Args;
@@ -10,6 +10,7 @@ use clap::Parser;
 use file::{FileType, get_file_type};
 use glob::glob;
 
+use globset::GlobBuilder;
 use gql_codegen_config::{Config, Generator};
 use gql_codegen_generators::{
     ts_operation_types::generate_operation_types, ts_schema_types::generate_ts_schema_types,
@@ -23,11 +24,12 @@ use apollo_compiler::{
     parser,
 };
 use gql_codegen_logger::{LogLevel, Logger};
-use gql_codegen_types::ReadResult;
+use gql_codegen_types::{FragmentResult, OperationResult, ReadResult};
 use rayon::{
     current_thread_index,
     iter::{IntoParallelRefIterator, ParallelIterator},
 };
+use walkdir::{DirEntry, WalkDir};
 
 mod args;
 mod file;
@@ -35,7 +37,7 @@ mod generate;
 
 fn main() {
     let args = Args::parse();
-    let logger = Logger::new(LogLevel::Debug);
+    let logger = Logger::new(LogLevel::Info);
     println!();
 
     if let Err(e) = run_cli(&args, &logger) {
@@ -53,6 +55,13 @@ fn main() {
     println!();
 }
 
+fn skip_dir(entry: &DirEntry) -> bool {
+    entry
+        .path()
+        .components()
+        .any(|c| c.as_os_str() == "node_modules")
+}
+
 fn run_cli(args: &Args, logger: &Logger) -> Result<()> {
     let config = Config::from_path(&args.config);
 
@@ -67,7 +76,8 @@ fn run_cli(args: &Args, logger: &Logger) -> Result<()> {
             path.to_string_lossy()
         ));
 
-        let schema_source = fs::read_to_string(&schema_path)
+        let s = format!("");
+        let schema_source = fs::read_to_string(s)
                 .context("Failed to read schema file. Please ensure that your configuration schema value is pointing to a valid file.")?;
         schema = schema.parse(schema_source, path);
     }
@@ -88,6 +98,41 @@ fn run_cli(args: &Args, logger: &Logger) -> Result<()> {
 
     logger.info("Scanning for documents...");
 
+    let globset = GlobBuilder::new("**/*.{tsx,ts}")
+        .case_insensitive(true)
+        .build()?
+        .compile_matcher();
+
+    let root = Path::new("");
+
+    let mut entries_vec = Vec::new();
+    let walker = WalkDir::new(root).into_iter();
+
+    for entry in walker.filter_entry(|e| !skip_dir(e)) {
+        let Ok(entry) = entry else {
+            continue;
+        };
+
+        let path = entry.path();
+
+        if let Some(path_str) = path.to_str() {
+            if globset.is_match(path_str) {
+                // println!("{}", path_str);
+                entries_vec.push(path.to_path_buf());
+            }
+        }
+    }
+
+    // for entry in WalkDir::new(root).into_iter().filter_map(|e| e.ok()) {
+    //     let path = entry.path();
+    //
+    //     if let Some(path_str) = path.to_str() {
+    //         if globset.is_match(path_str) {
+    //             entries_vec.push(path.to_path_buf());
+    //         }
+    //     }
+    // }
+
     let matches = glob(&config.documents).context(
         "Invalid documents glob pattern. Please check your \"documents\" configuraton value.",
     )?;
@@ -101,12 +146,13 @@ fn run_cli(args: &Args, logger: &Logger) -> Result<()> {
         pluralize("file", file_count)
     ));
 
-    let read_results = matches_vec
+    // let read_results = matches_vec
+    let read_results = entries_vec
         .par_iter()
-        .map(|entry| -> Result<Option<ReadResult>> {
-            let Ok(path) = entry else {
-                return Err(anyhow!("Invalid glob pattern."));
-            };
+        .map(|path| -> Result<Option<ReadResult>> {
+            // let Ok(path) = entry else {
+            //     return Err(anyhow!("Invalid glob pattern."));
+            // };
 
             let Some(extension) = path.extension() else {
                 logger.warn(&format!("Encountered a file with no extension: \"{}\"", path.display()));
@@ -148,20 +194,20 @@ fn run_cli(args: &Args, logger: &Logger) -> Result<()> {
         })
         .collect::<Vec<_>>();
 
-    let mut fragment_map: HashMap<Name, Node<FragmentDefinition>> = HashMap::new();
-    let mut operations_map: HashMap<Name, Node<OperationDefinition>> = HashMap::new();
+    let mut fragment_map: HashMap<Name, FragmentResult> = HashMap::new();
+    let mut operations_map: HashMap<Name, OperationResult> = HashMap::new();
     let mut anonymous_operation_count = 0;
 
     for read_result in read_results {
         if let Some(result) = read_result? {
-            for (i, document) in result.documents.iter().enumerate() {
-                let path = if i == 0 {
-                    result.path.clone()
-                } else {
-                    format!("{}#{}", result.path, i + 1)
-                };
+            for document in &result.documents {
+                let ast = parser::Parser::new()
+                    .parse_ast(document, &result.path)
+                    .unwrap(); // TODO: handle errors
 
-                let ast = parser::Parser::new().parse_ast(document, &path).unwrap();
+                // if result.path.contains("CopyAgentDefinition") {
+                //     dbg!(&result);
+                // }
 
                 for definition in ast.definitions {
                     match definition {
@@ -172,7 +218,10 @@ fn run_cli(args: &Args, logger: &Logger) -> Result<()> {
                                     continue;
                                 }
 
-                                operations_map.insert(name.clone(), operation);
+                                operations_map.insert(
+                                    name.clone(),
+                                    OperationResult::new(operation, ast.sources.clone()),
+                                );
                                 continue;
                             }
 
@@ -180,12 +229,15 @@ fn run_cli(args: &Args, logger: &Logger) -> Result<()> {
                                 Name::new(&format!(
                                     "AnonymousOperation{anonymous_operation_count}"
                                 ))?,
-                                operation,
+                                OperationResult::new(operation, ast.sources.clone()),
                             );
 
                             anonymous_operation_count += 1;
                         }
                         Definition::FragmentDefinition(fragment) => {
+                            if fragment.name.as_str() == "UserPhoneSettingsContentSection" {
+                                panic!("FOUND");
+                            }
                             if fragment_map.contains_key(&fragment.name) {
                                 logger.warn(&format!(
                                     "Duplicate fragment name \"{}\" found in file \"{}\". Skipping.",
@@ -194,7 +246,10 @@ fn run_cli(args: &Args, logger: &Logger) -> Result<()> {
                                 continue;
                             }
 
-                            fragment_map.insert(fragment.name.clone(), fragment);
+                            fragment_map.insert(
+                                fragment.name.clone(),
+                                FragmentResult::new(fragment, ast.sources.clone()),
+                            );
                         }
                         _ => {}
                     }

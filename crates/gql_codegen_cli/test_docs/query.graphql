@@ -1,34 +1,11 @@
-query TestQuery {
-    me {
-        id
-        age
-        pets
-        settings {
-            theme
-        }
-        friends {
-            id
-            name
-            settings {
-                language
+query TestQuery($if: Boolean!) {
+    allFilms {
+        edges {
+            node {
+                id
+                director
             }
         }
-    }
-    me {
-        ... on Person {
-
-            name
-            settings {
-                language
-            }
-            friends {
-                age
-                settings {
-                    theme
-                }
-                pets
-            }
-                }
     }
 }
 
