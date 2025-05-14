@@ -453,6 +453,7 @@ dependencies = [
  "gql_codegen_js",
  "gql_codegen_logger",
  "gql_codegen_types",
+ "indexmap",
  "oxc",
  "rayon",
  "walkdir",

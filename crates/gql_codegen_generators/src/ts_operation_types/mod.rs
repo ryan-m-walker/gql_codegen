@@ -1,4 +1,4 @@
-use std::{collections::HashMap, io::Write};
+use std::io::Write;
 
 use anyhow::Result;
 use apollo_compiler::{
@@ -9,7 +9,7 @@ use apollo_compiler::{
 };
 use gql_codegen_logger::Logger;
 use gql_codegen_types::{FragmentResult, OperationResult};
-use indexmap::IndexSet;
+use indexmap::{IndexMap, IndexSet};
 use operation_tree::OperationTree;
 use serde::{Deserialize, Serialize};
 
@@ -29,18 +29,18 @@ pub struct TsOperationTypesGeneratorConfig {
 struct TsOperationTypesGenerator<'a> {
     config: &'a TsOperationTypesGeneratorConfig,
     schema: &'a Valid<Schema>,
-    operations: &'a HashMap<Name, OperationResult>,
-    fragments: &'a HashMap<Name, FragmentResult>,
+    operations: &'a IndexMap<Name, OperationResult>,
+    fragments: &'a IndexMap<Name, FragmentResult>,
     logger: &'a Logger,
-    fmt: Formatter,
+    formatter: Formatter,
 }
 
 impl<'a> TsOperationTypesGenerator<'a> {
     pub fn new(
         config: &'a TsOperationTypesGeneratorConfig,
         schema: &'a Valid<Schema>,
-        operations: &'a HashMap<Name, OperationResult>,
-        fragments: &'a HashMap<Name, FragmentResult>,
+        operations: &'a IndexMap<Name, OperationResult>,
+        fragments: &'a IndexMap<Name, FragmentResult>,
         logger: &'a Logger,
     ) -> Self {
         let formatter_config = config.formatting.unwrap_or_default();
@@ -51,7 +51,7 @@ impl<'a> TsOperationTypesGenerator<'a> {
             operations,
             fragments,
             logger,
-            fmt: Formatter::from_config(formatter_config),
+            formatter: Formatter::from_config(formatter_config),
         }
     }
 
@@ -77,7 +77,7 @@ impl<'a> TsOperationTypesGenerator<'a> {
         operation_tree: &OperationTree,
         selection_refs: &IndexSet<String>,
     ) -> Result<()> {
-        self.fmt.inc_indent();
+        self.formatter.inc_indent();
 
         for selection_ref in selection_refs {
             let Some(field) = operation_tree.normalized_fields.get(selection_ref) else {
@@ -86,83 +86,72 @@ impl<'a> TsOperationTypesGenerator<'a> {
 
             let include_directive = field.directives.get("include");
             let skip_directive = field.directives.get("skip");
-            let optional = include_directive.is_some() || skip_directive.is_some();
 
-            // TODO: skip and include directives
-            let rendered_key = self
-                .render_field_key(&field.field_name, &field.field_type, optional)
-                .to_string();
+            let required = include_directive.is_none()
+                && skip_directive.is_none()
+                && field.field_type.is_non_null();
 
-            write!(writer, "{}", self.fmt.indent(&rendered_key))?;
+            self.formatter
+                .format(&field.field_name)
+                .indent()
+                .append_if(!required, "?")
+                .append(": ")
+                .write(writer)?;
 
             if field.selection_refs.is_empty() {
+                // TODO: figure out why this isn't working
+                // TODO: render optional if no explicit selection for __typename
                 if field.field_name == "__typename" {
-                    write!(writer, "\"{}\"", &field.parent_type_name)?;
-                    writeln!(writer, "{}", self.fmt.semicolon())?;
+                    self.formatter
+                        .format(&field.parent_type_name)
+                        .quote()
+                        .semi()
+                        .writeln(writer)?;
+
                     continue;
                 }
 
-                let rendered_type = self.render_type(&field.field_type);
-                write!(writer, "{rendered_type}",)?;
-                writeln!(writer, "{}", self.fmt.semicolon())?;
+                self.formatter
+                    .format(&self.render_type(&field.field_type))
+                    .semi()
+                    .writeln(writer)?;
+
                 continue;
             }
 
-            writeln!(
-                writer,
-                "{}",
-                self.render_selection_opening(&field.field_type)
-            )?;
+            self.formatter
+                .format(match field.field_type {
+                    Type::Named(_) => "{",
+                    Type::NonNullNamed(_) => "{",
+                    Type::List(_) => "Array<{",
+                    Type::NonNullList(_) => "Array<{",
+                })
+                .writeln(writer)?;
 
             self.render_selection_set(writer, operation_tree, &field.selection_refs)?;
-            write!(
-                writer,
-                "{}",
-                self.fmt
-                    .indent_with_semicolon(&self.render_selection_closing(&field.field_type))
-            )?;
 
-            writeln!(writer)?;
+            self.formatter
+                .format(match field.field_type {
+                    Type::Named(_) => "}",
+                    Type::NonNullNamed(_) => "}",
+                    Type::List(_) => "}> | null",
+                    Type::NonNullList(_) => "}>",
+                })
+                .indent()
+                .semi()
+                .writeln(writer)?;
         }
 
-        self.fmt.dec_indent();
+        self.formatter.dec_indent();
         Ok(())
-    }
-
-    fn render_field_key(&self, field_name: &str, ty: &Type, optional: bool) -> String {
-        let optional = if !ty.is_non_null() || optional {
-            String::from("?")
-        } else {
-            String::new()
-        };
-
-        format!("{field_name}{optional}: ")
-    }
-
-    fn render_selection_opening(&self, ty: &Type) -> String {
-        match ty {
-            Type::Named(_) => String::from("{"),
-            Type::NonNullNamed(_) => String::from("{"),
-            Type::List(_) => String::from("Array<{"),
-            Type::NonNullList(_) => String::from("Array<{"),
-        }
-    }
-
-    fn render_selection_closing(&self, ty: &Type) -> String {
-        match ty {
-            Type::Named(_) => String::from("}"),
-            Type::NonNullNamed(_) => String::from("}"),
-            Type::List(_) => String::from("}> | null"),
-            Type::NonNullList(_) => String::from("}>"),
-        }
     }
 
     fn render_type(&self, ty: &Type) -> String {
         match ty {
-            Type::Named(name) => format!("{} | null | undefined", self.wrap_scalar_type(name)),
+            Type::Named(name) => format!("{} | null", self.wrap_scalar_type(name)),
             Type::NonNullNamed(name) => self.wrap_scalar_type(name).to_string(),
             Type::List(inner) => {
-                format!("Array<{}> | null | undefined", self.render_type(inner))
+                format!("Array<{}> | null", self.render_type(inner))
             }
             Type::NonNullList(inner) => format!("Array<{}>", self.render_type(inner)),
         }
@@ -171,26 +160,24 @@ impl<'a> TsOperationTypesGenerator<'a> {
     fn wrap_scalar_type(&self, name: &str) -> String {
         let is_scalar = self.schema.get_scalar(name).is_some();
         if is_scalar {
-            return format!("Scalars['{name}']");
+            return self
+                .formatter
+                .format(name)
+                .quote()
+                .prepend("Scalars[")
+                .append("]")
+                .to_string();
         }
 
         name.to_string()
     }
 }
 
-fn get_op_type_name(op: &Node<Operation>) -> String {
-    match op.operation_type {
-        OperationType::Query => String::from("Query"),
-        OperationType::Mutation => String::from("Mutation"),
-        OperationType::Subscription => String::from("Subscription"),
-    }
-}
-
 pub fn generate_operation_types(
     writer: &mut impl Write,
     schema: &Valid<Schema>,
-    operations: &HashMap<Name, OperationResult>,
-    fragments: &HashMap<Name, FragmentResult>,
+    operations: &IndexMap<Name, OperationResult>,
+    fragments: &IndexMap<Name, FragmentResult>,
     config: &TsOperationTypesGeneratorConfig,
     logger: &Logger,
 ) -> Result<()> {

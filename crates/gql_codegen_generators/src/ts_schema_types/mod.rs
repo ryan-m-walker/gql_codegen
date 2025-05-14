@@ -28,7 +28,7 @@ pub struct TsSchemaTypesGeneratorConfig {
 struct TsSchemaTypesGenerator<'a> {
     config: &'a TsSchemaTypesGeneratorConfig,
     schema: &'a Valid<Schema>,
-    fmt: Formatter,
+    formatter: Formatter,
     logger: &'a Logger,
 }
 
@@ -44,7 +44,7 @@ impl<'a, 'b> TsSchemaTypesGenerator<'a> {
             config,
             schema,
             logger,
-            fmt: Formatter::from_config(formatter_config),
+            formatter: Formatter::from_config(formatter_config),
         }
     }
 
@@ -71,7 +71,7 @@ impl<'a, 'b> TsSchemaTypesGenerator<'a> {
 
     fn generate_scalars<T: Write>(&mut self, writer: &mut T) -> Result<()> {
         writeln!(writer, "export type Scalars = {{")?;
-        self.fmt.inc_indent();
+        self.formatter.inc_indent();
 
         for schema_type in self.schema.types.values() {
             if let ExtendedType::Scalar(node) = schema_type {
@@ -87,7 +87,7 @@ impl<'a, 'b> TsSchemaTypesGenerator<'a> {
                 writeln!(
                     writer,
                     "{}",
-                    self.fmt.indent_with_semicolon(&format!(
+                    self.formatter.indent_with_semicolon(&format!(
                         "readonly {}: {}",
                         node.name, scalar_value
                     ))
@@ -95,31 +95,35 @@ impl<'a, 'b> TsSchemaTypesGenerator<'a> {
             }
         }
 
-        self.fmt.dec_indent();
-        writeln!(writer, "}}{}", self.fmt.semicolon())?;
+        self.formatter.dec_indent();
+        writeln!(writer, "}}{}", self.formatter.semicolon())?;
 
         Ok(())
     }
 
     fn generate_interface<T: Write>(
-        &self,
+        &mut self,
         writer: &mut T,
         node: &Node<InterfaceType>,
     ) -> Result<()> {
         let readonly = self.config.readonly.unwrap_or(false);
 
         writeln!(writer, "\nexport interface {} {{", node.name)?;
+        self.formatter.inc_indent();
 
         for (name, field) in &node.fields {
-            write!(writer, "  ")?;
-
-            if readonly {
-                write!(writer, "readonly ")?;
-            }
-
-            writeln!(writer, "{}: {};", name, self.render_type(&field.ty))?;
+            self.formatter
+                .empty()
+                .indent()
+                .append_if(readonly, "readonly ")
+                .append(name)
+                .append(": ")
+                .append(&self.render_type(&field.ty))
+                .semi()
+                .writeln(writer)?;
         }
 
+        self.formatter.dec_indent();
         writeln!(writer, "}}")?;
 
         Ok(())
@@ -206,34 +210,47 @@ impl<'a, 'b> TsSchemaTypesGenerator<'a> {
 
         writeln!(writer, " {{")?;
 
-        self.fmt.inc_indent();
+        self.formatter.inc_indent();
 
-        let prefix = if readonly { "readonly " } else { "" };
-        writeln!(
-            writer,
-            "{}",
-            self.fmt
-                .indent_with_semicolon(&format!("{}__typename: \"{}\"", prefix, node.name))
-        )?;
+        let fmtd_type_name = self.formatter.format(&node.name).quote().to_string();
+
+        self.formatter
+            .empty()
+            .indent()
+            .append_if(readonly, "readonly ")
+            .append("__typename: ")
+            .append(&fmtd_type_name)
+            .semi()
+            .writeln(writer)?;
 
         for (name, field) in &node.fields {
             if field.description.is_some() {
                 self.render_description(writer, &field.description)?;
             }
 
-            writeln!(
-                writer,
-                "{}",
-                self.fmt.indent_with_semicolon(&format!(
-                    "{}{}: {}",
-                    prefix,
-                    name,
-                    self.render_type(&field.ty)
-                ))
-            )?;
+            self.formatter
+                .empty()
+                .indent()
+                .append_if(readonly, "readonly ")
+                .append(name)
+                .append(": ")
+                .append(&self.render_type(&field.ty))
+                .semi()
+                .writeln(writer)?;
+
+            // writeln!(
+            //     writer,
+            //     "{}",
+            //     self.formatter.indent_with_semicolon(&format!(
+            //         "{}{}: {}",
+            //         prefix,
+            //         name,
+            //         self.render_type(&field.ty)
+            //     ))
+            // )?;
         }
 
-        self.fmt.dec_indent();
+        self.formatter.dec_indent();
         writeln!(writer, "}}")?;
 
         Ok(())
@@ -247,13 +264,13 @@ impl<'a, 'b> TsSchemaTypesGenerator<'a> {
         let readonly = self.config.readonly.unwrap_or(false);
 
         writeln!(writer, "\nexport interface {} {{", node.name)?;
-        self.fmt.inc_indent();
+        self.formatter.inc_indent();
 
         let prefix = if readonly { "readonly " } else { "" };
         writeln!(
             writer,
             "{}",
-            self.fmt
+            self.formatter
                 .indent_with_semicolon(&format!("{}__typename: \"{}\"", prefix, node.name))
         )?;
 
@@ -265,7 +282,7 @@ impl<'a, 'b> TsSchemaTypesGenerator<'a> {
             writeln!(
                 writer,
                 "{}",
-                self.fmt.indent_with_semicolon(&format!(
+                self.formatter.indent_with_semicolon(&format!(
                     "{}{}: {}",
                     prefix,
                     name,
@@ -274,7 +291,7 @@ impl<'a, 'b> TsSchemaTypesGenerator<'a> {
             )?;
         }
 
-        self.fmt.dec_indent();
+        self.formatter.dec_indent();
         writeln!(writer, "}}")?;
 
         Ok(())
@@ -306,13 +323,13 @@ impl<'a, 'b> TsSchemaTypesGenerator<'a> {
         description: &Option<Node<str>>,
     ) -> Result<()> {
         if let Some(description) = description {
-            writeln!(writer, "{}", self.fmt.indent("/**"))?;
+            writeln!(writer, "{}", self.formatter.indent("/**"))?;
 
             for line in description.lines() {
-                writeln!(writer, "{}", self.fmt.indent(&format!(" * {line}")))?;
+                writeln!(writer, "{}", self.formatter.indent(&format!(" * {line}")))?;
             }
 
-            writeln!(writer, "{}", self.fmt.indent(" */"))?;
+            writeln!(writer, "{}", self.formatter.indent(" */"))?;
         }
 
         Ok(())

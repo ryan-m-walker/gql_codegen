@@ -25,6 +25,7 @@ use apollo_compiler::{
 };
 use gql_codegen_logger::{LogLevel, Logger};
 use gql_codegen_types::{FragmentResult, OperationResult, ReadResult};
+use indexmap::IndexMap;
 use rayon::{
     current_thread_index,
     iter::{IntoParallelRefIterator, ParallelIterator},
@@ -76,7 +77,7 @@ fn run_cli(args: &Args, logger: &Logger) -> Result<()> {
             path.to_string_lossy()
         ));
 
-        let s = format!("");
+        let s = format!("../../../../../lindy/apps/web/src/schema.graphql");
         let schema_source = fs::read_to_string(s)
                 .context("Failed to read schema file. Please ensure that your configuration schema value is pointing to a valid file.")?;
         schema = schema.parse(schema_source, path);
@@ -103,7 +104,7 @@ fn run_cli(args: &Args, logger: &Logger) -> Result<()> {
         .build()?
         .compile_matcher();
 
-    let root = Path::new("");
+    let root = Path::new("../../../../../lindy/apps/web/src");
 
     let mut entries_vec = Vec::new();
     let walker = WalkDir::new(root).into_iter();
@@ -123,37 +124,13 @@ fn run_cli(args: &Args, logger: &Logger) -> Result<()> {
         }
     }
 
-    // for entry in WalkDir::new(root).into_iter().filter_map(|e| e.ok()) {
-    //     let path = entry.path();
-    //
-    //     if let Some(path_str) = path.to_str() {
-    //         if globset.is_match(path_str) {
-    //             entries_vec.push(path.to_path_buf());
-    //         }
-    //     }
-    // }
-
     let matches = glob(&config.documents).context(
         "Invalid documents glob pattern. Please check your \"documents\" configuraton value.",
     )?;
 
-    let matches_vec = matches.collect::<Vec<_>>();
-    let file_count = matches_vec.len();
-
-    logger.info(&format!(
-        "Found {} {}.",
-        file_count,
-        pluralize("file", file_count)
-    ));
-
-    // let read_results = matches_vec
     let read_results = entries_vec
         .par_iter()
         .map(|path| -> Result<Option<ReadResult>> {
-            // let Ok(path) = entry else {
-            //     return Err(anyhow!("Invalid glob pattern."));
-            // };
-
             let Some(extension) = path.extension() else {
                 logger.warn(&format!("Encountered a file with no extension: \"{}\"", path.display()));
                 return Ok(None);
@@ -194,9 +171,10 @@ fn run_cli(args: &Args, logger: &Logger) -> Result<()> {
         })
         .collect::<Vec<_>>();
 
-    let mut fragment_map: HashMap<Name, FragmentResult> = HashMap::new();
-    let mut operations_map: HashMap<Name, OperationResult> = HashMap::new();
+    let mut fragment_map: IndexMap<Name, FragmentResult> = IndexMap::new();
+    let mut operations_map: IndexMap<Name, OperationResult> = IndexMap::new();
     let mut anonymous_operation_count = 0;
+    let mut document_count = 0;
 
     for read_result in read_results {
         if let Some(result) = read_result? {
@@ -205,9 +183,7 @@ fn run_cli(args: &Args, logger: &Logger) -> Result<()> {
                     .parse_ast(document, &result.path)
                     .unwrap(); // TODO: handle errors
 
-                // if result.path.contains("CopyAgentDefinition") {
-                //     dbg!(&result);
-                // }
+                document_count += 1;
 
                 for definition in ast.definitions {
                     match definition {
@@ -257,6 +233,8 @@ fn run_cli(args: &Args, logger: &Logger) -> Result<()> {
             }
         }
     }
+
+    logger.info(&format!("{} documents found.", document_count));
 
     let codegen_results = config
         .outputs

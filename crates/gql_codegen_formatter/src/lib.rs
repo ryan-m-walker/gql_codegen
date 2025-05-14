@@ -1,4 +1,7 @@
+use formetted::Formatted;
 use serde::{Deserialize, Serialize};
+
+mod formetted;
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone, Copy)]
 pub enum IndentStyle {
@@ -13,10 +16,10 @@ pub enum IndentStyle {
 #[derive(Serialize, Deserialize, Debug, Default, Clone, Copy)]
 pub enum QuoteStyle {
     #[default]
-    #[serde(rename = "double")]
+    #[serde(rename = "single")]
     Single,
 
-    #[serde(rename = "single")]
+    #[serde(rename = "double")]
     Double,
 }
 
@@ -91,5 +94,13 @@ impl Formatter {
 
     pub fn with_semicolon(&self, input: &str) -> String {
         format!("{input}{}", self.semicolon())
+    }
+
+    pub fn format(&self, input: &str) -> Formatted {
+        Formatted::new(Some(input.to_string()), &self.config, self.indent_level)
+    }
+
+    pub fn empty(&self) -> Formatted {
+        Formatted::new(None, &self.config, self.indent_level)
     }
 }

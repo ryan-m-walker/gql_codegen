@@ -19,7 +19,8 @@
                         "readonly": true,
                         "formatting": {
                             "indent_width": 4,
-                            "semicolons": false
+                            "semicolons": true,
+                            "quote_style": "single"
                         }
                     }
                 },
@@ -27,8 +28,9 @@
                     "name": "ts_operation_types",
                     "config": {
                         "formatting": {
-                            "indent_width": 4,
-                            "semicolons": false
+                            "indent_width": 2,
+                            "semicolons": true,
+                            "quote_style": "single"
                         }
                     }
                 }

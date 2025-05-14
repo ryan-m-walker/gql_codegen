@@ -22,3 +22,4 @@ rayon = { workspace = true }
 anyhow = { workspace = true }
 globset = { workspace = true }
 walkdir = { workspace = true }
+indexmap = { workspace = true }
