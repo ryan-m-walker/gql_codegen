@@ -4,6 +4,8 @@ export const foo = observer(function RailsTesting() {
         graphql`
             fragment Test on Identity {
                 id
+                name
+                __typename
             }
         `,
     )

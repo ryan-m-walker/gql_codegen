@@ -68,7 +68,7 @@ fn run_cli(args: &Args, logger: &Logger) -> Result<()> {
     let mut schema = Schema::builder();
 
     for schema_path in &config.schemas {
-        let path = PathBuf::from(schema_path);
+        let path = PathBuf::from(&config.src).join(schema_path);
 
         logger.info("Parsing schema file...");
         logger.debug(&format!(
@@ -76,11 +76,8 @@ fn run_cli(args: &Args, logger: &Logger) -> Result<()> {
             path.to_string_lossy()
         ));
 
-        // RailsTestingStateGraphTestRunRefetchableFragment
-        let s = format!("..");
-        // let s = format!("./schema.graphql");
-        let schema_source = fs::read_to_string(s)
-                .context("Failed to read schema file. Please ensure that your configuration schema value is pointing to a valid file.")?;
+        let schema_source = fs::read_to_string(&path)
+            .context("Failed to read schema file. Please ensure that your configuration schema value is pointing to a valid file.")?;
         schema = schema.parse(schema_source, path);
     }
 
@@ -100,13 +97,12 @@ fn run_cli(args: &Args, logger: &Logger) -> Result<()> {
 
     logger.info("Scanning for documents...");
 
-    let globset = GlobBuilder::new("**/*.{ts,tsx}")
+    let globset = GlobBuilder::new(&config.documents)
         .case_insensitive(false)
         .build()?
         .compile_matcher();
 
-    let root = Path::new(".");
-    // let root = Path::new("./test_docs");
+    let root = Path::new(&config.src);
 
     let mut entries_vec = Vec::new();
     let walker = WalkDir::new(root).into_iter();
