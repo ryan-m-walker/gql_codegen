@@ -28,10 +28,11 @@
                     "name": "ts_operation_types",
                     "config": {
                         "formatting": {
-                            "indent_width": 2,
+                            "indent_width": 4,
                             "semicolons": true,
                             "quote_style": "single"
-                        }
+                        },
+                        "readonly": true
                     }
                 }
             ]

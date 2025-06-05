@@ -34,7 +34,6 @@ use walkdir::{DirEntry, WalkDir};
 
 mod args;
 mod file;
-mod generate;
 
 fn main() {
     let args = Args::parse();
@@ -77,7 +76,9 @@ fn run_cli(args: &Args, logger: &Logger) -> Result<()> {
             path.to_string_lossy()
         ));
 
-        let s = format!("../../../../../lindy/apps/web/src/schema.graphql");
+        // RailsTestingStateGraphTestRunRefetchableFragment
+        let s = format!(".");
+        // let s = format!("./schema.graphql");
         let schema_source = fs::read_to_string(s)
                 .context("Failed to read schema file. Please ensure that your configuration schema value is pointing to a valid file.")?;
         schema = schema.parse(schema_source, path);
@@ -99,12 +100,13 @@ fn run_cli(args: &Args, logger: &Logger) -> Result<()> {
 
     logger.info("Scanning for documents...");
 
-    let globset = GlobBuilder::new("**/*.{tsx,ts}")
-        .case_insensitive(true)
+    let globset = GlobBuilder::new("**/*.{ts,tsx}")
+        .case_insensitive(false)
         .build()?
         .compile_matcher();
 
-    let root = Path::new("../../../../../lindy/apps/web/src");
+    let root = Path::new("..");
+    // let root = Path::new("./test_docs");
 
     let mut entries_vec = Vec::new();
     let walker = WalkDir::new(root).into_iter();
@@ -118,7 +120,6 @@ fn run_cli(args: &Args, logger: &Logger) -> Result<()> {
 
         if let Some(path_str) = path.to_str() {
             if globset.is_match(path_str) {
-                // println!("{}", path_str);
                 entries_vec.push(path.to_path_buf());
             }
         }
