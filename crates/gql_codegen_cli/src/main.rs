@@ -37,7 +37,7 @@ mod file;
 
 fn main() {
     let args = Args::parse();
-    let logger = Logger::new(LogLevel::Info);
+    let logger = Logger::new(LogLevel::Debug);
     println!();
 
     if let Err(e) = run_cli(&args, &logger) {

@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::io::Write;
 
 use anyhow::Result;
@@ -12,12 +13,14 @@ use indexmap::{IndexMap, IndexSet};
 use operation_tree::{OperationTree, OperationTreeInput};
 use serde::{Deserialize, Serialize};
 
+use crate::common::gql_scalar_to_ts_scalar;
 use gql_codegen_formatter::{Formatter, FormatterConfig};
 
 mod operation_tree;
 
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct TsOperationTypesGeneratorConfig {
+    scalars: Option<HashMap<String, String>>,
     readonly: Option<bool>,
     operation_name_prefix: Option<String>,
     add_operation_type_suffix: Option<bool>,
@@ -167,8 +170,8 @@ impl<'a> TsOperationTypesGenerator<'a> {
 
     fn render_type(&self, ty: &Type) -> String {
         match ty {
-            Type::Named(name) => format!("{} | null", self.wrap_scalar_type(name)),
-            Type::NonNullNamed(name) => self.wrap_scalar_type(name).to_string(),
+            Type::Named(name) => format!("{} | null", self.render_scalar_type(name)),
+            Type::NonNullNamed(name) => self.render_scalar_type(name).to_string(),
             Type::List(inner) => {
                 format!("Array<{}> | null", self.render_type(inner))
             }
@@ -176,19 +179,17 @@ impl<'a> TsOperationTypesGenerator<'a> {
         }
     }
 
-    fn wrap_scalar_type(&self, name: &str) -> String {
-        let is_scalar = self.schema.get_scalar(name).is_some();
-        if is_scalar {
-            return self
-                .formatter
-                .format(name)
-                .quote()
-                .prepend("Scalars[")
-                .append("]")
-                .to_string();
+    fn render_scalar_type(&self, name: &str) -> String {
+        if let Some(scalar_type) = self
+            .config
+            .scalars
+            .as_ref()
+            .and_then(|scalars| scalars.get(name))
+        {
+            return scalar_type.to_string();
         }
 
-        name.to_string()
+        gql_scalar_to_ts_scalar(name).to_string()
     }
 }
 

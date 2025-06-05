@@ -1,5 +1,6 @@
 use std::io::Write;
 
+use crate::common::gql_scalar_to_ts_scalar;
 use anyhow::Result;
 use apollo_compiler::{
     Node, Schema,
@@ -49,8 +50,6 @@ impl<'a, 'b> TsSchemaTypesGenerator<'a> {
     }
 
     fn generate<T: Write>(&mut self, writer: &mut T, schema: &Valid<Schema>) -> Result<()> {
-        self.generate_scalars(writer)?;
-
         for schema_type in schema.types.values() {
             if schema_type.is_built_in() {
                 continue;
@@ -65,38 +64,6 @@ impl<'a, 'b> TsSchemaTypesGenerator<'a> {
                 _ => {}
             }
         }
-
-        Ok(())
-    }
-
-    fn generate_scalars<T: Write>(&mut self, writer: &mut T) -> Result<()> {
-        writeln!(writer, "export interface Scalars {{")?;
-        self.formatter.inc_indent();
-
-        for schema_type in self.schema.types.values() {
-            if let ExtendedType::Scalar(node) = schema_type {
-                let custom_value = self
-                    .config
-                    .scalars
-                    .as_ref()
-                    .map(|s| s.get(node.name.as_str()));
-
-                let default_value = get_scalar_type(node.name.as_str());
-                let scalar_value = custom_value.flatten().unwrap_or(&default_value);
-
-                self.formatter
-                    .format("readonly ")
-                    .append(&node.name)
-                    .append(": ")
-                    .append(scalar_value)
-                    .indent()
-                    .semi()
-                    .writeln(writer)?;
-            }
-        }
-
-        self.formatter.dec_indent();
-        writeln!(writer, "}}{}", self.formatter.semicolon())?;
 
         Ok(())
     }
@@ -299,8 +266,8 @@ impl<'a, 'b> TsSchemaTypesGenerator<'a> {
 
     fn render_type(&self, ty: &Type) -> String {
         match ty {
-            Type::Named(name) => format!("{} | null | undefined", self.wrap_scalar_type(name)),
-            Type::NonNullNamed(name) => self.wrap_scalar_type(name).to_string(),
+            Type::Named(name) => format!("{} | null | undefined", self.render_scalar_type(name)),
+            Type::NonNullNamed(name) => self.render_scalar_type(name).to_string(),
             Type::List(inner) => {
                 format!("Array<{}> | null | undefined", self.render_type(inner))
             }
@@ -308,13 +275,17 @@ impl<'a, 'b> TsSchemaTypesGenerator<'a> {
         }
     }
 
-    fn wrap_scalar_type(&self, name: &str) -> String {
-        let is_scalar = self.schema.get_scalar(name).is_some();
-        if is_scalar {
-            return format!("Scalars['{name}']");
+    fn render_scalar_type(&self, name: &str) -> String {
+        if let Some(scalar_type) = self
+            .config
+            .scalars
+            .as_ref()
+            .and_then(|scalars| scalars.get(name))
+        {
+            return scalar_type.to_string();
         }
 
-        name.to_string()
+        gql_scalar_to_ts_scalar(name).to_string()
     }
 
     fn render_description<T: Write>(
