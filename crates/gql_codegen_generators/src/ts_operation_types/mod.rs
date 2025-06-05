@@ -2,15 +2,14 @@ use std::io::Write;
 
 use anyhow::Result;
 use apollo_compiler::{
-    Name, Node, Schema,
+    Name, Schema,
     ast::{OperationType, Type},
-    executable::Operation,
     validation::Valid,
 };
 use gql_codegen_logger::Logger;
 use gql_codegen_types::{FragmentResult, OperationResult};
 use indexmap::{IndexMap, IndexSet};
-use operation_tree::OperationTree;
+use operation_tree::{OperationTree, OperationTreeInput};
 use serde::{Deserialize, Serialize};
 
 use gql_codegen_formatter::{Formatter, FormatterConfig};
@@ -56,8 +55,24 @@ impl<'a> TsOperationTypesGenerator<'a> {
     }
 
     fn generate<T: Write>(&mut self, writer: &mut T) -> Result<()> {
+        for (name, fragment) in self.fragments {
+            let fragment_tree = OperationTree::new(
+                self.schema,
+                OperationTreeInput::Fragment(fragment),
+                self.fragments,
+            )?;
+
+            writeln!(writer, "\nexport interface {name} {{")?;
+            self.render_selection_set(writer, &fragment_tree, &fragment_tree.root_selection_refs)?;
+            writeln!(writer, "}}")?;
+        }
+
         for (name, operation) in self.operations {
-            let operation_tree = OperationTree::new(self.schema, operation, self.fragments)?;
+            let operation_tree = OperationTree::new(
+                self.schema,
+                OperationTreeInput::Operation(operation),
+                self.fragments,
+            )?;
 
             writeln!(writer, "\nexport interface {name} {{")?;
             self.render_selection_set(
@@ -84,6 +99,8 @@ impl<'a> TsOperationTypesGenerator<'a> {
                 continue;
             };
 
+            let readonly = self.config.readonly.is_some_and(|r| r);
+
             let include_directive = field.directives.get("include");
             let skip_directive = field.directives.get("skip");
 
@@ -92,7 +109,9 @@ impl<'a> TsOperationTypesGenerator<'a> {
                 && field.field_type.is_non_null();
 
             self.formatter
-                .format(&field.field_name)
+                .empty()
+                .append_if(readonly, "readonly ")
+                .append(&field.field_name)
                 .indent()
                 .append_if(!required, "?")
                 .append(": ")

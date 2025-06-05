@@ -77,7 +77,7 @@ fn run_cli(args: &Args, logger: &Logger) -> Result<()> {
         ));
 
         // RailsTestingStateGraphTestRunRefetchableFragment
-        let s = format!(".");
+        let s = format!("..");
         // let s = format!("./schema.graphql");
         let schema_source = fs::read_to_string(s)
                 .context("Failed to read schema file. Please ensure that your configuration schema value is pointing to a valid file.")?;
@@ -105,7 +105,7 @@ fn run_cli(args: &Args, logger: &Logger) -> Result<()> {
         .build()?
         .compile_matcher();
 
-    let root = Path::new("..");
+    let root = Path::new(".");
     // let root = Path::new("./test_docs");
 
     let mut entries_vec = Vec::new();

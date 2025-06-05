@@ -10,7 +10,7 @@ pub struct ReadResult {
     pub documents: Vec<String>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct OperationResult {
     pub operation: Node<OperationDefinition>,
     pub sources: SourceMap,
@@ -22,7 +22,7 @@ impl OperationResult {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct FragmentResult {
     pub fragment: Node<FragmentDefinition>,
     pub sources: SourceMap,

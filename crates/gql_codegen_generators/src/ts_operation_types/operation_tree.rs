@@ -1,5 +1,3 @@
-use std::{any::type_name, collections::HashMap};
-
 use anyhow::{Result, anyhow};
 use apollo_compiler::{
     Name, Node, Schema,
@@ -20,9 +18,15 @@ pub(crate) struct OperationTreeNode {
 }
 
 #[derive(Debug, Clone)]
+pub(crate) enum OperationTreeInput<'a> {
+    Operation(&'a OperationResult),
+    Fragment(&'a FragmentResult),
+}
+
+#[derive(Debug, Clone)]
 pub(crate) struct OperationTree<'a> {
     schema: &'a Valid<Schema>,
-    operation_result: &'a OperationResult,
+    input: OperationTreeInput<'a>,
     fragment_results: &'a IndexMap<Name, FragmentResult>,
     pub(crate) root_selection_refs: IndexSet<String>,
     pub(crate) normalized_fields: IndexMap<String, OperationTreeNode>,
@@ -42,12 +46,12 @@ struct FieldData {
 impl<'a> OperationTree<'a> {
     pub fn new(
         schema: &'a Valid<Schema>,
-        operation_result: &'a OperationResult,
+        input: OperationTreeInput<'a>,
         fragment_results: &'a IndexMap<Name, FragmentResult>,
     ) -> Result<Self> {
         let mut tree = Self {
             schema,
-            operation_result,
+            input,
             fragment_results,
             root_selection_refs: IndexSet::new(),
             normalized_fields: IndexMap::new(),
@@ -58,7 +62,20 @@ impl<'a> OperationTree<'a> {
     }
 
     fn populate(&mut self) -> Result<()> {
-        let op_name = self.operation_result.operation.operation_type;
+        match self.input {
+            OperationTreeInput::Operation(operation_result) => {
+                self.populate_operation(operation_result)?;
+            }
+            OperationTreeInput::Fragment(fragment_result) => {
+                self.populate_fragment(fragment_result)?;
+            }
+        }
+
+        Ok(())
+    }
+
+    fn populate_operation(&mut self, operation_result: &OperationResult) -> Result<()> {
+        let op_name = operation_result.operation.operation_type;
 
         let Some(root_op) = self.schema.root_operation(op_name) else {
             return Err(anyhow!(
@@ -72,8 +89,18 @@ impl<'a> OperationTree<'a> {
             ));
         };
 
-        for selection in &self.operation_result.operation.selection_set {
+        for selection in &operation_result.operation.selection_set {
             self.populate_selection(selection, None, &op_type.name)?;
+        }
+
+        Ok(())
+    }
+
+    fn populate_fragment(&mut self, fragment_result: &FragmentResult) -> Result<()> {
+        let type_condition = &fragment_result.fragment.type_condition;
+
+        for selection in &fragment_result.fragment.selection_set {
+            self.populate_selection(selection, None, type_condition)?;
         }
 
         Ok(())
@@ -145,7 +172,7 @@ impl<'a> OperationTree<'a> {
 
                 let type_condition = &fragment_result.fragment.type_condition;
 
-                let Some(fragment_type) = self.schema.get_object(type_condition) else {
+                let Some(fragment_type) = self.get_type_name_for_type(type_condition) else {
                     return Err(anyhow!(
                         "Fragment type \"{}\" not found in schema.",
                         type_condition
@@ -153,7 +180,7 @@ impl<'a> OperationTree<'a> {
                 };
 
                 for selection in &fragment_result.fragment.selection_set {
-                    self.populate_selection(selection, parent_path, &fragment_type.name)?;
+                    self.populate_selection(selection, parent_path, &fragment_type)?;
                 }
             }
             Selection::InlineFragment(inline_fragment) => {

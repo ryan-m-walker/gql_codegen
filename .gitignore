@@ -3,4 +3,5 @@
 codegen_sandbox/*
 output.ts
 
+**/.DS_Store/**
 **/__generated__/**

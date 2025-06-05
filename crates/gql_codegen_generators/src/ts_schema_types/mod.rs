@@ -70,7 +70,7 @@ impl<'a, 'b> TsSchemaTypesGenerator<'a> {
     }
 
     fn generate_scalars<T: Write>(&mut self, writer: &mut T) -> Result<()> {
-        writeln!(writer, "export type Scalars = {{")?;
+        writeln!(writer, "export interface Scalars {{")?;
         self.formatter.inc_indent();
 
         for schema_type in self.schema.types.values() {
@@ -84,14 +84,14 @@ impl<'a, 'b> TsSchemaTypesGenerator<'a> {
                 let default_value = get_scalar_type(node.name.as_str());
                 let scalar_value = custom_value.flatten().unwrap_or(&default_value);
 
-                writeln!(
-                    writer,
-                    "{}",
-                    self.formatter.indent_with_semicolon(&format!(
-                        "readonly {}: {}",
-                        node.name, scalar_value
-                    ))
-                )?;
+                self.formatter
+                    .format("readonly ")
+                    .append(&node.name)
+                    .append(": ")
+                    .append(scalar_value)
+                    .indent()
+                    .semi()
+                    .writeln(writer)?;
             }
         }
 
