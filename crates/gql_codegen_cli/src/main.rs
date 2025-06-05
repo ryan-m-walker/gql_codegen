@@ -242,9 +242,16 @@ fn run_cli(args: &Args, logger: &Logger) -> Result<()> {
                 "Generating {output_path} in thread {thread_index}"
             ));
 
-            // TODO: create output directory if it doesn't exist
+            // TODO: use src for output path
+            let path = PathBuf::from(&output_path);
+
+            if let Some(parent) = path.parent() {
+                dbg!(parent);
+                fs::create_dir_all(parent)?;
+            }
 
             let mut writer = OpenOptions::new()
+                .create(true)
                 .write(true)
                 .truncate(true)
                 .open(output_path)
