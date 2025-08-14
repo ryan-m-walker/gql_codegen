@@ -1,8 +1,9 @@
 {
+    "src": "../../../../../lindy/apps/web/src",
     "schemas": [
-        ""
+        "schema.graphql"
     ],
-    "documents": "apps/web/src/**/*.{tsx,ts}",
+    "documents": "**/*.{tsx,ts}",
     "outputs": {
         "./__generated__/schema.d.ts": {
             "prelude": "// This is an automatically generated file. Do not edit.\n\nimport { type ObjectId } from 'mongodb'",
@@ -23,9 +24,19 @@
                             "quote_style": "single"
                         }
                     }
-                },
+                }
+            ]
+        },
+        "./__generated__/operations.d.ts": {
+            "prelude": "// This is an automatically generated file. Do not edit.\n\nimport { type ObjectId } from 'mongodb'",
+            "generators": [
                 {
                     "name": "ts_operation_types",
+                    "scalars": {
+                        "Date": "Date",
+                        "DateTime": "Date",
+                        "ID": "ObjectId"
+                    },
                     "config": {
                         "formatting": {
                             "indent_width": 4,
@@ -33,6 +44,20 @@
                             "quote_style": "single"
                         },
                         "readonly": true
+                    }
+                }
+            ]
+        },
+        "./__generated__/gql.ts": {
+            "generators": [
+                {
+                    "name": "documents",
+                    "config": {
+                        "formatting": {
+                            "indent_width": 2,
+                            "semicolons": true,
+                            "quote_style": "single"
+                        }
                     }
                 }
             ]

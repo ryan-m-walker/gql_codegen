@@ -12,8 +12,10 @@ use glob::glob;
 
 use globset::GlobBuilder;
 use gql_codegen_config::{Config, Generator};
+use gql_codegen_formatter::Formatter;
 use gql_codegen_generators::{
-    ts_operation_types::generate_operation_types, ts_schema_types::generate_ts_schema_types,
+    documents::generate_documents, ts_operation_types::generate_operation_types,
+    ts_schema_types::generate_ts_schema_types,
 };
 use gql_codegen_js::parse_from_js_file;
 
@@ -122,7 +124,7 @@ fn run_cli(args: &Args, logger: &Logger) -> Result<()> {
     }
 
     let matches = glob(&config.documents).context(
-        "Invalid documents glob pattern. Please check your \"documents\" configuraton value.",
+        "Invalid documents glob pattern. Please check your \"documents\" configuration value.",
     )?;
 
     let read_results = entries_vec
@@ -260,13 +262,36 @@ fn run_cli(args: &Args, logger: &Logger) -> Result<()> {
             if let Some(config) = &output_config.prelude {
                 writeln!(writer, "{config}\n")?;
             }
+
+            // let format_config = output_config.formatting.unwrap_or_default();
+            // let formatter = Formatter::from_config(format_config);
+            // let ctx =
+            //     gql_codegen_types::Context::new(&schema, &operations_map, &fragments_map, logger);
+
             for generator in &output_config.generators {
                 match generator {
                     Generator::TsSchemaTypes { config } => {
-                        generate_ts_schema_types(&mut writer, &schema, config, logger)?;
+                        generate_ts_schema_types(
+                            &mut writer,
+                            &schema,
+                            &operations_map,
+                            &fragment_map,
+                            config,
+                            logger,
+                        )?;
                     }
                     Generator::TsOperationTypes { config } => {
                         generate_operation_types(
+                            &mut writer,
+                            &schema,
+                            &operations_map,
+                            &fragment_map,
+                            config,
+                            logger,
+                        )?;
+                    }
+                    Generator::Documents { config } => {
+                        generate_documents(
                             &mut writer,
                             &schema,
                             &operations_map,

@@ -9,6 +9,7 @@ license.workspace = true
 gql_codegen_config = { workspace = true }
 gql_codegen_js = { workspace = true }
 gql_codegen_errors = { workspace = true }
+gql_codegen_formatter = { workspace = true }
 gql_codegen_types = { workspace = true }
 gql_codegen_generators = { workspace = true }
 gql_codegen_logger = { workspace = true }
