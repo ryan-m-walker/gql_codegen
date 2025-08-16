@@ -1,11 +1,10 @@
 use anyhow::{Result, anyhow};
 use apollo_compiler::{
-    Name, Node, Schema,
-    ast::{DirectiveList, Selection, Type},
+    Name, Node,
+    ast::{Argument, DirectiveList, Selection, Type},
     schema::{InputObjectType, InterfaceType, ObjectType},
-    validation::Valid,
 };
-use gql_codegen_types::{FragmentResult, OperationResult};
+use gql_codegen_types::{Context, FragmentResult, OperationResult};
 use indexmap::{IndexMap, IndexSet};
 
 #[derive(Debug, Clone)]
@@ -15,6 +14,7 @@ pub(crate) struct OperationTreeNode {
     pub field_type: Type,
     pub directives: DirectiveList,
     pub parent_type_name: String,
+    pub arguments: Vec<Node<Argument>>,
 }
 
 #[derive(Debug, Clone)]
@@ -25,9 +25,8 @@ pub(crate) enum OperationTreeInput<'a> {
 
 #[derive(Debug, Clone)]
 pub(crate) struct OperationTree<'a> {
-    schema: &'a Valid<Schema>,
     input: OperationTreeInput<'a>,
-    fragment_results: &'a IndexMap<Name, FragmentResult>,
+    ctx: Context<'a>,
     pub(crate) root_selection_refs: IndexSet<String>,
     pub(crate) normalized_fields: IndexMap<String, OperationTreeNode>,
 }
@@ -44,15 +43,10 @@ struct FieldData {
 }
 
 impl<'a> OperationTree<'a> {
-    pub fn new(
-        schema: &'a Valid<Schema>,
-        input: OperationTreeInput<'a>,
-        fragment_results: &'a IndexMap<Name, FragmentResult>,
-    ) -> Result<Self> {
+    pub fn new(input: OperationTreeInput<'a>, ctx: Context<'a>) -> Result<Self> {
         let mut tree = Self {
-            schema,
             input,
-            fragment_results,
+            ctx,
             root_selection_refs: IndexSet::new(),
             normalized_fields: IndexMap::new(),
         };
@@ -77,13 +71,13 @@ impl<'a> OperationTree<'a> {
     fn populate_operation(&mut self, operation_result: &OperationResult) -> Result<()> {
         let op_name = operation_result.operation.operation_type;
 
-        let Some(root_op) = self.schema.root_operation(op_name) else {
+        let Some(root_op) = self.ctx.schema.root_operation(op_name) else {
             return Err(anyhow!(
                 "Root operation type \"{op_name}\" not found in schema."
             ));
         };
 
-        let Some(op_type) = self.schema.get_object(root_op) else {
+        let Some(op_type) = self.ctx.schema.get_object(root_op) else {
             return Err(anyhow!(
                 "Root operation type \"{op_name}\" not found in schema."
             ));
@@ -135,7 +129,8 @@ impl<'a> OperationTree<'a> {
                     return Ok(());
                 }
 
-                let Ok(field_definition) = self.schema.type_field(parent_type, &field.name) else {
+                let Ok(field_definition) = self.ctx.schema.type_field(parent_type, &field.name)
+                else {
                     return Ok(());
                 };
 
@@ -148,11 +143,12 @@ impl<'a> OperationTree<'a> {
                             field_name: field_name.to_string(),
                             field_type: field_definition.ty.clone(),
                             parent_type_name: parent_type.to_string(),
+                            arguments: field.arguments.clone(),
                         },
                     );
                 }
 
-                let type_name = self.type_to_type_name(&field_definition.ty);
+                let type_name = Self::type_to_type_name(&field_definition.ty);
 
                 if !field.selection_set.is_empty() {
                     for child_selection in &field.selection_set {
@@ -161,7 +157,7 @@ impl<'a> OperationTree<'a> {
                 }
             }
             Selection::FragmentSpread(fragment_spread) => {
-                let fragment_result = self.fragment_results.get(&fragment_spread.fragment_name);
+                let fragment_result = self.ctx.fragments.get(&fragment_spread.fragment_name);
 
                 let Some(fragment_result) = fragment_result else {
                     return Err(anyhow!(
@@ -173,6 +169,7 @@ impl<'a> OperationTree<'a> {
                 let type_condition = &fragment_result.fragment.type_condition;
 
                 let Some(fragment_type) = self.get_type_name_for_type(type_condition) else {
+                    dbg!(&fragment_result.fragment.type_condition);
                     return Err(anyhow!(
                         "Fragment type \"{}\" not found in schema.",
                         type_condition
@@ -207,42 +204,46 @@ impl<'a> OperationTree<'a> {
     }
 
     fn get_type_name_for_type(&self, type_name: &Name) -> Option<Name> {
-        if let Some(object_type) = self.schema.get_object(type_name) {
+        if let Some(object_type) = self.ctx.schema.get_object(type_name) {
             return Some(object_type.name.clone());
         }
 
-        if let Some(input_object_type) = self.schema.get_input_object(type_name) {
+        if let Some(input_object_type) = self.ctx.schema.get_input_object(type_name) {
             return Some(input_object_type.name.clone());
         }
 
-        if let Some(interface_type) = self.schema.get_interface(type_name) {
+        if let Some(interface_type) = self.ctx.schema.get_interface(type_name) {
             return Some(interface_type.name.clone());
+        }
+
+        if let Some(union_type) = self.ctx.schema.get_union(type_name) {
+            return Some(union_type.name.clone());
         }
 
         None
     }
 
     fn get_type_for_type_name(&self, type_name: &str) -> Option<FieldType> {
-        if let Some(object_type) = self.schema.get_object(type_name) {
+        if let Some(object_type) = self.ctx.schema.get_object(type_name) {
             return Some(FieldType::Object(object_type.clone()));
         }
 
-        if let Some(input_object_type) = self.schema.get_input_object(type_name) {
+        if let Some(input_object_type) = self.ctx.schema.get_input_object(type_name) {
             return Some(FieldType::InputObject(input_object_type.clone()));
         }
 
-        if let Some(enum_type) = self.schema.get_interface(type_name) {
+        if let Some(enum_type) = self.ctx.schema.get_interface(type_name) {
             return Some(FieldType::Interface(enum_type.clone()));
         }
 
         None
     }
 
-    fn type_to_type_name(&self, ty: &Type) -> Name {
+    fn type_to_type_name(ty: &Type) -> Name {
         match ty {
             Type::Named(name) => name.clone(),
-            Type::List(list) => self.type_to_type_name(list),
-            Type::NonNullList(list) => self.type_to_type_name(list),
+            Type::List(list) => Self::type_to_type_name(list),
+            Type::NonNullList(list) => Self::type_to_type_name(list),
             Type::NonNullNamed(name) => name.clone(),
         }
     }

@@ -1,22 +1,16 @@
 use std::collections::HashMap;
 use std::io::Write;
 
+use crate::operation_tree::{OperationTree, OperationTreeInput};
 use anyhow::Result;
-use apollo_compiler::{
-    Name, Schema,
-    ast::{OperationType, Type},
-    validation::Valid,
-};
+use apollo_compiler::{Name, Schema, ast::Type, validation::Valid};
 use gql_codegen_logger::Logger;
-use gql_codegen_types::{FragmentResult, OperationResult};
+use gql_codegen_types::{Context, FragmentResult, OperationResult};
 use indexmap::{IndexMap, IndexSet};
-use operation_tree::{OperationTree, OperationTreeInput};
 use serde::{Deserialize, Serialize};
 
 use crate::common::gql_scalar_to_ts_scalar;
 use gql_codegen_formatter::{Formatter, FormatterConfig};
-
-mod operation_tree;
 
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct TsOperationTypesGeneratorConfig {
@@ -30,52 +24,27 @@ pub struct TsOperationTypesGeneratorConfig {
 #[derive(Debug)]
 struct TsOperationTypesGenerator<'a> {
     config: &'a TsOperationTypesGeneratorConfig,
-    schema: &'a Valid<Schema>,
-    operations: &'a IndexMap<Name, OperationResult>,
-    fragments: &'a IndexMap<Name, FragmentResult>,
-    logger: &'a Logger,
-    formatter: Formatter,
+    pub ctx: Context<'a>,
 }
 
 impl<'a> TsOperationTypesGenerator<'a> {
-    pub fn new(
-        config: &'a TsOperationTypesGeneratorConfig,
-        schema: &'a Valid<Schema>,
-        operations: &'a IndexMap<Name, OperationResult>,
-        fragments: &'a IndexMap<Name, FragmentResult>,
-        logger: &'a Logger,
-    ) -> Self {
-        let formatter_config = config.formatting.unwrap_or_default();
-
-        Self {
-            config,
-            schema,
-            operations,
-            fragments,
-            logger,
-            formatter: Formatter::from_config(formatter_config),
-        }
+    pub fn new(config: &'a TsOperationTypesGeneratorConfig, ctx: Context<'a>) -> Self {
+        Self { config, ctx }
     }
 
     fn generate<T: Write>(&mut self, writer: &mut T) -> Result<()> {
-        for (name, fragment) in self.fragments {
-            let fragment_tree = OperationTree::new(
-                self.schema,
-                OperationTreeInput::Fragment(fragment),
-                self.fragments,
-            )?;
+        for (name, fragment) in self.ctx.fragments {
+            let fragment_tree =
+                OperationTree::new(OperationTreeInput::Fragment(fragment), self.ctx.clone())?;
 
             writeln!(writer, "\nexport interface {name} {{")?;
             self.render_selection_set(writer, &fragment_tree, &fragment_tree.root_selection_refs)?;
             writeln!(writer, "}}")?;
         }
 
-        for (name, operation) in self.operations {
-            let operation_tree = OperationTree::new(
-                self.schema,
-                OperationTreeInput::Operation(operation),
-                self.fragments,
-            )?;
+        for (name, operation) in self.ctx.operations {
+            let operation_tree =
+                OperationTree::new(OperationTreeInput::Operation(operation), self.ctx.clone())?;
 
             writeln!(writer, "\nexport interface {name} {{")?;
             self.render_selection_set(
@@ -95,7 +64,7 @@ impl<'a> TsOperationTypesGenerator<'a> {
         operation_tree: &OperationTree,
         selection_refs: &IndexSet<String>,
     ) -> Result<()> {
-        self.formatter.inc_indent();
+        self.ctx.formatter.inc_indent();
 
         for selection_ref in selection_refs {
             let Some(field) = operation_tree.normalized_fields.get(selection_ref) else {
@@ -111,7 +80,8 @@ impl<'a> TsOperationTypesGenerator<'a> {
                 && skip_directive.is_none()
                 && field.field_type.is_non_null();
 
-            self.formatter
+            self.ctx
+                .formatter
                 .empty()
                 .append_if(readonly, "readonly ")
                 .append(&field.field_name)
@@ -124,8 +94,10 @@ impl<'a> TsOperationTypesGenerator<'a> {
                 // TODO: figure out why this isn't working
                 // TODO: render optional if no explicit selection for __typename
                 if field.field_name == "__typename" {
-                    self.formatter
-                        .format(&field.parent_type_name)
+                    self.ctx
+                        .formatter
+                        .empty()
+                        .append(&field.parent_type_name)
                         .quote()
                         .semi()
                         .writeln(writer)?;
@@ -133,16 +105,20 @@ impl<'a> TsOperationTypesGenerator<'a> {
                     continue;
                 }
 
-                self.formatter
-                    .format(&self.render_type(&field.field_type))
+                self.ctx
+                    .formatter
+                    .empty()
+                    .append(&self.render_type(&field.field_type))
                     .semi()
                     .writeln(writer)?;
 
                 continue;
             }
 
-            self.formatter
-                .format(match field.field_type {
+            self.ctx
+                .formatter
+                .empty()
+                .append(match field.field_type {
                     Type::Named(_) => "{",
                     Type::NonNullNamed(_) => "{",
                     Type::List(_) => "Array<{",
@@ -152,8 +128,10 @@ impl<'a> TsOperationTypesGenerator<'a> {
 
             self.render_selection_set(writer, operation_tree, &field.selection_refs)?;
 
-            self.formatter
-                .format(match field.field_type {
+            self.ctx
+                .formatter
+                .empty()
+                .append(match field.field_type {
                     Type::Named(_) => "}",
                     Type::NonNullNamed(_) => "}",
                     Type::List(_) => "}> | null",
@@ -164,7 +142,7 @@ impl<'a> TsOperationTypesGenerator<'a> {
                 .writeln(writer)?;
         }
 
-        self.formatter.dec_indent();
+        self.ctx.formatter.dec_indent();
         Ok(())
     }
 
@@ -201,8 +179,17 @@ pub fn generate_operation_types(
     config: &TsOperationTypesGeneratorConfig,
     logger: &Logger,
 ) -> Result<()> {
-    let mut generator =
-        TsOperationTypesGenerator::new(config, schema, operations, fragments, logger);
+    let formatter_config = config.formatting.unwrap_or_default();
+
+    let ctx = Context::new(
+        schema,
+        operations,
+        fragments,
+        Formatter::from_config(formatter_config),
+        logger,
+    );
+
+    let mut generator = TsOperationTypesGenerator::new(config, ctx);
     generator.generate(writer)?;
     Ok(())
 }

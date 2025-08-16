@@ -3,7 +3,7 @@ use std::io::Write;
 use crate::common::gql_scalar_to_ts_scalar;
 use anyhow::Result;
 use apollo_compiler::{
-    Node, Schema,
+    Name, Node, Schema,
     ast::Type,
     collections::HashMap,
     schema::{EnumType, ExtendedType, InputObjectType, InterfaceType, ObjectType, UnionType},
@@ -11,7 +11,8 @@ use apollo_compiler::{
 };
 use gql_codegen_formatter::{Formatter, FormatterConfig};
 use gql_codegen_logger::Logger;
-use helpers::get_scalar_type;
+use gql_codegen_types::{Context, FragmentResult, OperationResult};
+use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 
 mod helpers;
@@ -28,25 +29,12 @@ pub struct TsSchemaTypesGeneratorConfig {
 #[derive(Debug)]
 struct TsSchemaTypesGenerator<'a> {
     config: &'a TsSchemaTypesGeneratorConfig,
-    schema: &'a Valid<Schema>,
-    formatter: Formatter,
-    logger: &'a Logger,
+    ctx: Context<'a>,
 }
 
 impl<'a, 'b> TsSchemaTypesGenerator<'a> {
-    pub fn new(
-        config: &'a TsSchemaTypesGeneratorConfig,
-        schema: &'a Valid<Schema>,
-        logger: &'a Logger,
-    ) -> Self {
-        let formatter_config = config.formatting.unwrap_or_default();
-
-        Self {
-            config,
-            schema,
-            logger,
-            formatter: Formatter::from_config(formatter_config),
-        }
+    pub fn new(config: &'a TsSchemaTypesGeneratorConfig, ctx: Context<'a>) -> Self {
+        Self { config, ctx }
     }
 
     fn generate<T: Write>(&mut self, writer: &mut T, schema: &Valid<Schema>) -> Result<()> {
@@ -76,10 +64,11 @@ impl<'a, 'b> TsSchemaTypesGenerator<'a> {
         let readonly = self.config.readonly.unwrap_or(false);
 
         writeln!(writer, "\nexport interface {} {{", node.name)?;
-        self.formatter.inc_indent();
+        self.ctx.formatter.inc_indent();
 
         for (name, field) in &node.fields {
-            self.formatter
+            self.ctx
+                .formatter
                 .empty()
                 .indent()
                 .append_if(readonly, "readonly ")
@@ -90,7 +79,7 @@ impl<'a, 'b> TsSchemaTypesGenerator<'a> {
                 .writeln(writer)?;
         }
 
-        self.formatter.dec_indent();
+        self.ctx.formatter.dec_indent();
         writeln!(writer, "}}")?;
 
         Ok(())
@@ -177,11 +166,12 @@ impl<'a, 'b> TsSchemaTypesGenerator<'a> {
 
         writeln!(writer, " {{")?;
 
-        self.formatter.inc_indent();
+        self.ctx.formatter.inc_indent();
 
-        let fmtd_type_name = self.formatter.format(&node.name).quote().to_string();
+        let fmtd_type_name = self.ctx.formatter.format(&node.name).quote().to_string();
 
-        self.formatter
+        self.ctx
+            .formatter
             .empty()
             .indent()
             .append_if(readonly, "readonly ")
@@ -195,7 +185,8 @@ impl<'a, 'b> TsSchemaTypesGenerator<'a> {
                 self.render_description(writer, &field.description)?;
             }
 
-            self.formatter
+            self.ctx
+                .formatter
                 .empty()
                 .indent()
                 .append_if(readonly, "readonly ")
@@ -217,7 +208,7 @@ impl<'a, 'b> TsSchemaTypesGenerator<'a> {
             // )?;
         }
 
-        self.formatter.dec_indent();
+        self.ctx.formatter.dec_indent();
         writeln!(writer, "}}")?;
 
         Ok(())
@@ -231,13 +222,14 @@ impl<'a, 'b> TsSchemaTypesGenerator<'a> {
         let readonly = self.config.readonly.unwrap_or(false);
 
         writeln!(writer, "\nexport interface {} {{", node.name)?;
-        self.formatter.inc_indent();
+        self.ctx.formatter.inc_indent();
 
         let prefix = if readonly { "readonly " } else { "" };
         writeln!(
             writer,
             "{}",
-            self.formatter
+            self.ctx
+                .formatter
                 .indent_with_semicolon(&format!("{}__typename: \"{}\"", prefix, node.name))
         )?;
 
@@ -249,7 +241,7 @@ impl<'a, 'b> TsSchemaTypesGenerator<'a> {
             writeln!(
                 writer,
                 "{}",
-                self.formatter.indent_with_semicolon(&format!(
+                self.ctx.formatter.indent_with_semicolon(&format!(
                     "{}{}: {}",
                     prefix,
                     name,
@@ -258,7 +250,7 @@ impl<'a, 'b> TsSchemaTypesGenerator<'a> {
             )?;
         }
 
-        self.formatter.dec_indent();
+        self.ctx.formatter.dec_indent();
         writeln!(writer, "}}")?;
 
         Ok(())
@@ -294,13 +286,17 @@ impl<'a, 'b> TsSchemaTypesGenerator<'a> {
         description: &Option<Node<str>>,
     ) -> Result<()> {
         if let Some(description) = description {
-            writeln!(writer, "{}", self.formatter.indent("/**"))?;
+            writeln!(writer, "{}", self.ctx.formatter.indent("/**"))?;
 
             for line in description.lines() {
-                writeln!(writer, "{}", self.formatter.indent(&format!(" * {line}")))?;
+                writeln!(
+                    writer,
+                    "{}",
+                    self.ctx.formatter.indent(&format!(" * {line}"))
+                )?;
             }
 
-            writeln!(writer, "{}", self.formatter.indent(" */"))?;
+            writeln!(writer, "{}", self.ctx.formatter.indent(" */"))?;
         }
 
         Ok(())
@@ -310,11 +306,23 @@ impl<'a, 'b> TsSchemaTypesGenerator<'a> {
 pub fn generate_ts_schema_types(
     writer: &mut impl Write,
     schema: &Valid<Schema>,
+    operations: &IndexMap<Name, OperationResult>,
+    fragments: &IndexMap<Name, FragmentResult>,
     config: &TsSchemaTypesGeneratorConfig,
     logger: &Logger,
 ) -> Result<()> {
     logger.debug("Running ts_schema_types generator...");
-    let mut generator = TsSchemaTypesGenerator::new(config, schema, &logger);
+    let formatter_config = config.formatting.unwrap_or_default();
+
+    let ctx = Context::new(
+        schema,
+        operations,
+        fragments,
+        Formatter::from_config(formatter_config),
+        logger,
+    );
+
+    let mut generator = TsSchemaTypesGenerator::new(config, ctx);
     generator.generate(writer, schema)?;
     Ok(())
 }

@@ -1,7 +1,7 @@
-use formetted::Formatted;
+use formatted::Formatted;
 use serde::{Deserialize, Serialize};
 
-mod formetted;
+mod formatted;
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone, Copy)]
 pub enum IndentStyle {
@@ -31,7 +31,7 @@ pub struct FormatterConfig {
     pub semicolons: Option<bool>,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct Formatter {
     config: FormatterConfig,
     indent_level: u8,

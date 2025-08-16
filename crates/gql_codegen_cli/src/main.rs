@@ -233,7 +233,7 @@ fn run_cli(args: &Args, logger: &Logger) -> Result<()> {
         }
     }
 
-    logger.info(&format!("{} documents found.", document_count));
+    logger.info(&format!("{document_count} documents found."));
 
     let codegen_results = config
         .outputs

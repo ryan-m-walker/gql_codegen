@@ -1,7 +1,7 @@
 use std::{collections::HashMap, fs::File};
 
 use gql_codegen_generators::{
-    ts_operation_types::TsOperationTypesGeneratorConfig,
+    documents::DocumentGeneratorConfig, ts_operation_types::TsOperationTypesGeneratorConfig,
     ts_schema_types::TsSchemaTypesGeneratorConfig,
 };
 use serde::{Deserialize, Serialize};
@@ -17,6 +17,8 @@ pub enum Generator {
     TsOperationTypes {
         config: TsOperationTypesGeneratorConfig,
     },
+    #[serde(rename = "documents")]
+    Documents { config: DocumentGeneratorConfig },
 }
 
 #[derive(Serialize, Deserialize, Debug)]

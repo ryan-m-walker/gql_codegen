@@ -14,6 +14,14 @@ impl<'a> Formatted<'a> {
         config: &'a FormatterConfig,
         indent_level: u8,
     ) -> Self {
+        if let Some(input_value) = value {
+            return Self {
+                value: String::new(),
+                config,
+                indent_level,
+            };
+        }
+
         Self {
             value: value.unwrap_or_default(),
             config,
