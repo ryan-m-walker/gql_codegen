@@ -1,5 +1,5 @@
 {
-    "src": "../../../../../lindy/apps/web/src",
+    "src": "./test_docs",
     "schemas": [
         "schema.graphql"
     ],
