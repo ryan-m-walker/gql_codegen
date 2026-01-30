@@ -33,6 +33,7 @@ pub enum GraphQLTag {
 pub struct DocumentGeneratorConfig {
     formatting: Option<FormatterConfig>,
     graphql_tag: Option<GraphQLTag>,
+    sort_fields: Option<bool>,
 }
 
 struct DocumentsGenerator<'a> {

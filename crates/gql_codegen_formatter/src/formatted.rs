@@ -16,7 +16,7 @@ impl<'a> Formatted<'a> {
     ) -> Self {
         if let Some(input_value) = value {
             return Self {
-                value: String::new(),
+                value: input_value,
                 config,
                 indent_level,
             };
@@ -29,6 +29,7 @@ impl<'a> Formatted<'a> {
         }
     }
 
+    /// Appends the input string to the current value.
     pub fn append(mut self, input: &str) -> Self {
         self.value.push_str(input);
         self
@@ -58,6 +59,7 @@ impl<'a> Formatted<'a> {
         self
     }
 
+    /// Indents the input string by the configured indent width at the current indent level the formatter is at.
     pub fn indent(mut self) -> Self {
         let indent = match self.config.indent_style {
             Some(IndentStyle::Space) => " ".repeat(self.config.indent_width.unwrap_or(2)),
@@ -70,6 +72,7 @@ impl<'a> Formatted<'a> {
         self
     }
 
+    /// Appends the input string to the current value if the provided condition is true.
     pub fn append_if(mut self, condition: bool, input: &str) -> Self {
         if condition {
             self.value.push_str(input);
@@ -77,10 +80,12 @@ impl<'a> Formatted<'a> {
         self
     }
 
+    /// Writes the current value to the provided writer followed by a newline.
     pub fn writeln<T: io::Write>(&self, writer: &mut T) -> io::Result<()> {
         writeln!(writer, "{}", self.value)
     }
 
+    /// Writes the current value to the provided writer.
     pub fn write<T: io::Write>(&self, writer: &mut T) -> io::Result<()> {
         write!(writer, "{}", self.value)
     }

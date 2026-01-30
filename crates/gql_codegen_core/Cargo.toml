@@ -1,0 +1,32 @@
+[package]
+name = "gql_codegen_core"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Core GraphQL code generation library"
+
+[dependencies]
+# GraphQL parsing
+apollo-compiler.workspace = true
+apollo-parser.workspace = true
+
+# Serialization (for receiving config from Node)
+serde.workspace = true
+serde_json.workspace = true
+
+# File handling
+globset.workspace = true
+walkdir.workspace = true
+
+# Parallelism
+rayon.workspace = true
+
+# Data structures
+indexmap.workspace = true
+
+# Error handling
+thiserror.workspace = true
+
+[dev-dependencies]
+insta = "1.46"

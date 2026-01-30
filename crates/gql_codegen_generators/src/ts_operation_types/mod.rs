@@ -90,7 +90,7 @@ impl<'a> TsOperationTypesGenerator<'a> {
                 .append(": ")
                 .write(writer)?;
 
-            if field.selection_refs.is_empty() {
+            if field.root_selection_refs.is_empty() {
                 // TODO: figure out why this isn't working
                 // TODO: render optional if no explicit selection for __typename
                 if field.field_name == "__typename" {
@@ -126,7 +126,7 @@ impl<'a> TsOperationTypesGenerator<'a> {
                 })
                 .writeln(writer)?;
 
-            self.render_selection_set(writer, operation_tree, &field.selection_refs)?;
+            self.render_selection_set(writer, operation_tree, &field.root_selection_refs)?;
 
             self.ctx
                 .formatter

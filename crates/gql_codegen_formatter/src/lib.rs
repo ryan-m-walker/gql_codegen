@@ -54,6 +54,7 @@ impl Formatter {
         self.config.indent_width.unwrap_or(2)
     }
 
+    /// Indents the input string by the configured indent width at the current indent level the formatter is at.
     pub fn indent(&self, input: &str) -> String {
         let mut indent = String::new();
 
@@ -70,10 +71,12 @@ impl Formatter {
         format!("{indentation}{input}")
     }
 
+    /// Increases the indent level by one.
     pub fn inc_indent(&mut self) {
         self.indent_level += 1;
     }
 
+    /// Decreases the indent level by one.
     pub fn dec_indent(&mut self) {
         if self.indent_level > 0 {
             self.indent_level -= 1;
@@ -100,6 +103,7 @@ impl Formatter {
         Formatted::new(Some(input.to_string()), &self.config, self.indent_level)
     }
 
+    /// Initializes a new Formatted with an empty value initial state.
     pub fn empty(&self) -> Formatted {
         Formatted::new(None, &self.config, self.indent_level)
     }

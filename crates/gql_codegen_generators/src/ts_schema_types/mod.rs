@@ -195,17 +195,6 @@ impl<'a, 'b> TsSchemaTypesGenerator<'a> {
                 .append(&self.render_type(&field.ty))
                 .semi()
                 .writeln(writer)?;
-
-            // writeln!(
-            //     writer,
-            //     "{}",
-            //     self.formatter.indent_with_semicolon(&format!(
-            //         "{}{}: {}",
-            //         prefix,
-            //         name,
-            //         self.render_type(&field.ty)
-            //     ))
-            // )?;
         }
 
         self.ctx.formatter.dec_indent();

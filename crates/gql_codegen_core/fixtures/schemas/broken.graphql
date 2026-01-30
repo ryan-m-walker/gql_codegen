@@ -1,0 +1,8 @@
+# Broken schema - invalid GraphQL syntax
+type Query {
+  user(id: ID!  # missing closing paren
+  this is not valid { }
+  random tokens everywhere !!!
+}
+
+type {{ invalid

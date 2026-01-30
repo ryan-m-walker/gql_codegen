@@ -1,0 +1,20 @@
+fragment UserFields on User {
+  id
+  name
+  email
+}
+
+fragment PostFields on Post {
+  id
+  title
+  body
+}
+
+query GetUserWithFragments($id: ID!) {
+  user(id: $id) {
+    ...UserFields
+    posts {
+      ...PostFields
+    }
+  }
+}

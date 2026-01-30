@@ -9,7 +9,8 @@ use indexmap::{IndexMap, IndexSet};
 
 #[derive(Debug, Clone)]
 pub(crate) struct OperationTreeNode {
-    pub selection_refs: IndexSet<String>,
+    pub root_selection_refs: IndexSet<String>,
+    pub type_selection_refs: IndexMap<String, IndexSet<String>>,
     pub field_name: String,
     pub field_type: Type,
     pub directives: DirectiveList,
@@ -23,7 +24,7 @@ pub(crate) enum OperationTreeInput<'a> {
     Fragment(&'a FragmentResult),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub(crate) struct OperationTree<'a> {
     input: OperationTreeInput<'a>,
     ctx: Context<'a>,
@@ -118,7 +119,7 @@ impl<'a> OperationTree<'a> {
 
                 if let Some(path) = parent_path {
                     if let Some(parent) = self.normalized_fields.get_mut(path) {
-                        parent.selection_refs.insert(field_path.clone());
+                        parent.root_selection_refs.insert(field_path.clone());
                     }
                 } else {
                     self.root_selection_refs.insert(field_path.clone());
@@ -138,7 +139,8 @@ impl<'a> OperationTree<'a> {
                     self.normalized_fields.insert(
                         field_path.clone(),
                         OperationTreeNode {
-                            selection_refs: IndexSet::new(),
+                            root_selection_refs: IndexSet::new(),
+                            type_selection_refs: IndexMap::new(),
                             directives: field.directives.clone(),
                             field_name: field_name.to_string(),
                             field_type: field_definition.ty.clone(),

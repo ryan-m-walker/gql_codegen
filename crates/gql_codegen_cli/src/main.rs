@@ -1,5 +1,4 @@
 use std::{
-    collections::HashMap,
     fs::{self, OpenOptions},
     io::Write,
     path::{Path, PathBuf},
@@ -7,35 +6,31 @@ use std::{
 
 use args::Args;
 use clap::Parser;
-use file::{FileType, get_file_type};
-use glob::glob;
 
-use globset::GlobBuilder;
 use gql_codegen_config::{Config, Generator};
-use gql_codegen_formatter::Formatter;
 use gql_codegen_generators::{
     documents::generate_documents, ts_operation_types::generate_operation_types,
     ts_schema_types::generate_ts_schema_types,
 };
-use gql_codegen_js::parse_from_js_file;
 
-use anyhow::{Context, Result, anyhow};
-use apollo_compiler::{
-    Name, Node, Schema,
-    ast::{Definition, FragmentDefinition, OperationDefinition},
-    parser,
-};
+use anyhow::{Context, Result};
+use apollo_compiler::{Name, ast::Definition, parser};
 use gql_codegen_logger::{LogLevel, Logger};
-use gql_codegen_types::{FragmentResult, OperationResult, ReadResult};
+use gql_codegen_types::{FragmentResult, OperationResult};
 use indexmap::IndexMap;
 use rayon::{
     current_thread_index,
     iter::{IntoParallelRefIterator, ParallelIterator},
 };
-use walkdir::{DirEntry, WalkDir};
+
+use crate::{get_read_results::get_read_results, get_schema::get_schema, path_parser::expand_path};
 
 mod args;
+mod collector;
 mod file;
+mod get_read_results;
+mod get_schema;
+mod path_parser;
 
 fn main() {
     let args = Args::parse();
@@ -57,122 +52,15 @@ fn main() {
     println!();
 }
 
-fn skip_dir(entry: &DirEntry) -> bool {
-    entry
-        .path()
-        .components()
-        .any(|c| c.as_os_str() == "node_modules")
-}
-
 fn run_cli(args: &Args, logger: &Logger) -> Result<()> {
     let config = Config::from_path(&args.config);
-
-    let mut schema = Schema::builder();
-
-    for schema_path in &config.schemas {
-        let path = PathBuf::from(&config.src).join(schema_path);
-
-        logger.info("Parsing schema file...");
-        logger.debug(&format!(
-            "Using schema filepath path {}",
-            path.to_string_lossy()
-        ));
-
-        let schema_source = fs::read_to_string(&path)
-            .context("Failed to read schema file. Please ensure that your configuration schema value is pointing to a valid file.")?;
-        schema = schema.parse(schema_source, path);
-    }
-
-    let schema = match schema.build().unwrap().validate() {
-        Ok(valid) => valid,
-        Err(with_errors) => {
-            let mut message = String::from("Error parsing schema:\n");
-
-            for error in with_errors.errors.iter() {
-                // TODO: show sources
-                message.push_str(&format!("{}", error.error));
-            }
-
-            return Err(anyhow!(message));
-        }
-    };
-
-    logger.info("Scanning for documents...");
-
-    let globset = GlobBuilder::new(&config.documents)
-        .case_insensitive(false)
-        .build()?
-        .compile_matcher();
-
-    let root = Path::new(&config.src);
-
-    let mut entries_vec = Vec::new();
-    let walker = WalkDir::new(root).into_iter();
-
-    for entry in walker.filter_entry(|e| !skip_dir(e)) {
-        let Ok(entry) = entry else {
-            continue;
-        };
-
-        let path = entry.path();
-
-        if let Some(path_str) = path.to_str() {
-            if globset.is_match(path_str) {
-                entries_vec.push(path.to_path_buf());
-            }
-        }
-    }
-
-    let matches = glob(&config.documents).context(
-        "Invalid documents glob pattern. Please check your \"documents\" configuration value.",
-    )?;
-
-    let read_results = entries_vec
-        .par_iter()
-        .map(|path| -> Result<Option<ReadResult>> {
-            let Some(extension) = path.extension() else {
-                logger.warn(&format!("Encountered a file with no extension: \"{}\"", path.display()));
-                return Ok(None);
-            };
-
-            let extension = extension.to_string_lossy();
-
-            let Some(file_type) = get_file_type(&extension) else {
-                logger.warn(&format!("Encountered a file with an unsupported file extension: \"{extension}\" for file \"{}\"", path.display()));
-                logger.warn("Please make sure the file has either a valid GraphQL, JavaScript or TypeScript extension.");
-                return Ok(None);
-            };
-
-            match file_type {
-                FileType::GraphQL => {
-                    let document = fs::read_to_string(path).with_context(|| {
-                        format!("Failed to read file {}", path.to_string_lossy())
-                    })?;
-
-                    Ok(Some(ReadResult {
-                        path: path.to_string_lossy().to_string(),
-                        documents: vec![document],
-                    }))
-                }
-                FileType::JavaScript | FileType::TypeScript => {
-                    let documents = parse_from_js_file(path.to_path_buf())?;
-
-                    if documents.is_empty() {
-                        return Ok(None);
-                    }
-
-                    Ok(Some(ReadResult {
-                        path: path.to_string_lossy().to_string(),
-                        documents,
-                    }))
-                }
-            }
-        })
-        .collect::<Vec<_>>();
+    let schema = get_schema(&config, logger)?;
+    let read_results = get_read_results(&config, logger)?;
 
     let mut fragment_map: IndexMap<Name, FragmentResult> = IndexMap::new();
     let mut operations_map: IndexMap<Name, OperationResult> = IndexMap::new();
-    let mut anonymous_operation_count = 0;
+    let mut file_path_map: IndexMap<PathBuf, Vec<Name>> = IndexMap::new();
+    let mut anonymous_operation_count = 1;
     let mut document_count = 0;
 
     for read_result in read_results {
@@ -189,14 +77,35 @@ fn run_cli(args: &Args, logger: &Logger) -> Result<()> {
                         Definition::OperationDefinition(operation) => {
                             if let Some(name) = &operation.name {
                                 if operations_map.contains_key(name) {
-                                    logger.warn(&format!("Duplicate operation name \"{name}\" found in file \"{}\". Skipping.", result.path));
+                                    logger.warn(&format!("Duplicate operation name \"{name}\" found in file \"{}\". Skipping.", result.path.display()));
                                     continue;
                                 }
 
+                                let temp_path = expand_path(
+                                    Path::new(""),
+                                    result.path.as_ref(),
+                                    name,
+                                    &operation.operation_type,
+                                );
+
+                                if !file_path_map.contains_key(&temp_path) {
+                                    file_path_map.insert(temp_path.clone(), vec![]);
+                                }
+
+                                file_path_map
+                                    .get_mut(&temp_path)
+                                    .unwrap()
+                                    .push(name.clone());
+
                                 operations_map.insert(
                                     name.clone(),
-                                    OperationResult::new(operation, ast.sources.clone()),
+                                    OperationResult::new(
+                                        operation,
+                                        ast.sources.clone(),
+                                        result.path.clone(),
+                                    ),
                                 );
+
                                 continue;
                             }
 
@@ -204,7 +113,11 @@ fn run_cli(args: &Args, logger: &Logger) -> Result<()> {
                                 Name::new(&format!(
                                     "AnonymousOperation{anonymous_operation_count}"
                                 ))?,
-                                OperationResult::new(operation, ast.sources.clone()),
+                                OperationResult::new(
+                                    operation,
+                                    ast.sources.clone(),
+                                    result.path.clone(),
+                                ),
                             );
 
                             anonymous_operation_count += 1;
@@ -216,14 +129,18 @@ fn run_cli(args: &Args, logger: &Logger) -> Result<()> {
                             if fragment_map.contains_key(&fragment.name) {
                                 logger.warn(&format!(
                                     "Duplicate fragment name \"{}\" found in file \"{}\". Skipping.",
-                                    fragment.name, result.path
+                                    fragment.name, result.path.display()
                                 ));
                                 continue;
                             }
 
                             fragment_map.insert(
                                 fragment.name.clone(),
-                                FragmentResult::new(fragment, ast.sources.clone()),
+                                FragmentResult::new(
+                                    fragment,
+                                    ast.sources.clone(),
+                                    result.path.clone(),
+                                ),
                             );
                         }
                         _ => {}

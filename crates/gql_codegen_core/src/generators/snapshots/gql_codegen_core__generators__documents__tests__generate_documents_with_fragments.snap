@@ -1,0 +1,32 @@
+---
+source: crates/gql_codegen_core/src/generators/documents.rs
+expression: result
+---
+// Generated GraphQL documents
+
+export const UserFieldsDocument = `
+  fragment UserFields on User {
+    id
+    name
+    email
+  }
+`;
+
+export const PostFieldsDocument = `
+  fragment PostFields on Post {
+    id
+    title
+    body
+  }
+`;
+
+export const GetUserWithFragmentsDocument = `
+  query GetUserWithFragments($id: ID!) {
+    user(id: $id) {
+      ...UserFields
+      posts {
+        ...PostFields
+      }
+    }
+  }
+`;

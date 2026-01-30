@@ -1,0 +1,19 @@
+# Types - separate file for testing multi-file schemas
+type User {
+  id: ID!
+  name: String!
+  email: String
+  posts: [Post!]!
+}
+
+type Post {
+  id: ID!
+  title: String!
+  body: String!
+  author: User!
+}
+
+input CreateUserInput {
+  name: String!
+  email: String
+}

@@ -19,7 +19,7 @@ gql_codegen_types = { path = "crates/gql_codegen_types" }
 gql_codegen_generators = { path = "crates/gql_codegen_generators" }
 gql_codegen_logger = { path = "crates/gql_codegen_logger" }
 
-apollo-compiler = { version = "1.28.0" }
+apollo-compiler = { version = "1.31.0" }
 apollo-parser = { version = "0.8.4" }
 clap = { version = "4.5.20", features = ["derive"] }
 glob = { version = "0.3.2" }

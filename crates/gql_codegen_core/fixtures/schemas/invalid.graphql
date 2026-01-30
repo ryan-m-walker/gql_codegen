@@ -1,0 +1,4 @@
+# Invalid schema - references unknown type
+type Query {
+  user: UnknownType
+}

@@ -1,0 +1,10 @@
+{
+  pet(id: "1") {
+    ... on Cat {
+      favorite_toy
+    }
+    ... on Dog {
+      fur_color
+    }
+  }
+}

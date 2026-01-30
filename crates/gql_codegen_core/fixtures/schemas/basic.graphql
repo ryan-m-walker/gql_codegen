@@ -1,0 +1,33 @@
+type Query {
+  user(id: ID!): User
+  users: [User!]!
+}
+
+type Mutation {
+  createUser(input: CreateUserInput!): User!
+}
+
+type User {
+  id: ID!
+  name: String!
+  email: String
+  posts: [Post!]!
+}
+
+type Post {
+  id: ID!
+  title: String!
+  body: String!
+  author: User!
+}
+
+input CreateUserInput {
+  name: String!
+  email: String
+}
+
+enum Status {
+  ACTIVE
+  INACTIVE
+  PENDING
+}

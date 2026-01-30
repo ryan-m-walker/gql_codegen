@@ -1,39 +1,15 @@
-scalar Date
-scalar DateTime
-scalar BigInt
-
-enum Theme {
-    LIGHT
-    DARK
-    SYSTEM
+type Dog {
+  name: String!
+  favorite_toy: String!
 }
 
-
-type Settings {
-    theme: Theme!
-    language: String!
+type Cat {
+  name: String!
+  fur_color: String!
 }
 
-"""
-Just a person
-"""
-type Person {
-    id: ID!
-    name: String!
-    age: Int
-    birthDate: Date
-    createdAt: DateTime!
-    updatedAt: DateTime!
-    savings: BigInt!
-    friends: [Person!]!
-    settings: Settings!
-    pets: [String!]
-}
+union Pet = Cat | Dog
 
 type Query {
-    ping: String!
-    pong: String
-    me: Person!
-    person(id: ID!): Person
-    people: [Person!]!
+  pet(id: String!): Pet!
 }

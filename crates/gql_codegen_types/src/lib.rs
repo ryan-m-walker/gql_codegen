@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use apollo_compiler::{
     Name, Node, Schema,
     ast::{FragmentDefinition, OperationDefinition},
@@ -10,7 +12,7 @@ use indexmap::IndexMap;
 
 #[derive(Debug, Default)]
 pub struct ReadResult {
-    pub path: String,
+    pub path: PathBuf,
     pub documents: Vec<String>,
 }
 
@@ -18,11 +20,16 @@ pub struct ReadResult {
 pub struct OperationResult {
     pub operation: Node<OperationDefinition>,
     pub sources: SourceMap,
+    pub path: PathBuf,
 }
 
 impl OperationResult {
-    pub fn new(operation: Node<OperationDefinition>, sources: SourceMap) -> Self {
-        Self { operation, sources }
+    pub fn new(operation: Node<OperationDefinition>, sources: SourceMap, path: PathBuf) -> Self {
+        Self {
+            operation,
+            sources,
+            path,
+        }
     }
 }
 
@@ -30,11 +37,16 @@ impl OperationResult {
 pub struct FragmentResult {
     pub fragment: Node<FragmentDefinition>,
     pub sources: SourceMap,
+    pub path: PathBuf,
 }
 
 impl FragmentResult {
-    pub fn new(fragment: Node<FragmentDefinition>, sources: SourceMap) -> Self {
-        Self { fragment, sources }
+    pub fn new(fragment: Node<FragmentDefinition>, sources: SourceMap, path: PathBuf) -> Self {
+        Self {
+            fragment,
+            sources,
+            path,
+        }
     }
 }
 

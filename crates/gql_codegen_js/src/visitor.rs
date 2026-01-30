@@ -2,7 +2,7 @@ use std::mem;
 
 use oxc::{
     ast::ast::{CallExpression, Expression, TaggedTemplateExpression},
-    ast_visit::{Visit, walk},
+    ast_visit::{walk, Visit},
 };
 
 #[derive(Debug, Default)]

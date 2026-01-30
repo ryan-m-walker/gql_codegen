@@ -1,6 +1,7 @@
 use colored::Colorize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Default, PartialEq)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub enum LogLevel {
     Debug,
     #[default]
