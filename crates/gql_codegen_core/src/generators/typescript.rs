@@ -33,15 +33,15 @@ pub fn generate_typescript(ctx: &GeneratorContext, writer: &mut dyn Write) -> Re
             apollo_compiler::schema::ExtendedType::Object(obj) => {
                 let readonly = if options.immutable_types { "readonly " } else { "" };
 
-                writeln!(writer, "export interface {} {{", name)?;
+                writeln!(writer, "export interface {name} {{")?;
 
                 if !options.skip_typename {
-                    writeln!(writer, "  {}__typename: '{}';", readonly, name)?;
+                    writeln!(writer, "  {readonly}__typename: '{name}';")?;
                 }
 
                 for (field_name, field) in obj.fields.iter() {
                     let field_type = format_type(&field.ty, options);
-                    writeln!(writer, "  {}{}: {};", readonly, field_name, field_type)?;
+                    writeln!(writer, "  {readonly}{field_name}: {field_type};")?;
                 }
 
                 writeln!(writer, "}}")?;
@@ -51,7 +51,7 @@ pub fn generate_typescript(ctx: &GeneratorContext, writer: &mut dyn Write) -> Re
             apollo_compiler::schema::ExtendedType::Enum(en) => {
                 if options.enums_as_types {
                     let values: Vec<_> = en.values.keys()
-                        .map(|v| format!("'{}'", v))
+                        .map(|v| format!("'{v}'"))
                         .collect();
 
                     let mut type_str = values.join(" | ");
@@ -59,11 +59,11 @@ pub fn generate_typescript(ctx: &GeneratorContext, writer: &mut dyn Write) -> Re
                         type_str.push_str(" | '%future added value'");
                     }
 
-                    writeln!(writer, "export type {} = {};", name, type_str)?;
+                    writeln!(writer, "export type {name} = {type_str};")?;
                 } else {
-                    writeln!(writer, "export enum {} {{", name)?;
+                    writeln!(writer, "export enum {name} {{")?;
                     for value in en.values.keys() {
-                        writeln!(writer, "  {} = '{}',", value, value)?;
+                        writeln!(writer, "  {value} = '{value}',")?;
                     }
                     writeln!(writer, "}}")?;
                 }
@@ -73,11 +73,11 @@ pub fn generate_typescript(ctx: &GeneratorContext, writer: &mut dyn Write) -> Re
             apollo_compiler::schema::ExtendedType::Interface(iface) => {
                 let readonly = if options.immutable_types { "readonly " } else { "" };
 
-                writeln!(writer, "export interface {} {{", name)?;
+                writeln!(writer, "export interface {name} {{")?;
 
                 for (field_name, field) in iface.fields.iter() {
                     let field_type = format_type(&field.ty, options);
-                    writeln!(writer, "  {}{}: {};", readonly, field_name, field_type)?;
+                    writeln!(writer, "  {readonly}{field_name}: {field_type};")?;
                 }
 
                 writeln!(writer, "}}")?;
@@ -95,12 +95,12 @@ pub fn generate_typescript(ctx: &GeneratorContext, writer: &mut dyn Write) -> Re
             apollo_compiler::schema::ExtendedType::InputObject(input) => {
                 let readonly = if options.immutable_types { "readonly " } else { "" };
 
-                writeln!(writer, "export interface {} {{", name)?;
+                writeln!(writer, "export interface {name} {{")?;
 
                 for (field_name, field) in input.fields.iter() {
                     let field_type = format_type(&field.ty, options);
                     let optional = if field.ty.is_non_null() { "" } else { "?" };
-                    writeln!(writer, "  {}{}{}: {};", readonly, field_name, optional, field_type)?;
+                    writeln!(writer, "  {readonly}{field_name}{optional}: {field_type};")?;
                 }
 
                 writeln!(writer, "}}")?;
@@ -110,7 +110,7 @@ pub fn generate_typescript(ctx: &GeneratorContext, writer: &mut dyn Write) -> Re
             apollo_compiler::schema::ExtendedType::Scalar(_) => {
                 // Check for custom scalar mapping
                 if let Some(ts_type) = options.scalars.get(name.as_str()) {
-                    writeln!(writer, "export type {} = {};", name, ts_type)?;
+                    writeln!(writer, "export type {name} = {ts_type};")?;
                 } else {
                     // Default scalar mappings
                     let ts_type = match name.as_str() {
@@ -119,7 +119,7 @@ pub fn generate_typescript(ctx: &GeneratorContext, writer: &mut dyn Write) -> Re
                         "Boolean" => continue,
                         _ => "unknown",
                     };
-                    writeln!(writer, "export type {} = {};", name, ts_type)?;
+                    writeln!(writer, "export type {name} = {ts_type};")?;
                 }
                 writeln!(writer)?;
             }
@@ -149,9 +149,9 @@ fn format_type(
             };
 
             if options.use_null_for_optional {
-                format!("{} | null", ts_type)
+                format!("{ts_type} | null")
             } else {
-                format!("Maybe<{}>", ts_type)
+                format!("Maybe<{ts_type}>")
             }
         }
         apollo_compiler::schema::Type::NonNullNamed(name) => {
@@ -169,14 +169,14 @@ fn format_type(
         apollo_compiler::schema::Type::List(inner) => {
             let inner_type = format_type(inner, options);
             if options.use_null_for_optional {
-                format!("Array<{}> | null", inner_type)
+                format!("Array<{inner_type}> | null")
             } else {
-                format!("Maybe<Array<{}>>", inner_type)
+                format!("Maybe<Array<{inner_type}>>")
             }
         }
         apollo_compiler::schema::Type::NonNullList(inner) => {
             let inner_type = format_type(inner, options);
-            format!("Array<{}>", inner_type)
+            format!("Array<{inner_type}>")
         }
     }
 }

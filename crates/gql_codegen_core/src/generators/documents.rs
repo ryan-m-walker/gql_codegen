@@ -50,22 +50,22 @@ fn write_document(
     text: &str,
     tag: Option<GraphqlTag>,
 ) -> Result<()> {
-    let doc_name = format!("{}Document", name);
+    let doc_name = format!("{name}Document");
 
     match tag {
         Some(GraphqlTag::Gql) => {
-            writeln!(writer, "export const {} = gql`", doc_name)?;
+            writeln!(writer, "export const {doc_name} = gql`")?;
             write_indented_graphql(writer, text)?;
             writeln!(writer, "`;")?;
         }
         Some(GraphqlTag::Graphql) => {
-            writeln!(writer, "export const {} = graphql`", doc_name)?;
+            writeln!(writer, "export const {doc_name} = graphql`")?;
             write_indented_graphql(writer, text)?;
             writeln!(writer, "`;")?;
         }
         Some(GraphqlTag::None) | None => {
             // Output as plain string
-            writeln!(writer, "export const {} = `", doc_name)?;
+            writeln!(writer, "export const {doc_name} = `")?;
             write_indented_graphql(writer, text)?;
             writeln!(writer, "`;")?;
         }
@@ -80,7 +80,7 @@ fn write_indented_graphql(writer: &mut dyn Write, text: &str) -> Result<()> {
         if line.trim().is_empty() {
             writeln!(writer)?;
         } else {
-            writeln!(writer, "  {}", line)?;
+            writeln!(writer, "  {line}")?;
         }
     }
     Ok(())

@@ -209,7 +209,7 @@ pub fn collect_documents<'a>(
 
             docs.into_iter().map(move |doc| ExtractedDoc {
                 source_idx: *idx,
-                path: *path,
+                path,
                 text: doc.text,
                 line: doc.line,
                 column: doc.column,
@@ -236,7 +236,7 @@ pub fn collect_documents<'a>(
                     if result.operations.contains_key(&name) {
                         result
                             .warnings
-                            .push(format!("Duplicate operation '{}' (skipped)", name));
+                            .push(format!("Duplicate operation '{name}' (skipped)"));
                     } else {
                         result.operations.insert(name, op);
                     }
@@ -245,7 +245,7 @@ pub fn collect_documents<'a>(
                     if result.fragments.contains_key(&name) {
                         result
                             .warnings
-                            .push(format!("Duplicate fragment '{}' (skipped)", name));
+                            .push(format!("Duplicate fragment '{name}' (skipped)"));
                     } else {
                         result.fragments.insert(name, frag);
                     }
@@ -287,7 +287,7 @@ fn parse_document<'a>(doc: &ExtractedDoc<'a>) -> ParseResult<'a> {
                     Some(n) => n.clone(),
                     None => {
                         anon_count += 1;
-                        Name::new(&format!("Anonymous_{}", anon_count)).expect("valid name")
+                        Name::new(&format!("Anonymous_{anon_count}")).expect("valid name")
                     }
                 };
 
@@ -336,10 +336,10 @@ fn parse_document<'a>(doc: &ExtractedDoc<'a>) -> ParseResult<'a> {
 
 /// Extract the text for a single definition using its source location.
 /// Falls back to the full text if location info is unavailable.
-fn extract_definition_text<'a>(
-    full_text: &'a str,
+fn extract_definition_text(
+    full_text: &str,
     location: Option<apollo_compiler::parser::SourceSpan>,
-) -> &'a str {
+) -> &str {
     match location {
         Some(span) => {
             let start = span.offset();

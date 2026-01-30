@@ -54,7 +54,7 @@ impl<'a> OperationTypesGenerator<'a> {
     ) -> Result<()> {
         let type_condition = &fragment.definition.type_condition;
 
-        writeln!(writer, "export interface {} {{", name)?;
+        writeln!(writer, "export interface {name} {{")?;
         self.render_selection_set(writer, &fragment.definition.selection_set, type_condition, 1)?;
         writeln!(writer, "}}")?;
         writeln!(writer)?;
@@ -75,14 +75,14 @@ impl<'a> OperationTypesGenerator<'a> {
         };
 
         // Generate the result type
-        writeln!(writer, "export interface {} {{", name)?;
+        writeln!(writer, "export interface {name} {{")?;
         self.render_selection_set(writer, &operation.selection_set, root_type_name, 1)?;
         writeln!(writer, "}}")?;
         writeln!(writer)?;
 
         // Generate variables type if there are variables
         if !operation.variables.is_empty() {
-            writeln!(writer, "export interface {}Variables {{", name)?;
+            writeln!(writer, "export interface {name}Variables {{")?;
             for var in &operation.variables {
                 let ts_type = self.graphql_type_to_ts(&var.ty);
                 let optional = if var.ty.is_non_null() { "" } else { "?" };
@@ -119,7 +119,7 @@ impl<'a> OperationTypesGenerator<'a> {
                     // Handle __typename specially
                     if field.name.as_str() == "__typename" {
                         if !self.options.skip_typename {
-                            writeln!(writer, "{}{}{}: '{}';", indent, readonly, field_name, parent_type)?;
+                            writeln!(writer, "{indent}{readonly}{field_name}: '{parent_type}';")?;
                         }
                         continue;
                     }
@@ -147,12 +147,12 @@ impl<'a> OperationTypesGenerator<'a> {
                         // Determine wrapper based on type
                         let (open, close) = self.get_type_wrappers(&field_def.ty);
 
-                        writeln!(writer, "{}{}{}{}: {} {{", indent, readonly, field_name, optional_marker, open)?;
+                        writeln!(writer, "{indent}{readonly}{field_name}{optional_marker}: {open} {{")?;
                         self.render_selection_set(writer, &field.selection_set, &inner_type_name, depth + 1)?;
-                        writeln!(writer, "{}}}{};", indent, close)?;
+                        writeln!(writer, "{indent}}}{close};")?;
                     } else {
                         let ts_type = self.graphql_type_to_ts(&field_def.ty);
-                        writeln!(writer, "{}{}{}{}: {};", indent, readonly, field_name, optional_marker, ts_type)?;
+                        writeln!(writer, "{indent}{readonly}{field_name}{optional_marker}: {ts_type};")?;
                     }
                 }
 
@@ -190,18 +190,18 @@ impl<'a> OperationTypesGenerator<'a> {
         match ty {
             Type::Named(name) => {
                 let ts = self.scalar_to_ts(name);
-                format!("{} | null", ts)
+                format!("{ts} | null")
             }
             Type::NonNullNamed(name) => {
                 self.scalar_to_ts(name)
             }
             Type::List(inner) => {
                 let inner_ts = self.graphql_type_to_ts(inner);
-                format!("Array<{}> | null", inner_ts)
+                format!("Array<{inner_ts}> | null")
             }
             Type::NonNullList(inner) => {
                 let inner_ts = self.graphql_type_to_ts(inner);
-                format!("Array<{}>", inner_ts)
+                format!("Array<{inner_ts}>")
             }
         }
     }
