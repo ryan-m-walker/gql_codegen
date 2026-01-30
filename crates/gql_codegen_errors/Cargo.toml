@@ -1,9 +1,0 @@
-[package]
-name = "gql_codegen_errors"
-authors.workspace = true
-version.workspace = true
-edition.workspace = true
-license.workspace = true
-
-[dependencies]
-thiserror = { workspace = true }

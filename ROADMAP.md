@@ -278,7 +278,25 @@ src/
 ---
 
 ### Phase 4: Developer Experience
-> Watch mode, better errors, IDE integration
+> Watch mode, better errors, IDE integration, benchmarking
+
+#### 4.0 Benchmarking vs Node.js graphql-codegen
+- [ ] Create `benchmarks/` directory with shared fixtures
+- [ ] Set up hyperfine for CLI comparison
+- [ ] Generate scale test fixtures (100-500+ operations)
+- [ ] Create benchmark script comparing SGC vs `npx graphql-codegen`
+- [ ] Document benchmark results in README
+- [ ] Add CI job to track performance regressions
+
+**Benchmark setup:**
+```bash
+hyperfine \
+  --warmup 3 \
+  --min-runs 10 \
+  --export-markdown bench.md \
+  'sgc -c codegen.json --no-cache' \
+  'npx graphql-codegen --config codegen.ts'
+```
 
 #### 4.1 Watch Mode
 - [ ] Add `--watch` flag
