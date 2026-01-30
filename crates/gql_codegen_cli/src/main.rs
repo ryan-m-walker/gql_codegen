@@ -1,242 +1,210 @@
-use std::{
-    fs::{self, OpenOptions},
-    io::Write,
-    path::{Path, PathBuf},
-};
+//! Speedy GraphQL Codegen CLI
+//!
+//! A fast, Rust-powered GraphQL code generator.
 
-use args::Args;
-use clap::Parser;
+mod logger;
 
-use gql_codegen_config::{Config, Generator};
-use gql_codegen_generators::{
-    documents::generate_documents, ts_operation_types::generate_operation_types,
-    ts_schema_types::generate_ts_schema_types,
-};
+use std::collections::HashSet;
+use std::fs;
+use std::path::{Path, PathBuf};
+use std::process::ExitCode;
+use std::sync::Mutex;
 
 use anyhow::{Context, Result};
-use apollo_compiler::{Name, ast::Definition, parser};
-use gql_codegen_logger::{LogLevel, Logger};
-use gql_codegen_types::{FragmentResult, OperationResult};
-use indexmap::IndexMap;
-use rayon::{
-    current_thread_index,
-    iter::{IntoParallelRefIterator, ParallelIterator},
+use clap::Parser;
+use gql_codegen_core::{
+    CodegenConfig, ExtractConfig, GenerateInput, SourceCache,
+    cache::{Cache, FsCache, NoCache},
+    collect_documents, generate_from_input, load_schema, load_sources,
 };
+use rayon::prelude::*;
 
-use crate::{get_read_results::get_read_results, get_schema::get_schema, path_parser::expand_path};
+use crate::logger::{LogLevel, Logger};
 
-mod args;
-mod collector;
-mod file;
-mod get_read_results;
-mod get_schema;
-mod path_parser;
+#[derive(Parser, Debug)]
+#[command(name = "sgc")]
+#[command(about = "Speedy GraphQL Codegen - A fast GraphQL code generator")]
+#[command(version)]
+struct Args {
+    /// Path to the config file (JSON)
+    #[arg(short, long, default_value = "codegen.json")]
+    config: PathBuf,
 
-fn main() {
-    let args = Args::parse();
-    let logger = Logger::new(LogLevel::Debug);
-    println!();
+    /// Check mode - validate without writing files
+    #[arg(long)]
+    check: bool,
 
-    if let Err(e) = run_cli(&args, &logger) {
-        if logger.level == LogLevel::Debug {
-            logger.error(&format!("{e:?}"));
-        } else {
-            logger.error(&format!("{e}"));
-        }
-        println!();
+    /// Disable caching (always regenerate)
+    #[arg(long)]
+    no_cache: bool,
 
-        std::process::exit(1);
-    }
+    /// Clear the cache directory and exit
+    #[arg(long)]
+    clean: bool,
 
-    logger.info("Code generation completed.");
-    println!();
+    /// Verbose output
+    #[arg(short, long)]
+    verbose: bool,
+
+    /// Suppress output (only show errors)
+    #[arg(short, long)]
+    quiet: bool,
 }
 
-fn run_cli(args: &Args, logger: &Logger) -> Result<()> {
-    let config = Config::from_path(&args.config);
-    let schema = get_schema(&config, logger)?;
-    let read_results = get_read_results(&config, logger)?;
+fn main() -> ExitCode {
+    let args = Args::parse();
 
-    let mut fragment_map: IndexMap<Name, FragmentResult> = IndexMap::new();
-    let mut operations_map: IndexMap<Name, OperationResult> = IndexMap::new();
-    let mut file_path_map: IndexMap<PathBuf, Vec<Name>> = IndexMap::new();
-    let mut anonymous_operation_count = 1;
-    let mut document_count = 0;
+    let log_level = if args.quiet {
+        LogLevel::Quiet
+    } else if args.verbose {
+        LogLevel::Verbose
+    } else {
+        LogLevel::Normal
+    };
 
-    for read_result in read_results {
-        if let Some(result) = read_result? {
-            for document in &result.documents {
-                let ast = parser::Parser::new()
-                    .parse_ast(document, &result.path)
-                    .unwrap(); // TODO: handle errors
+    let logger = Logger::new(log_level);
 
-                document_count += 1;
-
-                for definition in ast.definitions {
-                    match definition {
-                        Definition::OperationDefinition(operation) => {
-                            if let Some(name) = &operation.name {
-                                if operations_map.contains_key(name) {
-                                    logger.warn(&format!("Duplicate operation name \"{name}\" found in file \"{}\". Skipping.", result.path.display()));
-                                    continue;
-                                }
-
-                                let temp_path = expand_path(
-                                    Path::new(""),
-                                    result.path.as_ref(),
-                                    name,
-                                    &operation.operation_type,
-                                );
-
-                                if !file_path_map.contains_key(&temp_path) {
-                                    file_path_map.insert(temp_path.clone(), vec![]);
-                                }
-
-                                file_path_map
-                                    .get_mut(&temp_path)
-                                    .unwrap()
-                                    .push(name.clone());
-
-                                operations_map.insert(
-                                    name.clone(),
-                                    OperationResult::new(
-                                        operation,
-                                        ast.sources.clone(),
-                                        result.path.clone(),
-                                    ),
-                                );
-
-                                continue;
-                            }
-
-                            operations_map.insert(
-                                Name::new(&format!(
-                                    "AnonymousOperation{anonymous_operation_count}"
-                                ))?,
-                                OperationResult::new(
-                                    operation,
-                                    ast.sources.clone(),
-                                    result.path.clone(),
-                                ),
-                            );
-
-                            anonymous_operation_count += 1;
-                        }
-                        Definition::FragmentDefinition(fragment) => {
-                            if fragment.name.as_str() == "UserPhoneSettingsContentSection" {
-                                panic!("FOUND");
-                            }
-                            if fragment_map.contains_key(&fragment.name) {
-                                logger.warn(&format!(
-                                    "Duplicate fragment name \"{}\" found in file \"{}\". Skipping.",
-                                    fragment.name, result.path.display()
-                                ));
-                                continue;
-                            }
-
-                            fragment_map.insert(
-                                fragment.name.clone(),
-                                FragmentResult::new(
-                                    fragment,
-                                    ast.sources.clone(),
-                                    result.path.clone(),
-                                ),
-                            );
-                        }
-                        _ => {}
-                    }
+    match run(&args, &logger) {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(e) => {
+            logger.error(&e.to_string());
+            if args.verbose {
+                for cause in e.chain().skip(1) {
+                    eprintln!("  Caused by: {cause}");
                 }
             }
+            ExitCode::FAILURE
         }
     }
+}
 
-    logger.info(&format!("{document_count} documents found."));
+fn run(args: &Args, logger: &Logger) -> Result<()> {
+    let config_content = fs::read_to_string(&args.config)
+        .with_context(|| format!("Failed to read config: {}", args.config.display()))?;
 
-    let codegen_results = config
-        .outputs
-        .par_iter()
-        .map(|(output_path, output_config)| -> Result<()> {
-            let thread_index = current_thread_index().unwrap_or_default();
-            logger.debug(&format!(
-                "Generating {output_path} in thread {thread_index}"
-            ));
+    let mut config: CodegenConfig = serde_json::from_str(&config_content)
+        .with_context(|| format!("Failed to parse config: {}", args.config.display()))?;
 
-            // TODO: use src for output path
-            let path = PathBuf::from(&output_path);
+    let base_dir = resolve_base_dir(&args.config);
+    config.base_dir = Some(base_dir.to_string_lossy().into_owned());
 
-            if let Some(parent) = path.parent() {
-                dbg!(parent);
-                fs::create_dir_all(parent)?;
-            }
+    logger.debug(&format!("Config: {}", args.config.display()));
+    logger.debug(&format!("Base: {}", base_dir.display()));
 
-            let mut writer = OpenOptions::new()
-                .create(true)
-                .write(true)
-                .truncate(true)
-                .open(output_path)
-                .context("Failed to write output file.")?;
-
-            if let Some(config) = &output_config.prelude {
-                writeln!(writer, "{config}\n")?;
-            }
-
-            // let format_config = output_config.formatting.unwrap_or_default();
-            // let formatter = Formatter::from_config(format_config);
-            // let ctx =
-            //     gql_codegen_types::Context::new(&schema, &operations_map, &fragments_map, logger);
-
-            for generator in &output_config.generators {
-                match generator {
-                    Generator::TsSchemaTypes { config } => {
-                        generate_ts_schema_types(
-                            &mut writer,
-                            &schema,
-                            &operations_map,
-                            &fragment_map,
-                            config,
-                            logger,
-                        )?;
-                    }
-                    Generator::TsOperationTypes { config } => {
-                        generate_operation_types(
-                            &mut writer,
-                            &schema,
-                            &operations_map,
-                            &fragment_map,
-                            config,
-                            logger,
-                        )?;
-                    }
-                    Generator::Documents { config } => {
-                        generate_documents(
-                            &mut writer,
-                            &schema,
-                            &operations_map,
-                            &fragment_map,
-                            config,
-                            logger,
-                        )?;
-                    }
-                }
-            }
-
-            Ok(())
-        })
-        .collect::<Vec<_>>();
-
-    for result in codegen_results {
-        if result.as_ref().is_err() {
-            return result;
+    // Handle --clean flag
+    if args.clean {
+        let cache_dir = base_dir.join(".sgc");
+        if cache_dir.exists() {
+            fs::remove_dir_all(&cache_dir)
+                .with_context(|| format!("Failed to remove: {}", cache_dir.display()))?;
+            logger.success("Cache cleared");
+        } else {
+            logger.success("Cache already clean");
         }
+        return Ok(());
     }
+
+    let mut cache: Box<dyn Cache> = if args.no_cache {
+        Box::new(NoCache)
+    } else {
+        Box::new(FsCache::new(base_dir.join(".sgc")))
+    };
+
+    // Check cache - skip if nothing changed
+    if cache.check(&config, &config_content, &base_dir) {
+        logger.success("Nothing changed");
+        return Ok(());
+    }
+
+    logger.debug("Cache miss - regenerating...");
+
+    let schema = load_schema(&config.schema, Some(&base_dir))?;
+    let mut source_cache = SourceCache::new();
+    load_sources(&config.documents, Some(&base_dir), &mut source_cache)?;
+
+    let extract_config = ExtractConfig::default();
+    let documents = collect_documents(&source_cache, &extract_config);
+
+    for warning in &documents.warnings {
+        logger.warn(warning);
+    }
+
+    let input = GenerateInput {
+        schema: &schema,
+        documents: &documents,
+        generates: &config.generates,
+    };
+    let result = generate_from_input(&input)?;
+
+    if !args.check {
+        write_outputs(&result.files, logger)?;
+    }
+
+    let action = if args.check {
+        "Would generate"
+    } else {
+        "Generated"
+    };
+    let count = result.files.len();
+    let plural = if count == 1 { "" } else { "s" };
+    logger.success(&format!("{action} {count} file{plural}"));
+
+    // Commit cache after successful generation
+    cache.commit();
+    cache.flush().ok();
 
     Ok(())
 }
 
-fn pluralize(word: &str, count: usize) -> String {
-    if count == 1 {
-        return word.to_string();
+fn resolve_base_dir(config_path: &Path) -> PathBuf {
+    config_path
+        .parent()
+        .filter(|p| !p.as_os_str().is_empty())
+        .map(|p| p.to_path_buf())
+        .unwrap_or_else(|| PathBuf::from("."))
+}
+
+fn write_outputs(files: &[gql_codegen_core::GeneratedFile], logger: &Logger) -> Result<()> {
+    // First pass: collect and create all unique parent directories (sequential to avoid races)
+    let directories: HashSet<PathBuf> = files
+        .iter()
+        .filter_map(|f| {
+            let path = PathBuf::from(&f.path);
+            path.parent()
+                .filter(|p| !p.as_os_str().is_empty())
+                .map(|p| p.to_path_buf())
+        })
+        .collect();
+
+    for dir in &directories {
+        if !dir.exists() {
+            fs::create_dir_all(dir)
+                .with_context(|| format!("Failed to create: {}", dir.display()))?;
+        }
     }
 
-    format!("{word}s")
+    // Second pass: parallel write all files
+    // Use Mutex for logger since it's not Sync
+    let logger = Mutex::new(logger);
+    let errors: Vec<_> = files
+        .par_iter()
+        .filter_map(|file| {
+            let path = PathBuf::from(&file.path);
+            match fs::write(&path, &file.content) {
+                Ok(()) => {
+                    if let Ok(l) = logger.lock() {
+                        l.file(&path.display().to_string());
+                    }
+                    None
+                }
+                Err(e) => Some(format!("Failed to write {}: {}", path.display(), e)),
+            }
+        })
+        .collect();
+
+    if let Some(first_error) = errors.into_iter().next() {
+        anyhow::bail!(first_error);
+    }
+
+    Ok(())
 }

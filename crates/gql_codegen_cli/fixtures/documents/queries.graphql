@@ -1,0 +1,29 @@
+query GetUser($id: ID!) {
+  user(id: $id) {
+    ...UserFields
+    posts {
+      id
+      title
+    }
+  }
+}
+
+query GetUsers($filter: UserFilter) {
+  users(filter: $filter) {
+    ...UserFields
+  }
+}
+
+query GetPost($id: ID!) {
+  post(id: $id) {
+    id
+    title
+    body
+    published
+    author {
+      id
+      name
+    }
+    tags
+  }
+}

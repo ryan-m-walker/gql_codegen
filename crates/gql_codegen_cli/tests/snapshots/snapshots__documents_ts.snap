@@ -1,0 +1,84 @@
+---
+source: crates/gql_codegen_cli/tests/snapshots.rs
+expression: docs
+---
+// Generated GraphQL documents
+
+export const UserFieldsDocument = `
+  fragment UserFields on User {
+    id
+    name
+    email
+    age
+    role
+    createdAt
+  }
+`;
+
+export const PostFieldsDocument = `
+  fragment PostFields on Post {
+    id
+    title
+    body
+    published
+    tags
+  }
+`;
+
+export const GetUserDocument = `
+  query GetUser($id: ID!) {
+    user(id: $id) {
+      ...UserFields
+      posts {
+        id
+        title
+      }
+    }
+  }
+`;
+
+export const GetUsersDocument = `
+  query GetUsers($filter: UserFilter) {
+    users(filter: $filter) {
+      ...UserFields
+    }
+  }
+`;
+
+export const GetPostDocument = `
+  query GetPost($id: ID!) {
+    post(id: $id) {
+      id
+      title
+      body
+      published
+      author {
+        id
+        name
+      }
+      tags
+    }
+  }
+`;
+
+export const CreateUserDocument = `
+  mutation CreateUser($input: CreateUserInput!) {
+    createUser(input: $input) {
+      ...UserFields
+    }
+  }
+`;
+
+export const UpdateUserDocument = `
+  mutation UpdateUser($id: ID!, $input: UpdateUserInput!) {
+    updateUser(id: $id, input: $input) {
+      ...UserFields
+    }
+  }
+`;
+
+export const DeleteUserDocument = `
+  mutation DeleteUser($id: ID!) {
+    deleteUser(id: $id)
+  }
+`;

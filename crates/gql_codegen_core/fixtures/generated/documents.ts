@@ -1,0 +1,2 @@
+// Generated GraphQL documents
+

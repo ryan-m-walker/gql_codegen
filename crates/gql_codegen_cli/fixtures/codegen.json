@@ -1,0 +1,12 @@
+{
+  "schema": "schemas/schema.graphql",
+  "documents": ["documents/*.graphql"],
+  "generates": {
+    "generated/types.ts": {
+      "plugins": ["typescript", "typescript-operations"]
+    },
+    "generated/documents.ts": {
+      "plugins": ["typescript-documents"]
+    }
+  }
+}

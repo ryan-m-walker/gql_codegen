@@ -1,0 +1,58 @@
+type Query {
+  user(id: ID!): User
+  users(filter: UserFilter): [User!]!
+  post(id: ID!): Post
+}
+
+type Mutation {
+  createUser(input: CreateUserInput!): User!
+  updateUser(id: ID!, input: UpdateUserInput!): User
+  deleteUser(id: ID!): Boolean!
+}
+
+type User {
+  id: ID!
+  name: String!
+  email: String
+  age: Int
+  role: Role!
+  posts: [Post!]!
+  createdAt: DateTime!
+}
+
+type Post {
+  id: ID!
+  title: String!
+  body: String!
+  published: Boolean!
+  author: User!
+  tags: [String!]!
+}
+
+input CreateUserInput {
+  name: String!
+  email: String
+  age: Int
+  role: Role
+}
+
+input UpdateUserInput {
+  name: String
+  email: String
+  age: Int
+  role: Role
+}
+
+input UserFilter {
+  role: Role
+  minAge: Int
+  maxAge: Int
+}
+
+enum Role {
+  ADMIN
+  USER
+  GUEST
+}
+
+scalar DateTime

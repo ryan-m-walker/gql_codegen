@@ -151,10 +151,10 @@ impl<'a> DocumentsGenerator<'a> {
                 self.render_arguments(writer, &field.arguments)?;
             }
 
-            if field.selection_refs.is_empty() {
+            if field.root_selection_refs.is_empty() {
                 writeln!(writer)?;
             } else {
-                self.render_selection_set(writer, operation_tree, &field.selection_refs)?;
+                self.render_selection_set(writer, operation_tree, &field.root_selection_refs)?;
             }
         }
 

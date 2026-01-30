@@ -1,18 +1,24 @@
 //! Main code generation orchestration
+//!
+//! Provides both pure (no I/O) and convenience (with I/O) APIs.
 
+use std::collections::HashMap;
 use std::path::Path;
 
-use crate::Result;
-use crate::config::{CodegenConfig, PluginOptions};
-use crate::documents::{SourceCache, collect_documents, load_sources};
+use apollo_compiler::validation::Valid;
+use apollo_compiler::Schema;
+
+use crate::config::{OutputConfig, PluginOptions};
+use crate::documents::{CollectedDocuments, SourceCache, collect_documents, load_sources};
 use crate::extract::ExtractConfig;
 use crate::generators::{GeneratorContext, run_generator};
 use crate::schema::load_schema;
+use crate::{CodegenConfig, Result};
 
 /// Result of code generation
 #[derive(Debug, Clone)]
 pub struct GenerateResult {
-    /// Generated files
+    /// Generated files (path -> content)
     pub files: Vec<GeneratedFile>,
     /// Warnings encountered during generation
     pub warnings: Vec<String>,
@@ -27,31 +33,38 @@ pub struct GeneratedFile {
     pub content: String,
 }
 
-/// Main entry point - generate code from config
-pub fn generate(config: &CodegenConfig) -> Result<GenerateResult> {
-    let base_dir = config.base_dir.as_ref().map(|s| Path::new(s.as_str()));
+/// Pre-loaded input for pure generation (no filesystem access)
+///
+/// Use this when you want full control over I/O, caching, etc.
+pub struct GenerateInput<'a> {
+    /// Validated schema
+    pub schema: &'a Valid<Schema>,
+    /// Collected operations and fragments
+    pub documents: &'a CollectedDocuments<'a>,
+    /// Output configurations
+    pub generates: &'a HashMap<String, OutputConfig>,
+}
 
-    // Load and validate schema
-    let schema = load_schema(&config.schema, base_dir)?;
-
-    // Load all source files into cache
-    let mut source_cache = SourceCache::new();
-    load_sources(&config.documents, base_dir, &mut source_cache)?;
-
-    // Extract config from first output's config (or use defaults)
-    // TODO: Make this configurable per-output
-    let extract_config = ExtractConfig::default();
-
-    // Collect all operations and fragments
-    let documents = collect_documents(&source_cache, &extract_config);
-
+/// Pure generation function - NO filesystem access
+///
+/// Takes pre-loaded schema and documents, returns generated content.
+/// Use this for maximum control, testing, or embedding in other tools.
+///
+/// # Example
+/// ```ignore
+/// let schema = load_schema_from_str(&schema_content)?;
+/// let documents = parse_documents(&source_cache, &extract_config);
+/// let input = GenerateInput { schema: &schema, documents: &documents, generates: &config };
+/// let result = generate_from_input(&input)?;
+/// ```
+pub fn generate_from_input(input: &GenerateInput) -> Result<GenerateResult> {
     let mut result = GenerateResult {
         files: Vec::new(),
-        warnings: documents.warnings,
+        warnings: input.documents.warnings.clone(),
     };
 
     // Generate each output file
-    for (output_path, output_config) in &config.generates {
+    for (output_path, output_config) in input.generates {
         let mut content = String::new();
 
         // Add prelude if configured
@@ -69,9 +82,9 @@ pub fn generate(config: &CodegenConfig) -> Result<GenerateResult> {
             let options = merge_options(&base_options, plugin.options());
 
             let ctx = GeneratorContext {
-                schema: &schema,
-                operations: &documents.operations,
-                fragments: &documents.fragments,
+                schema: input.schema,
+                operations: &input.documents.operations,
+                fragments: &input.documents.fragments,
                 options: &options,
             };
 
@@ -87,6 +100,41 @@ pub fn generate(config: &CodegenConfig) -> Result<GenerateResult> {
     }
 
     Ok(result)
+}
+
+/// Convenience function that handles file I/O
+///
+/// Reads schema and document files from disk based on config paths.
+/// For more control over I/O and caching, use [`generate_from_input`] instead.
+///
+/// # Filesystem Access
+/// This function reads files from disk. If you need a pure API without
+/// filesystem side effects, load files yourself and use [`generate_from_input`].
+pub fn generate(config: &CodegenConfig) -> Result<GenerateResult> {
+    let base_dir = config.base_dir.as_ref().map(|s| Path::new(s.as_str()));
+
+    // Load and validate schema
+    let schema = load_schema(&config.schema, base_dir)?;
+
+    // Load all source files into cache
+    let mut source_cache = SourceCache::new();
+    load_sources(&config.documents, base_dir, &mut source_cache)?;
+
+    // Extract config from first output's config (or use defaults)
+    // TODO: Make this configurable per-output
+    let extract_config = ExtractConfig::default();
+
+    // Collect all operations and fragments
+    let documents = collect_documents(&source_cache, &extract_config);
+
+    // Use the pure generation function
+    let input = GenerateInput {
+        schema: &schema,
+        documents: &documents,
+        generates: &config.generates,
+    };
+
+    generate_from_input(&input)
 }
 
 /// Merge base options with plugin-specific options
