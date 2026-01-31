@@ -1,0 +1,10 @@
+{
+  "inputs_hash": 9036369134630870887,
+  "config_hash": 15771754566402648023,
+  "file_meta": {
+    "/Users/ryan/Documents/coding/gql_codegen/crates/gql_codegen_cli/fixtures/schemas/schema.graphql": {
+      "mtime_secs": 1769802644,
+      "size": 767
+    }
+  }
+}

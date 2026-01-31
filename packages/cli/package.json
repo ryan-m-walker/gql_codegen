@@ -1,0 +1,47 @@
+{
+  "name": "@sgc/cli",
+  "version": "0.1.0",
+  "description": "Speedy GraphQL Codegen - A fast, Rust-powered GraphQL code generator",
+  "type": "module",
+  "bin": {
+    "sgc": "./bin/sgc.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "bin",
+    "dist",
+    "native"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "esbuild": "^0.24.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ryanwalker/sgc"
+  },
+  "keywords": [
+    "graphql",
+    "codegen",
+    "typescript",
+    "code-generation"
+  ],
+  "license": "MIT"
+}
