@@ -1,44 +1,38 @@
 //! Caching infrastructure for incremental code generation
 //!
-//! Provides a trait-based caching system with pluggable implementations.
-//!
-//! # Example
-//! ```ignore
-//! let mut cache = FsCache::new(".sgc");
-//! if cache.check(&config, &config_content, &base_dir) {
-//!     println!("Nothing changed");
-//!     return Ok(());
-//! }
-//! // ... generate files ...
-//! cache.commit();
-//! cache.flush()?;
-//! ```
+//! Two-phase caching:
+//! 1. Metadata check (fast, stat only)
+//! 2. Content hash (from already-loaded SourceCache)
 
 mod fs;
 mod memory;
 mod noop;
-pub(crate) mod utils;
+pub mod utils;
 
-use std::path::Path;
+use std::path::PathBuf;
 
-use crate::config::CodegenConfig;
+pub use utils::{CacheData, MetadataCheckResult};
 
-// Re-exports
 pub use fs::FsCache;
 pub use memory::MemoryCache;
 pub use noop::NoCache;
+pub use utils::{compute_hashes_from_cache, hash_config_options, normalize_path, output_matches_existing};
 
-/// Cache trait - implement this for custom caching strategies
+/// Cache trait for incremental caching
 pub trait Cache {
-    /// Check if inputs are fresh (unchanged since last generation).
-    /// Computes and stores hashes internally for later commit.
-    /// Returns `true` if cache is fresh (no regeneration needed).
-    fn check(&mut self, config: &CodegenConfig, config_content: &str, base_dir: &Path) -> bool;
+    /// Check if metadata matches (fast, no file reads)
+    /// Takes pre-resolved paths to avoid duplicate glob expansion.
+    fn check_metadata(&self, paths: &[PathBuf]) -> MetadataCheckResult;
 
-    /// Commit the pending hashes after successful generation.
-    /// Call this only after generation succeeds.
-    fn commit(&mut self);
+    /// Check if computed hashes match stored
+    fn is_fresh(&self, computed: &CacheData) -> bool;
 
-    /// Persist cache to storage (if applicable).
-    fn flush(&self) -> std::io::Result<()>;
+    /// Store cache data after successful generation
+    fn store(&mut self, data: CacheData) -> std::io::Result<()>;
+
+    /// Get stored data for reference
+    fn stored(&self) -> Option<&CacheData>;
+
+    /// Clear all cached data. Returns true if cache was cleared, false if already empty.
+    fn clear(&mut self) -> std::io::Result<bool>;
 }

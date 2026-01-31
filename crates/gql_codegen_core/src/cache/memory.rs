@@ -1,94 +1,98 @@
-//! In-memory cache implementation
+//! In-memory cache implementation (for testing)
 
-use std::path::Path;
+use std::path::PathBuf;
 
-use super::utils::{compute_hashes, CacheData};
+use super::utils::{check_metadata, CacheData, MetadataCheckResult};
 use super::Cache;
-use crate::config::CodegenConfig;
 
-/// In-memory cache - for testing or single-run scenarios
-#[derive(Default)]
+/// In-memory cache - useful for testing
 pub struct MemoryCache {
-    stored: CacheData,
-    pending: Option<CacheData>,
+    stored: Option<CacheData>,
 }
 
 impl MemoryCache {
     pub fn new() -> Self {
-        Self::default()
+        Self { stored: None }
+    }
+}
+
+impl Default for MemoryCache {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
 impl Cache for MemoryCache {
-    fn check(&mut self, config: &CodegenConfig, config_content: &str, base_dir: &Path) -> bool {
-        let computed = compute_hashes(config, config_content, base_dir);
-        let is_fresh = self.stored.inputs_hash == computed.inputs_hash
-            && self.stored.config_hash == computed.config_hash;
-
-        self.pending = Some(computed);
-        is_fresh
+    fn check_metadata(&self, paths: &[PathBuf]) -> MetadataCheckResult {
+        check_metadata(paths, self.stored.as_ref())
     }
 
-    fn commit(&mut self) {
-        if let Some(pending) = self.pending.take() {
-            self.stored = pending;
-        }
+    fn is_fresh(&self, computed: &CacheData) -> bool {
+        self.stored
+            .as_ref()
+            .map(|s| s.inputs_hash == computed.inputs_hash && s.config_hash == computed.config_hash)
+            .unwrap_or(false)
     }
 
-    fn flush(&self) -> std::io::Result<()> {
-        Ok(()) // No-op for memory cache
+    fn store(&mut self, data: CacheData) -> std::io::Result<()> {
+        self.stored = Some(data);
+        Ok(())
+    }
+
+    fn stored(&self) -> Option<&CacheData> {
+        self.stored.as_ref()
+    }
+
+    fn clear(&mut self) -> std::io::Result<bool> {
+        let had_data = self.stored.is_some();
+        self.stored = None;
+        Ok(had_data)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::StringOrArray;
     use std::collections::HashMap;
 
-    fn test_config() -> CodegenConfig {
-        CodegenConfig {
-            schema: StringOrArray::Single("test.graphql".into()),
-            documents: StringOrArray::Multiple(vec![]),
-            generates: HashMap::new(),
-            base_dir: None,
-        }
+    #[test]
+    fn test_no_stored_is_not_fresh() {
+        let cache = MemoryCache::new();
+        let data = CacheData {
+            inputs_hash: 123,
+            config_hash: 456,
+            file_meta: HashMap::new(),
+        };
+        assert!(!cache.is_fresh(&data));
     }
 
     #[test]
-    fn test_workflow() {
+    fn test_matching_hashes_is_fresh() {
         let mut cache = MemoryCache::new();
-        let config = test_config();
-
-        // First check - always stale (no previous data)
-        assert!(!cache.check(&config, "{}", Path::new(".")));
-
-        // Commit the hashes
-        cache.commit();
-
-        // Second check with same inputs - should be fresh
-        assert!(cache.check(&config, "{}", Path::new(".")));
-
-        // Check with different config content - should be stale
-        assert!(!cache.check(&config, "{\"changed\": true}", Path::new(".")));
+        let data = CacheData {
+            inputs_hash: 123,
+            config_hash: 456,
+            file_meta: HashMap::new(),
+        };
+        cache.store(data.clone()).unwrap();
+        assert!(cache.is_fresh(&data));
     }
 
     #[test]
-    fn test_commit_only_after_success() {
+    fn test_different_hashes_not_fresh() {
         let mut cache = MemoryCache::new();
-        let config = test_config();
+        let data1 = CacheData {
+            inputs_hash: 123,
+            config_hash: 456,
+            file_meta: HashMap::new(),
+        };
+        cache.store(data1).unwrap();
 
-        // Check but don't commit (simulating failed generation)
-        assert!(!cache.check(&config, "{}", Path::new(".")));
-        // Don't call commit()
-
-        // Next check should still be stale
-        assert!(!cache.check(&config, "{}", Path::new(".")));
-
-        // Now commit
-        cache.commit();
-
-        // Should be fresh
-        assert!(cache.check(&config, "{}", Path::new(".")));
+        let data2 = CacheData {
+            inputs_hash: 999,
+            config_hash: 456,
+            file_meta: HashMap::new(),
+        };
+        assert!(!cache.is_fresh(&data2));
     }
 }

@@ -1,9 +1,7 @@
 //! Configuration types matching the TypeScript interface.
-//!
-//! These are deserialized from JSON passed from the Node.js wrapper.
 
-use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 /// Main configuration - matches TypeScript `CodegenConfig`
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -130,13 +128,23 @@ pub struct PluginOptions {
     /// Formatting options
     #[serde(default)]
     pub formatting: Option<FormattingOptions>,
+
+    /// Inline fragment spreads into document text (document generator)
+    /// Replaces `...FragmentName` with the fragment's actual fields
+    #[serde(default)]
+    pub inline_fragments: bool,
+
+    /// Remove duplicate field selections (document generator)
+    /// e.g. `{ id id name }` becomes `{ id name }`
+    #[serde(default)]
+    pub dedupe_selections: bool,
 }
 
 fn default_true() -> bool {
     true
 }
 
-#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum GraphqlTag {
     #[default]
@@ -175,30 +183,4 @@ impl Default for FormattingOptions {
 
 fn default_indent_width() -> usize {
     2
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_deserialize_config() {
-        let json = r#"{
-            "schema": "./schema.graphql",
-            "documents": ["./src/**/*.tsx"],
-            "generates": {
-                "./types.ts": {
-                    "plugins": ["typescript", { "typescript-operations": { "immutableTypes": true } }]
-                }
-            }
-        }"#;
-
-        let config: CodegenConfig = serde_json::from_str(json).unwrap();
-        assert_eq!(config.generates.len(), 1);
-
-        let output = config.generates.get("./types.ts").unwrap();
-        assert_eq!(output.plugins.len(), 2);
-        assert_eq!(output.plugins[0].name(), "typescript");
-        assert_eq!(output.plugins[1].name(), "typescript-operations");
-    }
 }

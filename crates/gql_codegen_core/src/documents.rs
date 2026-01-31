@@ -1,8 +1,4 @@
 //! Zero-copy document discovery and parsing with parallel processing
-//!
-//! Uses rayon for parallel file reading and document extraction.
-//! All source files are loaded into a cache, then operations/fragments
-//! borrow from that cache - no redundant string allocations.
 
 use std::path::{Path, PathBuf};
 
@@ -111,43 +107,21 @@ pub struct CollectedDocuments<'a> {
 }
 
 /// Load all matching files into the source cache (parallel file reading)
+///
+/// This expands globs internally. If you've already expanded globs (e.g., for caching),
+/// use [`load_sources_from_paths`] instead to avoid duplicate work.
 pub fn load_sources(
     patterns: &StringOrArray,
     base_dir: Option<&Path>,
     cache: &mut SourceCache,
 ) -> Result<()> {
     let base = base_dir.unwrap_or(Path::new("."));
-    let pattern_strs = patterns.as_vec();
+    let paths = expand_document_globs(patterns, base)?;
+    load_sources_from_paths(&paths, cache)
+}
 
-    // Build glob set
-    let mut builder = GlobSetBuilder::new();
-    for pattern in &pattern_strs {
-        let glob = Glob::new(pattern).map_err(|e| Error::InvalidGlob {
-            pattern: pattern.to_string(),
-            message: e.to_string(),
-        })?;
-        builder.add(glob);
-    }
-    let glob_set = builder.build().map_err(|e| Error::InvalidGlob {
-        pattern: pattern_strs.join(", "),
-        message: e.to_string(),
-    })?;
-
-    // Phase 1: Walk directory and collect matching paths (sequential - fast)
-    let paths: Vec<PathBuf> = WalkDir::new(base)
-        .into_iter()
-        .filter_entry(|e| !is_ignored(e))
-        .filter_map(|e| e.ok())
-        .filter(|e| e.file_type().is_file())
-        .filter(|e| {
-            let path = e.path();
-            let relative = path.strip_prefix(base).unwrap_or(path);
-            glob_set.is_match(relative)
-        })
-        .map(|e| e.path().to_path_buf())
-        .collect();
-
-    // Phase 2: Read files in parallel
+/// Load files from pre-resolved paths (parallel file reading)
+pub fn load_sources_from_paths(paths: &[PathBuf], cache: &mut SourceCache) -> Result<()> {
     let contents: Vec<_> = paths
         .par_iter()
         .map(|path| {
@@ -156,7 +130,6 @@ pub fn load_sources(
         })
         .collect();
 
-    // Phase 3: Add to cache (sequential - maintains order, handles errors)
     for (path, content_result) in contents {
         match content_result {
             Ok(content) => {
@@ -169,6 +142,97 @@ pub fn load_sources(
     }
 
     Ok(())
+}
+
+/// Expand glob patterns to matching file paths
+///
+/// Supports negation patterns with `!` prefix:
+/// ```ignore
+/// ["src/**/*.tsx", "!src/__generated__/**", "!**/*.test.tsx"]
+/// ```
+pub fn expand_document_globs(patterns: &StringOrArray, base_dir: &Path) -> Result<Vec<PathBuf>> {
+    let pattern_strs = patterns.as_vec();
+
+    let mut has_includes = false;
+    let mut include_builder = GlobSetBuilder::new();
+
+    let mut has_excludes = false;
+    let mut exclude_builder = GlobSetBuilder::new();
+
+    for pattern in &pattern_strs {
+        if let Some(negated) = pattern.strip_prefix('!') {
+            let glob = Glob::new(negated).map_err(|e| Error::InvalidGlob {
+                pattern: pattern.to_string(),
+                message: e.to_string(),
+            })?;
+
+            exclude_builder.add(glob);
+            has_excludes = true;
+        } else {
+            let glob = Glob::new(pattern).map_err(|e| Error::InvalidGlob {
+                pattern: pattern.to_string(),
+                message: e.to_string(),
+            })?;
+
+            include_builder.add(glob);
+            has_includes = true;
+        }
+    }
+
+    if !has_includes {
+        return Ok(Vec::new());
+    }
+
+    let include_set = include_builder.build().map_err(|e| Error::InvalidGlob {
+        pattern: pattern_strs.join(", "),
+        message: e.to_string(),
+    })?;
+
+    let exclude_set = if has_excludes {
+        Some(exclude_builder.build().map_err(|e| Error::InvalidGlob {
+            pattern: pattern_strs.join(", "),
+            message: e.to_string(),
+        })?)
+    } else {
+        None
+    };
+
+    // Walk directory, skipping excluded directories early
+    let paths: Vec<PathBuf> = WalkDir::new(base_dir)
+        .into_iter()
+        .filter_entry(|e| {
+            // Always skip common ignored dirs
+            if is_ignored(e) {
+                return false;
+            }
+
+            // Skip excluded directories early (avoid walking into them)
+            if let Some(ref excludes) = exclude_set {
+                if e.file_type().is_dir() {
+                    let relative = e.path().strip_prefix(base_dir).unwrap_or(e.path());
+                    if excludes.is_match(relative) {
+                        return false;
+                    }
+                }
+            }
+            true
+        })
+        .filter_map(|e| e.ok())
+        .filter(|e| e.file_type().is_file())
+        .filter(|e| {
+            let relative = e.path().strip_prefix(base_dir).unwrap_or(e.path());
+
+            // Must match includes, must not match excludes
+            include_set.is_match(relative)
+                && exclude_set
+                    .as_ref()
+                    .map(|ex| !ex.is_match(relative))
+                    .unwrap_or(true)
+        })
+        .map(|e| e.path().to_path_buf())
+        .collect();
+
+    Ok(paths)
 }
 
 /// Intermediate result from parallel extraction

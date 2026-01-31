@@ -64,3 +64,5 @@
 
   For your GraphQL codegen where you're processing the same type/field names repeatedly across multiple files, this could reduce memory usage by
    50-80% and speed up string comparisons significantly.
+
+DELETE CACHE ISSUE

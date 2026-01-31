@@ -5,6 +5,7 @@
 
 use std::io::Write;
 
+use super::document_transform::{write_transformed_operation, TransformOptions};
 use super::GeneratorContext;
 use crate::config::GraphqlTag;
 use crate::Result;
@@ -12,9 +13,7 @@ use crate::Result;
 /// Generate document constants
 pub fn generate_documents(ctx: &GeneratorContext, writer: &mut dyn Write) -> Result<()> {
     let options = ctx.options;
-
-    writeln!(writer, "// Generated GraphQL documents")?;
-    writeln!(writer)?;
+    let needs_transform = options.inline_fragments || options.dedupe_selections;
 
     // Add import for graphql tag if needed
     match options.graphql_tag {
@@ -31,14 +30,29 @@ pub fn generate_documents(ctx: &GeneratorContext, writer: &mut dyn Write) -> Res
         }
     }
 
-    // Generate fragment documents first (operations may depend on them)
-    for (name, fragment) in ctx.fragments.iter() {
-        write_document(writer, name.as_str(), fragment.text, options.graphql_tag)?;
+    // Generate fragment documents first (unless inlining, then skip standalone fragments)
+    if !options.inline_fragments {
+        for (name, fragment) in ctx.fragments.iter() {
+            write_document(writer, name.as_str(), fragment.text, options.graphql_tag)?;
+        }
     }
 
     // Generate operation documents
     for (name, operation) in ctx.operations.iter() {
-        write_document(writer, name.as_str(), operation.text, options.graphql_tag)?;
+        if needs_transform {
+            let transform_opts = TransformOptions {
+                inline_fragments: options.inline_fragments,
+                dedupe_selections: options.dedupe_selections,
+            };
+            // Stream transformed operation to a buffer, then write with indentation
+            let mut buffer = Vec::new();
+            write_transformed_operation(&mut buffer, &operation.definition, ctx.fragments, &transform_opts)?;
+            let text = String::from_utf8(buffer).expect("transform output should be valid UTF-8");
+            write_document(writer, name.as_str(), &text, options.graphql_tag)?;
+        } else {
+            // Use original text directly (zero-copy)
+            write_document(writer, name.as_str(), operation.text, options.graphql_tag)?;
+        };
     }
 
     Ok(())
@@ -92,7 +106,7 @@ mod tests {
     use crate::config::{PluginOptions, StringOrArray};
     use crate::documents::{collect_documents, load_sources, SourceCache};
     use crate::extract::ExtractConfig;
-    use crate::schema::load_schema;
+    use crate::schema::{load_schema, resolve_schema_paths};
     use std::path::PathBuf;
 
     fn fixtures_dir() -> PathBuf {
@@ -102,7 +116,7 @@ mod tests {
     #[test]
     fn test_generate_documents_plain() {
         let schema_sources = StringOrArray::Single("schemas/basic.graphql".into());
-        let schema = load_schema(&schema_sources, Some(&fixtures_dir())).unwrap();
+        let schema = load_schema(&resolve_schema_paths(&schema_sources.as_vec(), Some(&fixtures_dir()))).unwrap();
 
         let mut cache = SourceCache::new();
         let doc_patterns = StringOrArray::Single("documents/queries.graphql".into());
@@ -126,7 +140,7 @@ mod tests {
     #[test]
     fn test_generate_documents_with_gql_tag() {
         let schema_sources = StringOrArray::Single("schemas/basic.graphql".into());
-        let schema = load_schema(&schema_sources, Some(&fixtures_dir())).unwrap();
+        let schema = load_schema(&resolve_schema_paths(&schema_sources.as_vec(), Some(&fixtures_dir()))).unwrap();
 
         let mut cache = SourceCache::new();
         let doc_patterns = StringOrArray::Single("documents/queries.graphql".into());
@@ -155,7 +169,7 @@ mod tests {
     #[test]
     fn test_generate_documents_with_fragments() {
         let schema_sources = StringOrArray::Single("schemas/basic.graphql".into());
-        let schema = load_schema(&schema_sources, Some(&fixtures_dir())).unwrap();
+        let schema = load_schema(&resolve_schema_paths(&schema_sources.as_vec(), Some(&fixtures_dir()))).unwrap();
 
         let mut cache = SourceCache::new();
         let doc_patterns = StringOrArray::Single("documents/fragments.graphql".into());

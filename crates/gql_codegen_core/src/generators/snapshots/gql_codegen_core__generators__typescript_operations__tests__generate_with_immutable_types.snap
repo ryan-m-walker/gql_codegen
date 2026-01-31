@@ -2,8 +2,6 @@
 source: crates/gql_codegen_core/src/generators/typescript_operations.rs
 expression: result
 ---
-// Generated TypeScript operation types
-
 export interface GetUser {
   readonly user?:  {
     readonly id: string;

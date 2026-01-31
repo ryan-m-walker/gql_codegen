@@ -1,0 +1,22 @@
+{
+  "inputs_hash": 9229707637865821620,
+  "config_hash": 14354865351320269323,
+  "file_meta": {
+    "./fixtures/documents/mutations.graphql": {
+      "mtime_secs": 1769802658,
+      "size": 281
+    },
+    "./fixtures/schemas/schema.graphql": {
+      "mtime_secs": 1769802644,
+      "size": 767
+    },
+    "./fixtures/documents/fragments.graphql": {
+      "mtime_secs": 1769817817,
+      "size": 149
+    },
+    "./fixtures/documents/queries.graphql": {
+      "mtime_secs": 1769802651,
+      "size": 336
+    }
+  }
+}

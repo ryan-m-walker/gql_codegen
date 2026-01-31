@@ -2,9 +2,10 @@
 //!
 //! Each generator takes the schema + documents and produces code.
 
+mod document_transform;
+mod documents;
 mod typescript;
 mod typescript_operations;
-mod documents;
 
 pub use typescript::generate_typescript;
 pub use typescript_operations::generate_typescript_operations;

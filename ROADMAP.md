@@ -277,6 +277,80 @@ src/
 
 ---
 
+### Phase 3.5: Incremental Caching
+> Only regenerate what changed - prerequisite for efficient watch mode
+
+**Current State:**
+- All-or-nothing caching: if any file changes, regenerate everything
+- Hash ALL files matching globs, even those without GraphQL documents
+- No tracking of which inputs affect which outputs
+
+**Problems:**
+- False cache invalidations when non-GraphQL code changes in matched files
+- For incremental caching, storing metadata for non-GraphQL files is wasteful bloat
+- No dependency graph to know what to regenerate
+
+**Design:**
+
+1. **Track which files actually contain GraphQL**
+   - After extraction, record which files yielded documents
+   - Only hash content for files that contributed
+   - Still track metadata for ALL files (to detect new GraphQL additions)
+
+2. **Build dependency graph**
+   ```
+   UserQuery (UserProfile.tsx:15)
+     → uses FragmentA (fragments.ts:10)
+     → contributes to: types.ts, documents.ts
+   ```
+
+3. **On change detection:**
+   - Phase 1: stat ALL matched files (fast metadata check)
+   - Phase 2: For changed files only, re-extract documents
+   - Phase 3: Diff extracted documents against cached
+   - Phase 4: Regenerate only affected outputs
+
+**Cache structure:**
+```rust
+pub struct IncrementalCacheData {
+    // Metadata for ALL matched files (detect new GraphQL)
+    pub file_meta: HashMap<PathBuf, FileMeta>,
+
+    // Content tracking ONLY for files with documents
+    pub document_sources: HashMap<PathBuf, DocumentSourceInfo>,
+
+    // Dependency graph
+    pub dependencies: DependencyGraph,
+
+    // Per-output tracking
+    pub outputs: HashMap<PathBuf, OutputInfo>,
+}
+
+pub struct DocumentSourceInfo {
+    pub content_hash: u64,
+    pub document_names: Vec<Name>,  // operations/fragments extracted
+}
+
+pub struct DependencyGraph {
+    // fragment → operations that use it
+    pub fragment_dependents: HashMap<Name, Vec<Name>>,
+    // output file → documents that contribute to it
+    pub output_sources: HashMap<PathBuf, Vec<Name>>,
+}
+```
+
+**Tasks:**
+- [ ] Track which files actually yield documents during extraction
+- [ ] Only store content hashes for files with GraphQL (reduce bloat)
+- [ ] Build dependency graph (operations → fragments they use)
+- [ ] Track which documents affect which outputs
+- [ ] Implement partial regeneration (only affected outputs)
+- [ ] Handle fragment changes propagating to dependent operations
+- [ ] Test incremental correctness (no stale outputs)
+- [ ] Benchmark incremental vs full regeneration
+
+---
+
 ### Phase 4: Developer Experience
 > Watch mode, better errors, IDE integration, benchmarking
 
@@ -299,10 +373,13 @@ hyperfine \
 ```
 
 #### 4.1 Watch Mode
+> Depends on Phase 3.5 (Incremental Caching) for efficient regeneration
+
 - [ ] Add `--watch` flag
 - [ ] Use `notify` crate for filesystem watching
-- [ ] Incremental regeneration (only affected outputs)
+- [ ] Wire up to incremental cache for partial regeneration
 - [ ] Debounce rapid changes
+- [ ] Clear terminal and show generation summary on each run
 
 #### 4.2 Error Messages
 - [ ] Add source locations to all errors
@@ -364,6 +441,43 @@ export const myPlugin: Plugin = {
 - [ ] If NAPI: plugins can be pure JS/TS
 - [ ] If wrapper: plugins compile to WASM or run in Node
 
+#### 5.5 Cache-Informed Allocation Hints
+
+Use cache metadata from previous runs to pre-size allocators, reducing allocation overhead on subsequent runs.
+
+**Concept:**
+```rust
+// Store size hints after generation
+pub struct SizeHints {
+    pub total_output_bytes: usize,
+    pub operation_count: usize,
+    pub fragment_count: usize,
+    pub source_files_total_bytes: usize,
+}
+
+// On next run, use hints to pre-allocate
+let mut output = String::with_capacity(hints.total_output_bytes + 1024);
+let mut operations = Vec::with_capacity(hints.operation_count);
+```
+
+**Potential applications:**
+- Pre-size output `String` buffers (avoid reallocation during generation)
+- Pre-size `Vec` for operations/fragments
+- Pre-allocate `SourceCache` capacity based on expected file count/sizes
+- If using `bumpalo` arena allocator, pre-size the arena chunk
+
+**Similar patterns in other tools:**
+- V8/SpiderMonkey inline caches adapt based on runtime profiling
+- rustc incremental compilation caches dependency graph sizes
+- Cap'n Proto pre-computes message sizes for zero-copy serialization
+
+**Tasks:**
+- [ ] Add `SizeHints` to `CacheData`
+- [ ] Collect metrics after generation (output size, counts)
+- [ ] Apply hints on cache hit to pre-size allocators
+- [ ] Benchmark to measure actual improvement
+- [ ] Consider bump allocator (`bumpalo`) for AST nodes if hints show benefit
+
 ---
 
 ## Priority Recommendation
@@ -375,10 +489,12 @@ export const myPlugin: Plugin = {
 | Phase 1.1-1.2 | Medium | High (compatibility) | **P1** |
 | Phase 2 (Option A) | Medium | High (DX) | **P1** |
 | Phase 3.3 | Medium | Very High (killer feature) | **P1** |
+| Phase 3.5 (Incremental) | Medium-High | Very High (watch mode prereq) | **P1** |
 | Phase 1.3 | High | Medium | P2 |
-| Phase 4.1 | Medium | High | P2 |
+| Phase 4.1 | Medium | High (depends on 3.5) | P2 |
 | Phase 2 (Option B) | High | Medium | P3 |
-| Phase 5 | Very High | Medium | P3 |
+| Phase 5.1-5.4 | Very High | Medium | P3 |
+| Phase 5.5 (Cache Hints) | Low | Low-Medium (perf optimization) | P3 |
 
 ---
 

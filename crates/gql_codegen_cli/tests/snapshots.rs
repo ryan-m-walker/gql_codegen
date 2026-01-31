@@ -7,8 +7,8 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use gql_codegen_core::{
-    collect_documents, generate_from_input, load_schema, load_sources, CodegenConfig,
-    ExtractConfig, GenerateInput, SourceCache, StringOrArray,
+    collect_documents, generate_from_input, load_schema, load_sources, resolve_schema_paths,
+    CodegenConfig, ExtractConfig, GenerateInput, SourceCache, StringOrArray,
 };
 
 fn fixtures_dir() -> PathBuf {
@@ -24,7 +24,8 @@ fn load_and_generate(config_name: &str) -> HashMap<String, String> {
         serde_json::from_str(&config_content).expect("Failed to parse config");
     config.base_dir = Some(base_dir.to_string_lossy().into_owned());
 
-    let schema = load_schema(&config.schema, Some(&base_dir)).expect("Failed to load schema");
+    let schema_paths = resolve_schema_paths(&config.schema.as_vec(), Some(&base_dir));
+    let schema = load_schema(&schema_paths).expect("Failed to load schema");
 
     let mut source_cache = SourceCache::new();
     load_sources(&config.documents, Some(&base_dir), &mut source_cache)
@@ -74,9 +75,8 @@ fn test_generates_documents() {
 fn test_schema_types_only() {
     let base_dir = fixtures_dir();
 
-    let schema =
-        load_schema(&StringOrArray::Single("schemas/schema.graphql".into()), Some(&base_dir))
-            .expect("Failed to load schema");
+    let schema_paths = resolve_schema_paths(&["schemas/schema.graphql"], Some(&base_dir));
+    let schema = load_schema(&schema_paths).expect("Failed to load schema");
 
     let source_cache = SourceCache::new();
     let extract_config = ExtractConfig::default();

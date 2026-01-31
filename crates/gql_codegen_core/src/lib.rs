@@ -26,19 +26,27 @@ mod config;
 mod documents;
 mod error;
 mod extract;
+pub mod fs;
 mod generators;
 mod schema;
+pub mod writer;
 
 // Public API - Main entry points
-pub use codegen::{GenerateInput, GenerateResult, GeneratedFile, generate, generate_from_input};
-pub use config::{CodegenConfig, FormattingOptions, OutputConfig, PluginConfig, PluginOptions, StringOrArray};
+pub use codegen::{
+    GenerateCachedResult, GenerateInput, GenerateResult, GeneratedFile,
+    generate, generate_cached, generate_from_input,
+};
+pub use config::{
+    CodegenConfig, FormattingOptions, OutputConfig, PluginConfig, PluginOptions, StringOrArray,
+};
 pub use error::{Error, Result};
 
 // Public API - Building blocks for custom I/O handling
 // Use these when you need control over file loading, caching, etc.
 pub use documents::{
     CollectedDocuments, ParsedFragment, ParsedOperation, SourceCache, collect_documents,
-    load_sources,
+    expand_document_globs, load_sources, load_sources_from_paths,
 };
 pub use extract::{ExtractConfig, Extracted};
-pub use schema::load_schema;
+pub use schema::{load_schema, load_schema_from_contents, resolve_schema_paths};
+pub use writer::{FsWriter, MemoryWriter, StdoutWriter, WriteResult, Writer, write_outputs};

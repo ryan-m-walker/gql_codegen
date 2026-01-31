@@ -2,8 +2,6 @@
 source: crates/gql_codegen_core/src/generators/documents.rs
 expression: result
 ---
-// Generated GraphQL documents
-
 export const UserFieldsDocument = `
   fragment UserFields on User {
     id

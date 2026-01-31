@@ -17,9 +17,6 @@ use indexmap::IndexMap;
 
 /// Generate TypeScript types for operations
 pub fn generate_typescript_operations(ctx: &GeneratorContext, writer: &mut dyn Write) -> Result<()> {
-    writeln!(writer, "// Generated TypeScript operation types")?;
-    writeln!(writer)?;
-
     let generator = OperationTypesGenerator {
         schema: ctx.schema,
         fragments: ctx.fragments,
@@ -247,7 +244,7 @@ mod tests {
     use crate::documents::{SourceCache, collect_documents, load_sources};
     use crate::config::StringOrArray;
     use crate::extract::ExtractConfig;
-    use crate::schema::load_schema;
+    use crate::schema::{load_schema, resolve_schema_paths};
     use std::path::PathBuf;
 
     fn fixtures_dir() -> PathBuf {
@@ -258,7 +255,7 @@ mod tests {
     fn test_generate_operation_types() {
         // Load schema
         let schema_sources = StringOrArray::Single("schemas/basic.graphql".into());
-        let schema = load_schema(&schema_sources, Some(&fixtures_dir())).unwrap();
+        let schema = load_schema(&resolve_schema_paths(&schema_sources.as_vec(), Some(&fixtures_dir()))).unwrap();
 
         // Load documents
         let mut cache = SourceCache::new();
@@ -284,7 +281,7 @@ mod tests {
     #[test]
     fn test_generate_operation_types_with_fragments() {
         let schema_sources = StringOrArray::Single("schemas/basic.graphql".into());
-        let schema = load_schema(&schema_sources, Some(&fixtures_dir())).unwrap();
+        let schema = load_schema(&resolve_schema_paths(&schema_sources.as_vec(), Some(&fixtures_dir()))).unwrap();
 
         let mut cache = SourceCache::new();
         let doc_patterns = StringOrArray::Single("documents/fragments.graphql".into());
@@ -308,7 +305,7 @@ mod tests {
     #[test]
     fn test_generate_with_immutable_types() {
         let schema_sources = StringOrArray::Single("schemas/basic.graphql".into());
-        let schema = load_schema(&schema_sources, Some(&fixtures_dir())).unwrap();
+        let schema = load_schema(&resolve_schema_paths(&schema_sources.as_vec(), Some(&fixtures_dir()))).unwrap();
 
         let mut cache = SourceCache::new();
         let doc_patterns = StringOrArray::Single("documents/queries.graphql".into());
