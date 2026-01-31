@@ -12,48 +12,7 @@ use walkdir::WalkDir;
 use crate::config::StringOrArray;
 use crate::error::{Error, Result};
 use crate::extract::{self, ExtractConfig, Extracted};
-
-/// Cache of source file contents - keeps sources alive for borrowing
-#[derive(Debug, Default)]
-pub struct SourceCache {
-    /// (file path, file contents) pairs
-    files: Vec<(PathBuf, String)>,
-}
-
-impl SourceCache {
-    pub fn new() -> Self {
-        Self { files: Vec::new() }
-    }
-
-    /// Add pre-loaded content to the cache
-    fn push(&mut self, path: PathBuf, content: String) -> usize {
-        let idx = self.files.len();
-        self.files.push((path, content));
-        idx
-    }
-
-    /// Get a reference to a loaded file
-    #[inline]
-    pub fn get(&self, idx: usize) -> Option<(&Path, &str)> {
-        self.files.get(idx).map(|(p, c)| (p.as_path(), c.as_str()))
-    }
-
-    /// Iterate over all loaded files
-    pub fn iter(&self) -> impl Iterator<Item = (usize, &Path, &str)> {
-        self.files
-            .iter()
-            .enumerate()
-            .map(|(i, (p, c))| (i, p.as_path(), c.as_str()))
-    }
-
-    pub fn len(&self) -> usize {
-        self.files.len()
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.files.is_empty()
-    }
-}
+use crate::source_cache::SourceCache;
 
 /// A parsed GraphQL operation with metadata (zero-copy text)
 #[derive(Debug, Clone)]
@@ -72,6 +31,8 @@ pub struct ParsedOperation<'a> {
 impl<'a> ParsedOperation<'a> {
     /// Get the file path from the cache
     pub fn file_path<'c>(&self, cache: &'c SourceCache) -> &'c Path {
+        // TODO: CLAUDE verify this is safe
+        // Safety: source_idx is guaranteed to be valid
         cache.get(self.source_idx).map(|(p, _)| p).unwrap()
     }
 }
@@ -120,7 +81,7 @@ pub fn load_sources(
     load_sources_from_paths(&paths, cache)
 }
 
-/// Load files from pre-resolved paths (parallel file reading)
+/// Load files from pre-resolved paths
 pub fn load_sources_from_paths(paths: &[PathBuf], cache: &mut SourceCache) -> Result<()> {
     let contents: Vec<_> = paths
         .par_iter()
@@ -427,17 +388,12 @@ fn is_ignored(entry: &walkdir::DirEntry) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    fn fixtures_dir() -> PathBuf {
-        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("fixtures")
-    }
+    use crate::source_cache::SourceCache;
 
     #[test]
     fn test_source_cache() {
         let mut cache = SourceCache::new();
-        cache
-            .files
-            .push((PathBuf::from("test.graphql"), "query { user }".to_string()));
+        cache.push(PathBuf::from("test.graphql"), "query { user }".to_string());
 
         let (path, content) = cache.get(0).unwrap();
         assert_eq!(path, Path::new("test.graphql"));
@@ -449,160 +405,9 @@ mod tests {
         let mut cache = SourceCache::new();
         let source = "query GetUser { user { id } }".to_string();
         let source_ptr = source.as_ptr();
-        cache.files.push((PathBuf::from("test.graphql"), source));
+        cache.push(PathBuf::from("test.graphql"), source);
 
         let (_, content) = cache.get(0).unwrap();
         assert_eq!(content.as_ptr(), source_ptr);
-    }
-
-    #[test]
-    fn test_load_sources_graphql_files() {
-        let mut cache = SourceCache::new();
-        let patterns = StringOrArray::Single("documents/*.graphql".into());
-
-        load_sources(&patterns, Some(&fixtures_dir()), &mut cache).unwrap();
-
-        assert_eq!(cache.len(), 2); // queries.graphql and fragments.graphql
-    }
-
-    #[test]
-    fn test_load_sources_tsx_files() {
-        let mut cache = SourceCache::new();
-        let patterns = StringOrArray::Single("documents/*.tsx".into());
-
-        load_sources(&patterns, Some(&fixtures_dir()), &mut cache).unwrap();
-
-        assert_eq!(cache.len(), 2); // component.tsx and broken.tsx
-    }
-
-    #[test]
-    fn test_load_sources_multiple_patterns() {
-        let mut cache = SourceCache::new();
-        let patterns =
-            StringOrArray::Multiple(vec!["documents/*.graphql".into(), "documents/*.tsx".into()]);
-
-        load_sources(&patterns, Some(&fixtures_dir()), &mut cache).unwrap();
-
-        assert_eq!(cache.len(), 4);
-    }
-
-    #[test]
-    fn test_collect_documents_from_graphql() {
-        let mut cache = SourceCache::new();
-        let patterns = StringOrArray::Single("documents/queries.graphql".into());
-        load_sources(&patterns, Some(&fixtures_dir()), &mut cache).unwrap();
-
-        let docs = collect_documents(&cache, &ExtractConfig::default());
-
-        assert_eq!(docs.operations.len(), 3); // GetUser, GetUsers, CreateUser
-        assert!(docs.operations.contains_key(&Name::new("GetUser").unwrap()));
-        assert!(
-            docs.operations
-                .contains_key(&Name::new("GetUsers").unwrap())
-        );
-        assert!(
-            docs.operations
-                .contains_key(&Name::new("CreateUser").unwrap())
-        );
-    }
-
-    #[test]
-    fn test_collect_documents_with_fragments() {
-        let mut cache = SourceCache::new();
-        let patterns = StringOrArray::Single("documents/fragments.graphql".into());
-        load_sources(&patterns, Some(&fixtures_dir()), &mut cache).unwrap();
-
-        let docs = collect_documents(&cache, &ExtractConfig::default());
-
-        assert_eq!(docs.fragments.len(), 2); // UserFields, PostFields
-        assert!(
-            docs.fragments
-                .contains_key(&Name::new("UserFields").unwrap())
-        );
-        assert!(
-            docs.fragments
-                .contains_key(&Name::new("PostFields").unwrap())
-        );
-
-        assert_eq!(docs.operations.len(), 1); // GetUserWithFragments
-    }
-
-    #[test]
-    fn test_collect_documents_from_tsx() {
-        let mut cache = SourceCache::new();
-        let patterns = StringOrArray::Single("documents/component.tsx".into());
-        load_sources(&patterns, Some(&fixtures_dir()), &mut cache).unwrap();
-
-        let docs = collect_documents(&cache, &ExtractConfig::default());
-
-        // Should extract gql`` and /* GraphQL */ tagged queries
-        // Should NOT extract the untagged template literal
-        assert_eq!(docs.operations.len(), 2);
-        assert!(
-            docs.operations
-                .contains_key(&Name::new("GetUserFromTsx").unwrap())
-        );
-        assert!(
-            docs.operations
-                .contains_key(&Name::new("GetPostsFromTsx").unwrap())
-        );
-    }
-
-    #[test]
-    fn test_collect_documents_from_broken_tsx() {
-        let mut cache = SourceCache::new();
-        let patterns = StringOrArray::Single("documents/broken.tsx".into());
-        load_sources(&patterns, Some(&fixtures_dir()), &mut cache).unwrap();
-
-        let docs = collect_documents(&cache, &ExtractConfig::default());
-
-        // Should still extract GraphQL despite broken JS syntax
-        assert_eq!(docs.operations.len(), 2);
-        assert!(
-            docs.operations
-                .contains_key(&Name::new("StillExtractable").unwrap())
-        );
-        assert!(
-            docs.operations
-                .contains_key(&Name::new("AlsoExtractable").unwrap())
-        );
-    }
-
-    #[test]
-    fn test_zero_copy_document_text() {
-        let mut cache = SourceCache::new();
-        let patterns = StringOrArray::Single("documents/queries.graphql".into());
-        load_sources(&patterns, Some(&fixtures_dir()), &mut cache).unwrap();
-
-        let (_, source) = cache.get(0).unwrap();
-        let source_start = source.as_ptr();
-        let source_end = unsafe { source_start.add(source.len()) };
-
-        let docs = collect_documents(&cache, &ExtractConfig::default());
-
-        // All operation texts should point into the cached source
-        for (_, op) in &docs.operations {
-            let text_ptr = op.text.as_ptr();
-            assert!(
-                text_ptr >= source_start && text_ptr < source_end,
-                "operation text should be zero-copy slice into source"
-            );
-        }
-    }
-
-    #[test]
-    fn test_parallel_load_many_files() {
-        // Test that parallel loading works with multiple files
-        let mut cache = SourceCache::new();
-        let patterns = StringOrArray::Multiple(vec![
-            "documents/*.graphql".into(),
-            "documents/*.tsx".into(),
-            "schemas/*.graphql".into(),
-        ]);
-
-        load_sources(&patterns, Some(&fixtures_dir()), &mut cache).unwrap();
-
-        // Should have loaded all matching files
-        assert!(cache.len() >= 6);
     }
 }

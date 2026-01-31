@@ -5,8 +5,8 @@
 
 use std::io::Write;
 
-use crate::Result;
 use super::GeneratorContext;
+use crate::Result;
 
 /// Generate TypeScript types from the GraphQL schema
 pub fn generate_typescript(ctx: &GeneratorContext, writer: &mut dyn Write) -> Result<()> {
@@ -14,7 +14,7 @@ pub fn generate_typescript(ctx: &GeneratorContext, writer: &mut dyn Write) -> Re
     let schema = ctx.schema;
 
     // Generate Maybe type alias (unless using null style)
-    if !options.use_null_for_optional {
+    if !options.avoid_optionals {
         writeln!(writer, "export type Maybe<T> = T | null;")?;
         writeln!(writer)?;
     }
@@ -26,10 +26,14 @@ pub fn generate_typescript(ctx: &GeneratorContext, writer: &mut dyn Write) -> Re
             continue;
         }
 
+        let readonly = if options.immutable_types {
+            "readonly "
+        } else {
+            ""
+        };
+
         match ty {
             apollo_compiler::schema::ExtendedType::Object(obj) => {
-                let readonly = if options.immutable_types { "readonly " } else { "" };
-
                 writeln!(writer, "export interface {name} {{")?;
 
                 if !options.skip_typename {
@@ -47,16 +51,21 @@ pub fn generate_typescript(ctx: &GeneratorContext, writer: &mut dyn Write) -> Re
 
             apollo_compiler::schema::ExtendedType::Enum(en) => {
                 if options.enums_as_types {
-                    let values: Vec<_> = en.values.keys()
-                        .map(|v| format!("'{v}'"))
-                        .collect();
+                    write!(writer, "export type {name} = ")?;
 
-                    let mut type_str = values.join(" | ");
-                    if options.future_proof_enums {
-                        type_str.push_str(" | '%future added value'");
+                    for (i, value) in en.values.keys().enumerate() {
+                        write!(writer, "'{value}'")?;
+
+                        if i < en.values.len() - 1 {
+                            write!(writer, " | ")?;
+                        }
                     }
 
-                    writeln!(writer, "export type {name} = {type_str};")?;
+                    if options.future_proof_enums {
+                        write!(writer, " | '%future added value'")?;
+                    }
+
+                    writeln!(writer, ";")?;
                 } else {
                     writeln!(writer, "export enum {name} {{")?;
                     for value in en.values.keys() {
@@ -68,8 +77,6 @@ pub fn generate_typescript(ctx: &GeneratorContext, writer: &mut dyn Write) -> Re
             }
 
             apollo_compiler::schema::ExtendedType::Interface(iface) => {
-                let readonly = if options.immutable_types { "readonly " } else { "" };
-
                 writeln!(writer, "export interface {name} {{")?;
 
                 for (field_name, field) in iface.fields.iter() {
@@ -82,16 +89,12 @@ pub fn generate_typescript(ctx: &GeneratorContext, writer: &mut dyn Write) -> Re
             }
 
             apollo_compiler::schema::ExtendedType::Union(union) => {
-                let members: Vec<_> = union.members.iter()
-                    .map(|m| m.name.to_string())
-                    .collect();
+                let members: Vec<_> = union.members.iter().map(|m| m.name.to_string()).collect();
                 writeln!(writer, "export type {} = {};", name, members.join(" | "))?;
                 writeln!(writer)?;
             }
 
             apollo_compiler::schema::ExtendedType::InputObject(input) => {
-                let readonly = if options.immutable_types { "readonly " } else { "" };
-
                 writeln!(writer, "export interface {name} {{")?;
 
                 for (field_name, field) in input.fields.iter() {
@@ -139,33 +142,33 @@ fn format_type(
                 "Boolean" => "boolean".to_string(),
                 other => {
                     // Check custom scalars
-                    options.scalars.get(other)
+                    options
+                        .scalars
+                        .get(other)
                         .cloned()
                         .unwrap_or_else(|| other.to_string())
                 }
             };
 
-            if options.use_null_for_optional {
+            if options.avoid_optionals {
                 format!("{ts_type} | null")
             } else {
                 format!("Maybe<{ts_type}>")
             }
         }
-        apollo_compiler::schema::Type::NonNullNamed(name) => {
-            match name.as_str() {
-                "String" | "ID" => "string".to_string(),
-                "Int" | "Float" => "number".to_string(),
-                "Boolean" => "boolean".to_string(),
-                other => {
-                    options.scalars.get(other)
-                        .cloned()
-                        .unwrap_or_else(|| other.to_string())
-                }
-            }
-        }
+        apollo_compiler::schema::Type::NonNullNamed(name) => match name.as_str() {
+            "String" | "ID" => "string".to_string(),
+            "Int" | "Float" => "number".to_string(),
+            "Boolean" => "boolean".to_string(),
+            other => options
+                .scalars
+                .get(other)
+                .cloned()
+                .unwrap_or_else(|| other.to_string()),
+        },
         apollo_compiler::schema::Type::List(inner) => {
             let inner_type = format_type(inner, options);
-            if options.use_null_for_optional {
+            if options.avoid_optionals {
                 format!("Array<{inner_type}> | null")
             } else {
                 format!("Maybe<Array<{inner_type}>>")
@@ -175,98 +178,5 @@ fn format_type(
             let inner_type = format_type(inner, options);
             format!("Array<{inner_type}>")
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::config::{PluginOptions, StringOrArray};
-    use crate::documents::CollectedDocuments;
-    use crate::schema::{load_schema, resolve_schema_paths};
-    use indexmap::IndexMap;
-    use std::path::PathBuf;
-
-    fn fixtures_dir() -> PathBuf {
-        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("fixtures")
-    }
-
-    fn empty_docs<'a>() -> CollectedDocuments<'a> {
-        CollectedDocuments {
-            operations: IndexMap::new(),
-            fragments: IndexMap::new(),
-            warnings: Vec::new(),
-        }
-    }
-
-    #[test]
-    fn test_generate_schema_types() {
-        let schema_sources = StringOrArray::Single("schemas/basic.graphql".into());
-        let schema = load_schema(&resolve_schema_paths(&schema_sources.as_vec(), Some(&fixtures_dir()))).unwrap();
-
-        let docs = empty_docs();
-        let ctx = super::super::GeneratorContext {
-            schema: &schema,
-            operations: &docs.operations,
-            fragments: &docs.fragments,
-            options: &PluginOptions::default(),
-        };
-
-        let mut output = Vec::new();
-        generate_typescript(&ctx, &mut output).unwrap();
-        let result = String::from_utf8(output).unwrap();
-
-        insta::assert_snapshot!(result);
-    }
-
-    #[test]
-    fn test_generate_schema_types_with_enums_as_const() {
-        let schema_sources = StringOrArray::Single("schemas/basic.graphql".into());
-        let schema = load_schema(&resolve_schema_paths(&schema_sources.as_vec(), Some(&fixtures_dir()))).unwrap();
-
-        let docs = empty_docs();
-        let options = PluginOptions {
-            enums_as_types: false,
-            ..Default::default()
-        };
-
-        let ctx = super::super::GeneratorContext {
-            schema: &schema,
-            operations: &docs.operations,
-            fragments: &docs.fragments,
-            options: &options,
-        };
-
-        let mut output = Vec::new();
-        generate_typescript(&ctx, &mut output).unwrap();
-        let result = String::from_utf8(output).unwrap();
-
-        insta::assert_snapshot!(result);
-    }
-
-    #[test]
-    fn test_generate_schema_types_immutable() {
-        let schema_sources = StringOrArray::Single("schemas/basic.graphql".into());
-        let schema = load_schema(&resolve_schema_paths(&schema_sources.as_vec(), Some(&fixtures_dir()))).unwrap();
-
-        let docs = empty_docs();
-        let options = PluginOptions {
-            immutable_types: true,
-            skip_typename: true,
-            ..Default::default()
-        };
-
-        let ctx = super::super::GeneratorContext {
-            schema: &schema,
-            operations: &docs.operations,
-            fragments: &docs.fragments,
-            options: &options,
-        };
-
-        let mut output = Vec::new();
-        generate_typescript(&ctx, &mut output).unwrap();
-        let result = String::from_utf8(output).unwrap();
-
-        insta::assert_snapshot!(result);
     }
 }

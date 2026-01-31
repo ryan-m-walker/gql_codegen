@@ -1,0 +1,32 @@
+---
+source: crates/gql_codegen_core/tests/generators/typescript_operations/mod.rs
+expression: output
+---
+export interface UserFields {
+  id: string;
+  name: string;
+  email?: string | null;
+}
+
+export interface PostFields {
+  id: string;
+  title: string;
+  body: string;
+}
+
+export interface GetUserWithFragments {
+  user?:  {
+    id: string;
+    name: string;
+    email?: string | null;
+    posts: Array< {
+      id: string;
+      title: string;
+      body: string;
+    }>;
+  };
+}
+
+export interface GetUserWithFragmentsVariables {
+  id: string;
+}

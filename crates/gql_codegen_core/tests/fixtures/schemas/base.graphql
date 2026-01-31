@@ -1,0 +1,4 @@
+# Minimal valid schema - extend this with type-specific fixtures
+type Query {
+  _empty: String
+}

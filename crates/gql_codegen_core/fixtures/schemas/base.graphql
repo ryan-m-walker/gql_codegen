@@ -1,9 +1,0 @@
-# Base schema - just the Query root
-type Query {
-  user(id: ID!): User
-  users: [User!]!
-}
-
-type Mutation {
-  createUser(input: CreateUserInput!): User!
-}

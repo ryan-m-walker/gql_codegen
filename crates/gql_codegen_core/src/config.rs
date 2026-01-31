@@ -1,7 +1,7 @@
 //! Configuration types matching the TypeScript interface.
 
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
 /// Main configuration - matches TypeScript `CodegenConfig`
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -94,34 +94,69 @@ impl PluginConfig {
 }
 
 /// Plugin options - shared config structure
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+/// Uses BTreeMap for scalars to enable Hash derivation (cache key generation)
+#[derive(Debug, Clone, Default, Hash, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PluginOptions {
     /// Custom scalar mappings
     #[serde(default)]
-    pub scalars: HashMap<String, String>,
+    pub scalars: BTreeMap<String, String>,
 
-    /// Add readonly modifier
+    /// Add readonly modifier to generated types
     #[serde(default)]
     pub immutable_types: bool,
 
-    /// Generate enums as string unions
+    /// Generate enums as TypeScript string union types (default: true)
     #[serde(default = "default_true")]
     pub enums_as_types: bool,
 
-    /// Add future-proof value to enums
+    /// Generate enums as `as const` objects (better tree-shaking)
+    #[serde(default)]
+    pub enums_as_const: bool,
+
+    /// Add future-proof "%future added value" to enums
     #[serde(default)]
     pub future_proof_enums: bool,
 
-    /// Skip __typename field
+    /// Add future-proof entry to union types
+    #[serde(default)]
+    pub future_proof_unions: bool,
+
+    /// Skip __typename field in generated types
     #[serde(default)]
     pub skip_typename: bool,
 
-    /// Use null instead of undefined for optional
+    /// Make __typename non-optional (always required)
     #[serde(default)]
-    pub use_null_for_optional: bool,
+    pub non_optional_typename: bool,
 
-    /// GraphQL tag style
+    /// Avoid using TypeScript optionals (?), use explicit null instead
+    /// Alias: useNullForOptional
+    #[serde(default, alias = "useNullForOptional")]
+    pub avoid_optionals: bool,
+
+    /// Customize the Maybe type (default: "T | null")
+    /// Examples: "T | null | undefined", "Maybe<T>"
+    #[serde(default)]
+    pub maybe_value: Option<String>,
+
+    /// Use `type` instead of `interface` for object types
+    #[serde(default)]
+    pub declaration_kind: Option<DeclarationKind>,
+
+    /// Prefix to add to all generated type names
+    #[serde(default)]
+    pub types_prefix: Option<String>,
+
+    /// Suffix to add to all generated type names
+    #[serde(default)]
+    pub types_suffix: Option<String>,
+
+    /// Use `import type` syntax for type imports
+    #[serde(default)]
+    pub use_type_imports: bool,
+
+    /// GraphQL tag style for document generator
     #[serde(default)]
     pub graphql_tag: Option<GraphqlTag>,
 
@@ -130,14 +165,21 @@ pub struct PluginOptions {
     pub formatting: Option<FormattingOptions>,
 
     /// Inline fragment spreads into document text (document generator)
-    /// Replaces `...FragmentName` with the fragment's actual fields
     #[serde(default)]
     pub inline_fragments: bool,
 
     /// Remove duplicate field selections (document generator)
-    /// e.g. `{ id id name }` becomes `{ id name }`
     #[serde(default)]
     pub dedupe_selections: bool,
+}
+
+/// Declaration kind for generated types
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum DeclarationKind {
+    #[default]
+    Interface,
+    Type,
 }
 
 fn default_true() -> bool {
@@ -154,7 +196,7 @@ pub enum GraphqlTag {
 }
 
 /// Formatting options for generated code
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FormattingOptions {
     #[serde(default = "default_indent_width")]

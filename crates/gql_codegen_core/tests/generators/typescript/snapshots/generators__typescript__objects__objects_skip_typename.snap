@@ -1,0 +1,25 @@
+---
+source: crates/gql_codegen_core/tests/generators/typescript/objects.rs
+expression: output
+---
+export type Maybe<T> = T | null;
+
+export interface Query {
+  _empty: Maybe<string>;
+  user: Maybe<User>;
+  post: Maybe<Post>;
+}
+
+export interface User {
+  id: string;
+  name: string;
+  email: Maybe<string>;
+  age: Maybe<number>;
+}
+
+export interface Post {
+  id: string;
+  title: string;
+  body: Maybe<string>;
+  published: boolean;
+}

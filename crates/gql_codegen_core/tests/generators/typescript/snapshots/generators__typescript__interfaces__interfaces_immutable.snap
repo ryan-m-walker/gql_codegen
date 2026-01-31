@@ -1,0 +1,27 @@
+---
+source: crates/gql_codegen_core/tests/generators/typescript/interfaces.rs
+expression: output
+---
+export type Maybe<T> = T | null;
+
+export interface Query {
+  readonly __typename: 'Query';
+  readonly _empty: Maybe<string>;
+  readonly node: Maybe<Node>;
+}
+
+export interface Node {
+  readonly id: string;
+}
+
+export interface Article {
+  readonly __typename: 'Article';
+  readonly id: string;
+  readonly title: string;
+}
+
+export interface Comment {
+  readonly __typename: 'Comment';
+  readonly id: string;
+  readonly text: string;
+}

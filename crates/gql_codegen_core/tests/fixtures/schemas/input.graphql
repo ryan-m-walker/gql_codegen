@@ -1,0 +1,15 @@
+# Input types for testing input object generation
+extend type Query {
+  search(filter: SearchFilter!): [String!]!
+}
+
+input SearchFilter {
+  query: String!
+  limit: Int
+  tags: [String!]
+}
+
+input PaginationInput {
+  page: Int!
+  perPage: Int
+}

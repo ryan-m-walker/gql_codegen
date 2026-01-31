@@ -2,8 +2,6 @@
 //!
 //! A fast, Rust-powered GraphQL code generator.
 
-mod logger;
-
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
@@ -16,44 +14,14 @@ use gql_codegen_core::{
     generate_cached, write_outputs,
 };
 
+mod args;
+mod logger;
+
+use crate::args::CliArgs;
 use crate::logger::{LogLevel, Logger};
 
-#[derive(Parser, Debug)]
-#[command(name = "sgc")]
-#[command(about = "Speedy GraphQL Codegen - A fast GraphQL code generator")]
-#[command(version)]
-struct Args {
-    /// Path to the config file (JSON)
-    #[arg(short, long, default_value = "codegen.json")]
-    config: PathBuf,
-
-    /// Check mode - validate without writing files
-    #[arg(long)]
-    check: bool,
-
-    /// Print generated output to stdout instead of writing files
-    #[arg(long)]
-    stdout: bool,
-
-    /// Disable caching (always regenerate)
-    #[arg(long)]
-    no_cache: bool,
-
-    /// Clear the cache directory and exit
-    #[arg(long)]
-    clean: bool,
-
-    /// Verbose output
-    #[arg(short, long)]
-    verbose: bool,
-
-    /// Suppress output (only show errors)
-    #[arg(short, long)]
-    quiet: bool,
-}
-
 fn main() -> ExitCode {
-    let args = Args::parse();
+    let args = CliArgs::parse();
 
     let log_level = if args.quiet {
         LogLevel::Quiet
@@ -79,7 +47,7 @@ fn main() -> ExitCode {
     }
 }
 
-fn run(args: &Args, logger: &Logger) -> Result<()> {
+fn run(args: &CliArgs, logger: &Logger) -> Result<()> {
     let config_content = fs::read_to_string(&args.config)
         .with_context(|| format!("Failed to read config: {}", args.config.display()))?;
 
@@ -104,7 +72,7 @@ fn run(args: &Args, logger: &Logger) -> Result<()> {
     };
 
     // Handle --clean flag
-    if args.clean {
+    if args.clean_cache {
         let did_clear = cache.clear().context("Failed to clear cache")?;
 
         if did_clear {
@@ -135,7 +103,6 @@ fn run(args: &Args, logger: &Logger) -> Result<()> {
                     let writer = FsWriter::new();
                     let result = write_outputs(&gen_result.files, &writer);
 
-                    // Log written files (only for fs writer)
                     for path in &result.written {
                         logger.file(&path.display().to_string());
                     }
@@ -143,7 +110,6 @@ fn run(args: &Args, logger: &Logger) -> Result<()> {
                     result
                 };
 
-                // Handle errors
                 if !write_result.is_success() {
                     let (path, err) = &write_result.errors[0];
                     anyhow::bail!("Failed to write {}: {}", path.display(), err);

@@ -1,0 +1,16 @@
+# Union types for testing union generation
+extend type Query {
+  search: [SearchResult!]!
+}
+
+union SearchResult = Book | Movie
+
+type Book {
+  isbn: String!
+  title: String!
+}
+
+type Movie {
+  imdbId: String!
+  title: String!
+}

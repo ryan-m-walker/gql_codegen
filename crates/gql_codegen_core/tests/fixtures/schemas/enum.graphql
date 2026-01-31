@@ -1,0 +1,17 @@
+# Enum types for testing enum generation options
+extend type Query {
+  status: Status
+  color: Color
+}
+
+enum Status {
+  ACTIVE
+  INACTIVE
+  PENDING
+}
+
+enum Color {
+  RED
+  GREEN
+  BLUE
+}

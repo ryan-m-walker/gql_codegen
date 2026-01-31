@@ -1,0 +1,18 @@
+# Interface types for testing interface generation
+extend type Query {
+  node: Node
+}
+
+interface Node {
+  id: ID!
+}
+
+type Article implements Node {
+  id: ID!
+  title: String!
+}
+
+type Comment implements Node {
+  id: ID!
+  text: String!
+}

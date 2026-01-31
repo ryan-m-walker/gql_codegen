@@ -1,0 +1,61 @@
+//! Tests for object type generation with different configuration options
+
+use gql_codegen_core::PluginOptions;
+
+use super::generate_with_options;
+
+#[test]
+fn test_objects_default() {
+    let output = generate_with_options(&["schemas/object.graphql"], PluginOptions::default());
+    insta::assert_snapshot!(output);
+}
+
+#[test]
+fn test_objects_immutable() {
+    let output = generate_with_options(
+        &["schemas/object.graphql"],
+        PluginOptions {
+            immutable_types: true,
+            ..Default::default()
+        },
+    );
+    insta::assert_snapshot!(output);
+}
+
+#[test]
+fn test_objects_skip_typename() {
+    let output = generate_with_options(
+        &["schemas/object.graphql"],
+        PluginOptions {
+            skip_typename: true,
+            ..Default::default()
+        },
+    );
+    insta::assert_snapshot!(output);
+}
+
+#[test]
+fn test_objects_avoid_optionals() {
+    let output = generate_with_options(
+        &["schemas/object.graphql"],
+        PluginOptions {
+            avoid_optionals: true,
+            ..Default::default()
+        },
+    );
+    insta::assert_snapshot!(output);
+}
+
+#[test]
+fn test_objects_all_options() {
+    let output = generate_with_options(
+        &["schemas/object.graphql"],
+        PluginOptions {
+            immutable_types: true,
+            skip_typename: true,
+            avoid_optionals: true,
+            ..Default::default()
+        },
+    );
+    insta::assert_snapshot!(output);
+}

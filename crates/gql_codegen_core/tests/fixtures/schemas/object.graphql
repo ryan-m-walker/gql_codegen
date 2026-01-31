@@ -1,0 +1,19 @@
+# Object types for testing object generation options
+extend type Query {
+  user: User
+  post: Post
+}
+
+type User {
+  id: ID!
+  name: String!
+  email: String
+  age: Int
+}
+
+type Post {
+  id: ID!
+  title: String!
+  body: String
+  published: Boolean!
+}

@@ -5,10 +5,10 @@
 
 use std::io::Write;
 
-use super::document_transform::{write_transformed_operation, TransformOptions};
 use super::GeneratorContext;
-use crate::config::GraphqlTag;
+use super::document_transform::{TransformOptions, write_transformed_operation};
 use crate::Result;
+use crate::config::GraphqlTag;
 
 /// Generate document constants
 pub fn generate_documents(ctx: &GeneratorContext, writer: &mut dyn Write) -> Result<()> {
@@ -46,7 +46,12 @@ pub fn generate_documents(ctx: &GeneratorContext, writer: &mut dyn Write) -> Res
             };
             // Stream transformed operation to a buffer, then write with indentation
             let mut buffer = Vec::new();
-            write_transformed_operation(&mut buffer, &operation.definition, ctx.fragments, &transform_opts)?;
+            write_transformed_operation(
+                &mut buffer,
+                &operation.definition,
+                ctx.fragments,
+                &transform_opts,
+            )?;
             let text = String::from_utf8(buffer).expect("transform output should be valid UTF-8");
             write_document(writer, name.as_str(), &text, options.graphql_tag)?;
         } else {
@@ -98,95 +103,4 @@ fn write_indented_graphql(writer: &mut dyn Write, text: &str) -> Result<()> {
         }
     }
     Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::config::{PluginOptions, StringOrArray};
-    use crate::documents::{collect_documents, load_sources, SourceCache};
-    use crate::extract::ExtractConfig;
-    use crate::schema::{load_schema, resolve_schema_paths};
-    use std::path::PathBuf;
-
-    fn fixtures_dir() -> PathBuf {
-        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("fixtures")
-    }
-
-    #[test]
-    fn test_generate_documents_plain() {
-        let schema_sources = StringOrArray::Single("schemas/basic.graphql".into());
-        let schema = load_schema(&resolve_schema_paths(&schema_sources.as_vec(), Some(&fixtures_dir()))).unwrap();
-
-        let mut cache = SourceCache::new();
-        let doc_patterns = StringOrArray::Single("documents/queries.graphql".into());
-        load_sources(&doc_patterns, Some(&fixtures_dir()), &mut cache).unwrap();
-        let docs = collect_documents(&cache, &ExtractConfig::default());
-
-        let ctx = super::super::GeneratorContext {
-            schema: &schema,
-            operations: &docs.operations,
-            fragments: &docs.fragments,
-            options: &PluginOptions::default(),
-        };
-
-        let mut output = Vec::new();
-        generate_documents(&ctx, &mut output).unwrap();
-        let result = String::from_utf8(output).unwrap();
-
-        insta::assert_snapshot!(result);
-    }
-
-    #[test]
-    fn test_generate_documents_with_gql_tag() {
-        let schema_sources = StringOrArray::Single("schemas/basic.graphql".into());
-        let schema = load_schema(&resolve_schema_paths(&schema_sources.as_vec(), Some(&fixtures_dir()))).unwrap();
-
-        let mut cache = SourceCache::new();
-        let doc_patterns = StringOrArray::Single("documents/queries.graphql".into());
-        load_sources(&doc_patterns, Some(&fixtures_dir()), &mut cache).unwrap();
-        let docs = collect_documents(&cache, &ExtractConfig::default());
-
-        let options = PluginOptions {
-            graphql_tag: Some(GraphqlTag::Gql),
-            ..Default::default()
-        };
-
-        let ctx = super::super::GeneratorContext {
-            schema: &schema,
-            operations: &docs.operations,
-            fragments: &docs.fragments,
-            options: &options,
-        };
-
-        let mut output = Vec::new();
-        generate_documents(&ctx, &mut output).unwrap();
-        let result = String::from_utf8(output).unwrap();
-
-        insta::assert_snapshot!(result);
-    }
-
-    #[test]
-    fn test_generate_documents_with_fragments() {
-        let schema_sources = StringOrArray::Single("schemas/basic.graphql".into());
-        let schema = load_schema(&resolve_schema_paths(&schema_sources.as_vec(), Some(&fixtures_dir()))).unwrap();
-
-        let mut cache = SourceCache::new();
-        let doc_patterns = StringOrArray::Single("documents/fragments.graphql".into());
-        load_sources(&doc_patterns, Some(&fixtures_dir()), &mut cache).unwrap();
-        let docs = collect_documents(&cache, &ExtractConfig::default());
-
-        let ctx = super::super::GeneratorContext {
-            schema: &schema,
-            operations: &docs.operations,
-            fragments: &docs.fragments,
-            options: &PluginOptions::default(),
-        };
-
-        let mut output = Vec::new();
-        generate_documents(&ctx, &mut output).unwrap();
-        let result = String::from_utf8(output).unwrap();
-
-        insta::assert_snapshot!(result);
-    }
 }

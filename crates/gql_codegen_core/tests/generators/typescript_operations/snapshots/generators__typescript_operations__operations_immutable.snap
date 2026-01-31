@@ -1,0 +1,33 @@
+---
+source: crates/gql_codegen_core/tests/generators/typescript_operations/mod.rs
+expression: output
+---
+export interface GetUser {
+  readonly user?:  {
+    readonly id: string;
+    readonly name: string;
+    readonly email?: string | null;
+  };
+}
+
+export interface GetUserVariables {
+  readonly id: string;
+}
+
+export interface GetUsers {
+  readonly users: Array< {
+    readonly id: string;
+    readonly name: string;
+  }>;
+}
+
+export interface CreateUser {
+  readonly createUser:  {
+    readonly id: string;
+    readonly name: string;
+  };
+}
+
+export interface CreateUserVariables {
+  readonly input: CreateUserInput;
+}

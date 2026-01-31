@@ -14,12 +14,12 @@ use apollo_compiler::validation::Valid;
 use crate::cache::{Cache, MetadataCheckResult, compute_hashes_from_cache};
 use crate::config::{OutputConfig, PluginOptions};
 use crate::documents::{
-    CollectedDocuments, SourceCache, collect_documents, expand_document_globs, load_sources,
-    load_sources_from_paths,
+    CollectedDocuments, collect_documents, expand_document_globs, load_sources_from_paths,
 };
 use crate::extract::ExtractConfig;
 use crate::generators::{GeneratorContext, run_generator};
 use crate::schema::{load_schema, load_schema_from_contents, resolve_schema_paths};
+use crate::source_cache::SourceCache;
 use crate::{CodegenConfig, Result};
 
 /// Result of code generation
@@ -75,7 +75,7 @@ pub struct GenerateInput<'a> {
 /// ```
 pub fn generate_from_input(input: &GenerateInput) -> Result<GenerateResult> {
     let mut result = GenerateResult {
-        files: Vec::new(),
+        files: Vec::with_capacity(input.generates.len()),
         warnings: input.documents.warnings.clone(),
     };
 
@@ -89,10 +89,8 @@ pub fn generate_from_input(input: &GenerateInput) -> Result<GenerateResult> {
             content.push('\n');
         }
 
-        // Get merged options (output-level + plugin-level)
         let base_options = output_config.config.clone().unwrap_or_default();
 
-        // Run each plugin
         for plugin in &output_config.plugins {
             let plugin_name = plugin.name();
             let options = merge_options(&base_options, plugin.options());
@@ -106,6 +104,7 @@ pub fn generate_from_input(input: &GenerateInput) -> Result<GenerateResult> {
 
             let mut buffer = Vec::new();
             run_generator(plugin_name, &ctx, &mut buffer)?;
+
             // Safe: our generators only output valid UTF-8
             content.push_str(
                 &String::from_utf8(buffer).expect("generator output should be valid UTF-8"),
@@ -136,22 +135,18 @@ pub fn generate(config: &CodegenConfig) -> Result<GenerateResult> {
         .map(|s| PathBuf::from(s.as_str()))
         .unwrap_or_else(|| PathBuf::from("."));
 
-    // Resolve and load schema
     let schema_paths = resolve_schema_paths(&config.schema.as_vec(), Some(&base_dir));
     let schema = load_schema(&schema_paths)?;
 
-    // Load all source files into cache
-    let mut source_cache = SourceCache::new();
-    load_sources(&config.documents, Some(&base_dir), &mut source_cache)?;
+    let document_paths = expand_document_globs(&config.documents, &base_dir)?;
+    let mut source_cache = SourceCache::with_capacity(document_paths.len());
+    load_sources_from_paths(&document_paths, &mut source_cache)?;
 
-    // Extract config from first output's config (or use defaults)
     // TODO: Make this configurable per-output
     let extract_config = ExtractConfig::default();
 
-    // Collect all operations and fragments
     let documents = collect_documents(&source_cache, &extract_config);
 
-    // Use the pure generation function
     let input = GenerateInput {
         schema: &schema,
         documents: &documents,
@@ -188,8 +183,8 @@ fn merge_options(base: &PluginOptions, plugin: Option<&PluginOptions>) -> Plugin
                 merged.skip_typename = true;
             }
 
-            if p.use_null_for_optional {
-                merged.use_null_for_optional = true;
+            if p.avoid_optionals {
+                merged.avoid_optionals = true;
             }
 
             if p.graphql_tag.is_some() {
@@ -260,7 +255,7 @@ pub fn generate_cached(
         .collect();
 
     let schema = load_schema_from_contents(&schema_files)?;
-    let mut source_cache = SourceCache::new();
+    let mut source_cache = SourceCache::with_capacity(document_paths.len());
     load_sources_from_paths(&document_paths, &mut source_cache)?;
 
     // Phase 2: Compute hashes from loaded content
@@ -281,6 +276,7 @@ pub fn generate_cached(
         documents: &documents,
         generates: &config.generates,
     };
+
     let result = generate_from_input(&input)?;
 
     // Store cache after successful generation

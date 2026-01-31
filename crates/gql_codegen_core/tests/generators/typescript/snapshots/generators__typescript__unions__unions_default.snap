@@ -1,0 +1,25 @@
+---
+source: crates/gql_codegen_core/tests/generators/typescript/unions.rs
+expression: output
+---
+export type Maybe<T> = T | null;
+
+export interface Query {
+  __typename: 'Query';
+  _empty: Maybe<string>;
+  search: Array<SearchResult>;
+}
+
+export type SearchResult = Book | Movie;
+
+export interface Book {
+  __typename: 'Book';
+  isbn: string;
+  title: string;
+}
+
+export interface Movie {
+  __typename: 'Movie';
+  imdbId: string;
+  title: string;
+}

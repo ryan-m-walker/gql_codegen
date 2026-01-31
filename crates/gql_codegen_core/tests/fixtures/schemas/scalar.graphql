@@ -1,0 +1,10 @@
+# Custom scalars for testing scalar mapping
+extend type Query {
+  createdAt: DateTime
+  amount: Money
+  data: JSON
+}
+
+scalar DateTime
+scalar Money
+scalar JSON

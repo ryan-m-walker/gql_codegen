@@ -1,0 +1,20 @@
+---
+source: crates/gql_codegen_core/tests/generators/typescript/inputs.rs
+expression: output
+---
+export interface Query {
+  __typename: 'Query';
+  _empty: string | null;
+  search: Array<string>;
+}
+
+export interface SearchFilter {
+  query: string;
+  limit?: number | null;
+  tags?: Array<string> | null;
+}
+
+export interface PaginationInput {
+  page: number;
+  perPage?: number | null;
+}

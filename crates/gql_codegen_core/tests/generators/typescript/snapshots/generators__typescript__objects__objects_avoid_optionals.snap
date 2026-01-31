@@ -1,0 +1,26 @@
+---
+source: crates/gql_codegen_core/tests/generators/typescript/objects.rs
+expression: output
+---
+export interface Query {
+  __typename: 'Query';
+  _empty: string | null;
+  user: User | null;
+  post: Post | null;
+}
+
+export interface User {
+  __typename: 'User';
+  id: string;
+  name: string;
+  email: string | null;
+  age: number | null;
+}
+
+export interface Post {
+  __typename: 'Post';
+  id: string;
+  title: string;
+  body: string | null;
+  published: boolean;
+}

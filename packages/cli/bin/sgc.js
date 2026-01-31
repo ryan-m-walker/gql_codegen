@@ -22,7 +22,7 @@ const knownOptions = {
   watch: { type: 'boolean', short: 'w' },
   check: { type: 'boolean' },
   stdout: { type: 'boolean' },
-  clean: { type: 'boolean' },
+  'clean-cache': { type: 'boolean' },
   'no-cache': { type: 'boolean' },
   verbose: { type: 'boolean', short: 'v' },
   quiet: { type: 'boolean', short: 'q' },
@@ -69,7 +69,7 @@ Options:
   -w, --watch          Watch mode - regenerate on file changes
       --check          Check mode - validate without writing files
       --stdout         Print generated output to stdout instead of writing
-      --clean          Clear the cache directory and exit
+      --clean-cache    Clear the cache directory and exit
       --no-cache       Disable caching (always regenerate)
   -v, --verbose        Verbose output
   -q, --quiet          Suppress output (only show errors)
@@ -127,7 +127,7 @@ Examples:
     const binaryArgs = [];
     if (args.check) binaryArgs.push('--check');
     if (args.stdout) binaryArgs.push('--stdout');
-    if (args.clean) binaryArgs.push('--clean');
+    if (args.clean) binaryArgs.push('--clean-cache');
     if (args['no-cache']) binaryArgs.push('--no-cache');
     if (args.verbose) binaryArgs.push('--verbose');
     if (args.quiet) binaryArgs.push('--quiet');

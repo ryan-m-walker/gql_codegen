@@ -90,7 +90,7 @@ export interface CliFlags {
   /** Disable caching (always regenerate) */
   noCache?: boolean;
   /** Clear the cache directory and exit */
-  clean?: boolean;
+  cleanCache?: boolean;
   /** Verbose output */
   verbose?: boolean;
   /** Suppress output (only show errors) */
@@ -124,7 +124,7 @@ function flagsToArgs(flags: CliFlags): string[] {
   if (flags.check) args.push('--check');
   if (flags.stdout) args.push('--stdout');
   if (flags.noCache) args.push('--no-cache');
-  if (flags.clean) args.push('--clean');
+  if (flags.cleanCache) args.push('--clean-cache');
   if (flags.verbose) args.push('--verbose');
   if (flags.quiet) args.push('--quiet');
   return args;

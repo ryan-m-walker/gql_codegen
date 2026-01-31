@@ -10,7 +10,7 @@ use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::config::CodegenConfig;
-use crate::documents::SourceCache;
+use crate::source_cache::SourceCache;
 
 /// File metadata for fast change detection (no content read needed)
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -165,28 +165,8 @@ pub fn hash_config_options(config: &CodegenConfig) -> u64 {
 }
 
 fn hash_plugin_options(opts: &crate::config::PluginOptions, hasher: &mut DefaultHasher) {
-    let mut scalars: Vec<_> = opts.scalars.iter().collect();
-    scalars.sort_by_key(|(k, _)| *k);
-    for (k, v) in scalars {
-        k.hash(hasher);
-        v.hash(hasher);
-    }
-
-    opts.immutable_types.hash(hasher);
-    opts.enums_as_types.hash(hasher);
-    opts.future_proof_enums.hash(hasher);
-    opts.skip_typename.hash(hasher);
-    opts.use_null_for_optional.hash(hasher);
-    opts.graphql_tag.hash(hasher);
-    opts.inline_fragments.hash(hasher);
-    opts.dedupe_selections.hash(hasher);
-
-    if let Some(fmt) = &opts.formatting {
-        fmt.indent_width.hash(hasher);
-        fmt.use_tabs.hash(hasher);
-        fmt.single_quote.hash(hasher);
-        fmt.semicolons.hash(hasher);
-    }
+    // PluginOptions derives Hash with BTreeMap for deterministic ordering
+    opts.hash(hasher);
 }
 
 fn hash_bytes(bytes: &[u8]) -> u64 {

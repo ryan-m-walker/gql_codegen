@@ -1,0 +1,30 @@
+---
+source: crates/gql_codegen_core/tests/generators/documents/mod.rs
+expression: output
+---
+export const UserFieldsDocument = `
+  fragment UserFields on User {
+    id
+    name
+    email
+  }
+`;
+
+export const PostFieldsDocument = `
+  fragment PostFields on Post {
+    id
+    title
+    body
+  }
+`;
+
+export const GetUserWithFragmentsDocument = `
+  query GetUserWithFragments($id: ID!) {
+    user(id: $id) {
+      ...UserFields
+      posts {
+        ...PostFields
+      }
+    }
+  }
+`;

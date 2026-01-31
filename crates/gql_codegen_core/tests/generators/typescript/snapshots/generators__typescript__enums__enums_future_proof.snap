@@ -1,0 +1,16 @@
+---
+source: crates/gql_codegen_core/tests/generators/typescript/enums.rs
+expression: output
+---
+export type Maybe<T> = T | null;
+
+export interface Query {
+  __typename: 'Query';
+  _empty: Maybe<string>;
+  status: Maybe<Status>;
+  color: Maybe<Color>;
+}
+
+export type Status = 'ACTIVE' | 'INACTIVE' | 'PENDING' | '%future added value';
+
+export type Color = 'RED' | 'GREEN' | 'BLUE' | '%future added value';
