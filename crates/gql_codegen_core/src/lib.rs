@@ -21,6 +21,7 @@
 //! ```
 
 pub mod cache;
+mod casing;
 mod codegen;
 mod config;
 mod documents;
@@ -38,8 +39,8 @@ pub use codegen::{
     generate_from_input,
 };
 pub use config::{
-    CodegenConfig, FormattingOptions, GraphqlTag, OutputConfig, PluginConfig, PluginOptions,
-    StringOrArray,
+    CodegenConfig, DeclarationKind, FormattingOptions, GraphqlTag, NamingCase, NamingConvention,
+    NamingConventionConfig, OutputConfig, PluginConfig, PluginOptions, StringOrArray,
 };
 pub use error::{Error, Result};
 

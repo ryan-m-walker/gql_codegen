@@ -3,6 +3,9 @@
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap};
 
+// Re-export casing types for convenience
+pub use crate::casing::{NamingCase, NamingConvention, NamingConventionConfig};
+
 /// Main configuration - matches TypeScript `CodegenConfig`
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -98,9 +101,19 @@ impl PluginConfig {
 #[derive(Debug, Clone, Default, Hash, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PluginOptions {
-    /// Custom scalar mappings
+    /// Custom scalar mappings (GraphQL scalar name -> TypeScript type)
     #[serde(default)]
     pub scalars: BTreeMap<String, String>,
+
+    /// Error if a custom scalar is found without a mapping in `scalars`
+    /// Helps catch missing scalar configurations early
+    #[serde(default)]
+    pub strict_scalars: bool,
+
+    /// Default type to use for unknown scalars (default: "unknown")
+    /// Common values: "unknown", "any", "string"
+    #[serde(default)]
+    pub default_scalar_type: Option<String>,
 
     /// Add readonly modifier to generated types
     #[serde(default)]
@@ -140,6 +153,11 @@ pub struct PluginOptions {
     #[serde(default)]
     pub maybe_value: Option<String>,
 
+    /// Separate Maybe type for input fields/arguments (default: uses maybe_value)
+    /// Useful for differentiating input vs output nullability handling
+    #[serde(default)]
+    pub input_maybe_value: Option<String>,
+
     /// Use `type` instead of `interface` for object types
     #[serde(default)]
     pub declaration_kind: Option<DeclarationKind>,
@@ -171,6 +189,11 @@ pub struct PluginOptions {
     /// Remove duplicate field selections (document generator)
     #[serde(default)]
     pub dedupe_selections: bool,
+
+    /// Naming convention for generated types
+    /// Can be a string ("keep", "pascalCase", etc.) or object with typeNames/enumValues
+    #[serde(default)]
+    pub naming_convention: Option<NamingConvention>,
 }
 
 /// Declaration kind for generated types

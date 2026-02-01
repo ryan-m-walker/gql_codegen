@@ -33,3 +33,43 @@ fn test_inputs_avoid_optionals() {
     );
     insta::assert_snapshot!(output);
 }
+
+#[test]
+fn test_inputs_maybe_value() {
+    // maybe_value affects both input and output types when input_maybe_value is not set
+    let output = generate_with_options(
+        &["schemas/input.graphql"],
+        PluginOptions {
+            maybe_value: Some("T | null | undefined".to_string()),
+            ..Default::default()
+        },
+    );
+    insta::assert_snapshot!(output);
+}
+
+#[test]
+fn test_inputs_input_maybe_value() {
+    // input_maybe_value provides separate nullability handling for input fields
+    let output = generate_with_options(
+        &["schemas/input.graphql"],
+        PluginOptions {
+            input_maybe_value: Some("InputMaybe<T>".to_string()),
+            ..Default::default()
+        },
+    );
+    insta::assert_snapshot!(output);
+}
+
+#[test]
+fn test_inputs_separate_maybe_types() {
+    // When both are set, input_maybe_value is used for inputs, maybe_value for outputs
+    let output = generate_with_options(
+        &["schemas/input.graphql"],
+        PluginOptions {
+            maybe_value: Some("Maybe<T>".to_string()),
+            input_maybe_value: Some("InputMaybe<T>".to_string()),
+            ..Default::default()
+        },
+    );
+    insta::assert_snapshot!(output);
+}

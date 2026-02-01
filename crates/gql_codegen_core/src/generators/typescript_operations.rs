@@ -139,7 +139,7 @@ impl<'a> OperationTypesGenerator<'a> {
 
                     // If field has nested selection, render inline object type
                     if !field.selection_set.is_empty() {
-                        let inner_type_name = self.unwrap_type_name(&field_def.ty);
+                        let inner_type_name = Self::unwrap_type_name(&field_def.ty);
 
                         // Determine wrapper based on type
                         let (open, close) = self.get_type_wrappers(&field_def.ty);
@@ -221,10 +221,13 @@ impl<'a> OperationTypesGenerator<'a> {
     }
 
     /// Get the innermost type name (unwrap NonNull and List)
-    fn unwrap_type_name(&self, ty: &Type) -> Name {
-        match ty {
-            Type::Named(name) | Type::NonNullNamed(name) => name.clone(),
-            Type::List(inner) | Type::NonNullList(inner) => self.unwrap_type_name(inner),
+    fn unwrap_type_name(ty: &Type) -> Name {
+        let mut current = ty;
+        loop {
+            match current {
+                Type::Named(name) | Type::NonNullNamed(name) => return name.clone(),
+                Type::List(inner) | Type::NonNullList(inner) => current = inner,
+            }
         }
     }
 

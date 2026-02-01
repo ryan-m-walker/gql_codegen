@@ -28,6 +28,9 @@ pub enum Error {
     #[error("Unknown plugin: '{0}'")]
     UnknownPlugin(String),
 
+    #[error("Configuration error: {0}")]
+    Config(String),
+
     #[error("Generation error: {0}")]
     Generation(String),
 

@@ -1,0 +1,25 @@
+# Types with various naming styles for testing naming convention
+extend type Query {
+  userProfile: UserProfile
+  httpStatus: HTTP_STATUS
+}
+
+type UserProfile {
+  firstName: String!
+  lastName: String!
+}
+
+type HTTP_STATUS {
+  statusCode: Int!
+}
+
+enum user_role {
+  ADMIN_USER
+  regular_user
+  GuestUser
+}
+
+input CreateUserInput {
+  user_name: String!
+  email_address: String!
+}
