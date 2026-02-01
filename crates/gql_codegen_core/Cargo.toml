@@ -16,6 +16,7 @@ serde.workspace = true
 serde_json.workspace = true
 
 # File handling
+glob.workspace = true
 globset.workspace = true
 walkdir.workspace = true
 

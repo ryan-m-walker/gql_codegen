@@ -26,6 +26,7 @@ const knownOptions = {
   'no-cache': { type: 'boolean' },
   verbose: { type: 'boolean', short: 'v' },
   quiet: { type: 'boolean', short: 'q' },
+  timing: { type: 'boolean', short: 't' },
   help: { type: 'boolean', short: 'h' },
   version: { type: 'boolean', short: 'V' },
 };
@@ -73,6 +74,7 @@ Options:
       --no-cache       Disable caching (always regenerate)
   -v, --verbose        Verbose output
   -q, --quiet          Suppress output (only show errors)
+  -t, --timing         Show timing information for performance debugging
   -h, --help           Show this help message
   -V, --version        Show version
 
@@ -104,8 +106,18 @@ Examples:
   }
 
   try {
+    const totalStart = performance.now();
+    const timing = (label, ms, extra = '') => {
+      if (args.timing) {
+        const extraStr = extra ? ` (${extra})` : '';
+        console.error(`[timing] ${label}: ${ms.toFixed(1)}ms${extraStr}`);
+      }
+    };
+
     // Load config
+    let t0 = performance.now();
     const { config, configPath } = await loadConfig(args.config);
+    timing('Config load', performance.now() - t0);
 
     // Check if config is already JSON - we can pass it directly
     const isJsonConfig = configPath.endsWith('.json');
@@ -116,11 +128,13 @@ Examples:
     if (!isJsonConfig) {
       // Write temp JSON config for the Rust binary
       // Resolve all relative paths to absolute so they work from any directory
+      t0 = performance.now();
       const resolvedConfig = resolveConfigPaths(config, dirname(configPath));
       const tempDir = mkdtempSync(join(tmpdir(), 'sgc-'));
       tempConfigPath = join(tempDir, 'config.json');
       writeFileSync(tempConfigPath, configToJson(resolvedConfig));
       finalConfigPath = tempConfigPath;
+      timing('Config resolve + write', performance.now() - t0);
     }
 
     // Build args for the binary
@@ -131,13 +145,17 @@ Examples:
     if (args['no-cache']) binaryArgs.push('--no-cache');
     if (args.verbose) binaryArgs.push('--verbose');
     if (args.quiet) binaryArgs.push('--quiet');
+    if (args.timing) binaryArgs.push('--timing');
 
     // Run the binary
+    t0 = performance.now();
     const result = await runBinary({
       configPath: finalConfigPath,
       args: binaryArgs,
       stdio: 'inherit',
     });
+    timing('Binary execution', performance.now() - t0);
+    timing('Total (Node)', performance.now() - totalStart);
 
     // Cleanup temp file
     if (tempConfigPath) {

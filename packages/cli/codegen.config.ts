@@ -1,11 +1,22 @@
 import { defineConfig } from './src/types';
 
 const config = defineConfig({
-  schema: '../../crates/gql_codegen_cli/fixtures/schemas/schema.graphql',
-  documents: ['../../crates/gql_codegen_cli/fixtures/documents/*.graphql'],
+  // schema: '../../crates/gql_codegen_cli/fixtures/schemas/schema.graphql',
+  // documents: ['../../crates/gql_codegen_cli/fixtures/documents/*.graphql'],
+
+  schema: '../../../../../lindy/apps/web/src/schema.graphql',
+  documents: [
+    '../../../../../../ryan/lindy/apps/web/src/**/*.tsx',
+  ],
   generates: {
     './__generated__/types.ts': {
-      plugins: ['typescript', 'typescript-operations'],
+            config: {
+                graphqlTag: 'graphql',
+            },
+      plugins: [
+        'typescript',
+        'typescript-operations'
+      ],
     },
   },
 });

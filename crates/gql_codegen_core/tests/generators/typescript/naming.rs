@@ -89,3 +89,40 @@ fn test_naming_transform_underscore() {
     );
     insta::assert_snapshot!(output);
 }
+
+#[test]
+fn test_enum_prefix() {
+    let output = generate_with_options(
+        &["schemas/naming.graphql"],
+        PluginOptions {
+            enum_prefix: Some("E".to_string()),
+            ..Default::default()
+        },
+    );
+    insta::assert_snapshot!(output);
+}
+
+#[test]
+fn test_enum_suffix() {
+    let output = generate_with_options(
+        &["schemas/naming.graphql"],
+        PluginOptions {
+            enum_suffix: Some("Enum".to_string()),
+            ..Default::default()
+        },
+    );
+    insta::assert_snapshot!(output);
+}
+
+#[test]
+fn test_enum_prefix_and_suffix() {
+    let output = generate_with_options(
+        &["schemas/naming.graphql"],
+        PluginOptions {
+            enum_prefix: Some("E".to_string()),
+            enum_suffix: Some("Type".to_string()),
+            ..Default::default()
+        },
+    );
+    insta::assert_snapshot!(output);
+}

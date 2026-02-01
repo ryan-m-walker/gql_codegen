@@ -59,3 +59,28 @@ fn test_objects_all_options() {
     );
     insta::assert_snapshot!(output);
 }
+
+#[test]
+fn test_no_export() {
+    let output = generate_with_options(
+        &["schemas/object.graphql"],
+        PluginOptions {
+            no_export: true,
+            ..Default::default()
+        },
+    );
+    insta::assert_snapshot!(output);
+}
+
+#[test]
+fn test_only_operation_types_no_ops() {
+    // With no operations, only_operation_types should generate nothing (except Maybe)
+    let output = generate_with_options(
+        &["schemas/object.graphql"],
+        PluginOptions {
+            only_operation_types: true,
+            ..Default::default()
+        },
+    );
+    insta::assert_snapshot!(output);
+}

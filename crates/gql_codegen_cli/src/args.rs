@@ -33,4 +33,8 @@ pub(crate) struct CliArgs {
     /// Suppress output (only show errors)
     #[arg(short, long)]
     pub quiet: bool,
+
+    /// Show timing information for performance debugging
+    #[arg(long)]
+    pub timing: bool,
 }

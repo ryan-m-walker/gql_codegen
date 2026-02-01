@@ -7,7 +7,6 @@ use apollo_compiler::ast::Definition;
 use globset::{Glob, GlobSetBuilder};
 use indexmap::IndexMap;
 use rayon::prelude::*;
-use walkdir::WalkDir;
 
 use crate::config::StringOrArray;
 use crate::error::{Error, Result};
@@ -107,47 +106,37 @@ pub fn load_sources_from_paths(paths: &[PathBuf], cache: &mut SourceCache) -> Re
 
 /// Expand glob patterns to matching file paths
 ///
+/// Handles both relative patterns (resolved against base_dir) and absolute patterns.
 /// Supports negation patterns with `!` prefix:
 /// ```ignore
 /// ["src/**/*.tsx", "!src/__generated__/**", "!**/*.test.tsx"]
 /// ```
 pub fn expand_document_globs(patterns: &StringOrArray, base_dir: &Path) -> Result<Vec<PathBuf>> {
+    use std::collections::HashSet;
+
     let pattern_strs = patterns.as_vec();
 
-    let mut has_includes = false;
-    let mut include_builder = GlobSetBuilder::new();
-
-    let mut has_excludes = false;
+    let mut include_patterns = Vec::new();
     let mut exclude_builder = GlobSetBuilder::new();
+    let mut has_excludes = false;
 
     for pattern in &pattern_strs {
         if let Some(negated) = pattern.strip_prefix('!') {
+            // Build exclude set for filtering later
             let glob = Glob::new(negated).map_err(|e| Error::InvalidGlob {
                 pattern: pattern.to_string(),
                 message: e.to_string(),
             })?;
-
             exclude_builder.add(glob);
             has_excludes = true;
         } else {
-            let glob = Glob::new(pattern).map_err(|e| Error::InvalidGlob {
-                pattern: pattern.to_string(),
-                message: e.to_string(),
-            })?;
-
-            include_builder.add(glob);
-            has_includes = true;
+            include_patterns.push(*pattern);
         }
     }
 
-    if !has_includes {
+    if include_patterns.is_empty() {
         return Ok(Vec::new());
     }
-
-    let include_set = include_builder.build().map_err(|e| Error::InvalidGlob {
-        pattern: pattern_strs.join(", "),
-        message: e.to_string(),
-    })?;
 
     let exclude_set = if has_excludes {
         Some(exclude_builder.build().map_err(|e| Error::InvalidGlob {
@@ -158,42 +147,52 @@ pub fn expand_document_globs(patterns: &StringOrArray, base_dir: &Path) -> Resul
         None
     };
 
-    // Walk directory, skipping excluded directories early
-    let paths: Vec<PathBuf> = WalkDir::new(base_dir)
-        .into_iter()
-        .filter_entry(|e| {
-            // Always skip common ignored dirs
-            if is_ignored(e) {
-                return false;
-            }
+    // Use glob crate which handles extracting walk root from patterns
+    let mut all_paths = HashSet::new();
 
-            // Skip excluded directories early (avoid walking into them)
-            if let Some(ref excludes) = exclude_set {
-                if e.file_type().is_dir() {
-                    let relative = e.path().strip_prefix(base_dir).unwrap_or(e.path());
-                    if excludes.is_match(relative) {
-                        return false;
+    for pattern in include_patterns {
+        // If pattern is relative, join with base_dir
+        let full_pattern = if Path::new(pattern).is_absolute() {
+            pattern.to_string()
+        } else {
+            base_dir.join(pattern).to_string_lossy().to_string()
+        };
+
+        let glob_paths = glob::glob(&full_pattern).map_err(|e| Error::InvalidGlob {
+            pattern: pattern.to_string(),
+            message: e.to_string(),
+        })?;
+
+        for entry in glob_paths {
+            match entry {
+                Ok(path) => {
+                    // Skip ignored directories
+                    if path.components().any(|c| {
+                        matches!(
+                            c.as_os_str().to_str(),
+                            Some("node_modules" | ".git" | "target" | "__generated__")
+                        )
+                    }) {
+                        continue;
+                    }
+
+                    // Apply exclude patterns
+                    if let Some(ref excludes) = exclude_set {
+                        if excludes.is_match(&path) {
+                            continue;
+                        }
+                    }
+
+                    if path.is_file() {
+                        all_paths.insert(path);
                     }
                 }
+                Err(_) => continue, // Skip unreadable paths
             }
-            true
-        })
-        .filter_map(|e| e.ok())
-        .filter(|e| e.file_type().is_file())
-        .filter(|e| {
-            let relative = e.path().strip_prefix(base_dir).unwrap_or(e.path());
+        }
+    }
 
-            // Must match includes, must not match excludes
-            include_set.is_match(relative)
-                && exclude_set
-                    .as_ref()
-                    .map(|ex| !ex.is_match(relative))
-                    .unwrap_or(true)
-        })
-        .map(|e| e.path().to_path_buf())
-        .collect();
-
-    Ok(paths)
+    Ok(all_paths.into_iter().collect())
 }
 
 /// Intermediate result from parallel extraction
@@ -374,15 +373,6 @@ fn extract_definition_text(
         }
         None => full_text,
     }
-}
-
-/// Check if a directory entry should be skipped
-fn is_ignored(entry: &walkdir::DirEntry) -> bool {
-    entry
-        .file_name()
-        .to_str()
-        .map(|s| s.starts_with('.') || s == "node_modules" || s == "target")
-        .unwrap_or(false)
 }
 
 #[cfg(test)]

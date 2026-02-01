@@ -3,6 +3,8 @@
 //! Provides types and functions for transforming GraphQL type names
 //! to different casing styles (PascalCase, camelCase, CONSTANT_CASE, etc.).
 
+use std::borrow::Cow;
+
 use serde::{Deserialize, Serialize};
 
 /// Naming convention configuration
@@ -34,9 +36,8 @@ pub struct NamingConventionConfig {
     #[serde(default)]
     pub enum_values: Option<NamingCase>,
 
-    /// Transform underscores in names (default: false)
     /// When true, underscores are removed and treated as word boundaries
-    /// When false, underscores are preserved in output but still used for casing
+    /// When false (default), underscores are preserved in output
     #[serde(default)]
     pub transform_underscore: bool,
 }
@@ -70,143 +71,130 @@ impl Default for NamingCase {
 }
 
 impl NamingCase {
-    /// Apply this naming case transformation to a string
-    pub fn apply(&self, s: &str, transform_underscore: bool) -> String {
+    /// Apply this naming case transformation to a string.
+    pub fn apply<'a>(&self, s: &'a str, transform_underscore: bool) -> Cow<'a, str> {
         match self {
-            Self::Keep => s.to_string(),
-            Self::PascalCase => to_pascal_case(s, transform_underscore),
-            Self::CamelCase => to_camel_case(s, transform_underscore),
-            Self::ConstantCase => to_constant_case(s, transform_underscore),
-            Self::SnakeCase => to_snake_case(s, transform_underscore),
-            Self::Lowercase => s.to_lowercase(),
-            Self::Uppercase => s.to_uppercase(),
+            Self::Keep => Cow::Borrowed(s),
+            Self::PascalCase => Cow::Owned(to_pascal_case(s, transform_underscore)),
+            Self::CamelCase => Cow::Owned(to_camel_case(s, transform_underscore)),
+            Self::ConstantCase => Cow::Owned(to_constant_case(s)),
+            Self::SnakeCase => Cow::Owned(to_snake_case(s)),
+            Self::Lowercase => Cow::Owned(s.to_lowercase()),
+            Self::Uppercase => Cow::Owned(s.to_uppercase()),
         }
     }
 }
 
-/// A word segment with information about whether it was preceded by an underscore
-struct WordSegment {
-    word: String,
+/// A word segment with info about whether it was preceded by an underscore
+struct Word {
+    text: String,
     preceded_by_underscore: bool,
 }
 
-/// Convert string to PascalCase
-/// When transform_underscore is true, underscores are removed
-/// When false, underscores are preserved where they originally existed
-fn to_pascal_case(s: &str, transform_underscore: bool) -> String {
-    let segments = split_words(s);
-    let mut result = String::new();
-
-    for seg in segments {
-        // Add underscore if it existed originally and we're not transforming
-        if seg.preceded_by_underscore && !transform_underscore {
-            result.push('_');
-        }
-
-        // PascalCase the word
-        let mut chars = seg.word.chars();
-        if let Some(first) = chars.next() {
-            result.extend(first.to_uppercase());
-            result.extend(chars.map(|c| c.to_ascii_lowercase()));
-        }
-    }
-
-    result
-}
-
-/// Convert string to camelCase
-fn to_camel_case(s: &str, transform_underscore: bool) -> String {
-    let segments = split_words(s);
-    let mut result = String::new();
-
-    for (i, seg) in segments.iter().enumerate() {
-        // Add underscore if it existed originally and we're not transforming
-        if seg.preceded_by_underscore && !transform_underscore {
-            result.push('_');
-        }
-
-        // camelCase: first word lowercase, rest PascalCase
-        let mut chars = seg.word.chars();
-        if let Some(first) = chars.next() {
-            if i == 0 {
-                result.extend(first.to_lowercase());
-                result.extend(chars.map(|c| c.to_ascii_lowercase()));
-            } else {
-                result.extend(first.to_uppercase());
-                result.extend(chars.map(|c| c.to_ascii_lowercase()));
-            }
-        }
-    }
-
-    result
-}
-
-/// Convert string to CONSTANT_CASE (always uses underscores between words)
-fn to_constant_case(s: &str, _transform_underscore: bool) -> String {
-    let segments = split_words(s);
-    segments
-        .iter()
-        .map(|seg| seg.word.to_uppercase())
-        .collect::<Vec<_>>()
-        .join("_")
-}
-
-/// Convert string to snake_case (always uses underscores between words)
-fn to_snake_case(s: &str, _transform_underscore: bool) -> String {
-    let segments = split_words(s);
-    segments
-        .iter()
-        .map(|seg| seg.word.to_lowercase())
-        .collect::<Vec<_>>()
-        .join("_")
-}
-
-/// Split a string into word segments, tracking underscore positions
-fn split_words(s: &str) -> Vec<WordSegment> {
-    let mut segments = Vec::new();
-    let mut current_word = String::new();
+/// Split string into words at underscores and case boundaries (e.g., "userId" -> ["user", "Id"])
+fn split_into_words(s: &str) -> Vec<Word> {
+    let mut words = Vec::new();
+    let mut current = String::new();
     let mut preceded_by_underscore = false;
 
     for c in s.chars() {
         if c == '_' {
-            // Underscore is a word boundary
-            if !current_word.is_empty() {
-                segments.push(WordSegment {
-                    word: current_word,
+            if !current.is_empty() {
+                words.push(Word {
+                    text: current,
                     preceded_by_underscore,
                 });
-                current_word = String::new();
+                current = String::new();
             }
-            // Next word will be preceded by underscore
             preceded_by_underscore = true;
-        } else if c.is_uppercase() && !current_word.is_empty() {
-            // Check if previous char was lowercase (word boundary like "userId" -> ["user", "Id"])
-            let last_was_lower = current_word
-                .chars()
-                .last()
-                .is_some_and(|ch| ch.is_lowercase());
-            if last_was_lower {
-                segments.push(WordSegment {
-                    word: current_word,
+        } else if c.is_uppercase() && !current.is_empty() {
+            // Split on case transition: lowercase -> uppercase
+            if current.chars().last().is_some_and(|ch| ch.is_lowercase()) {
+                words.push(Word {
+                    text: current,
                     preceded_by_underscore,
                 });
-                current_word = String::new();
-                preceded_by_underscore = false; // Case-based split, no underscore
+                current = String::new();
+                preceded_by_underscore = false;
             }
-            current_word.push(c);
+            current.push(c);
         } else {
-            current_word.push(c);
+            current.push(c);
         }
     }
 
-    if !current_word.is_empty() {
-        segments.push(WordSegment {
-            word: current_word,
+    if !current.is_empty() {
+        words.push(Word {
+            text: current,
             preceded_by_underscore,
         });
     }
 
-    segments
+    words
+}
+
+fn to_pascal_case(s: &str, transform_underscore: bool) -> String {
+    let words = split_into_words(s);
+    let mut result = String::with_capacity(s.len());
+
+    for word in words {
+        if word.preceded_by_underscore && !transform_underscore {
+            result.push('_');
+        }
+        // Capitalize first char, lowercase rest
+        let mut chars = word.text.chars();
+        if let Some(first) = chars.next() {
+            result.extend(first.to_uppercase());
+            for c in chars {
+                result.push(c.to_ascii_lowercase());
+            }
+        }
+    }
+
+    result
+}
+
+fn to_camel_case(s: &str, transform_underscore: bool) -> String {
+    let words = split_into_words(s);
+    let mut result = String::with_capacity(s.len());
+
+    for (i, word) in words.iter().enumerate() {
+        if word.preceded_by_underscore && !transform_underscore {
+            result.push('_');
+        }
+
+        let mut chars = word.text.chars();
+        if let Some(first) = chars.next() {
+            if i == 0 {
+                // First word: all lowercase
+                result.extend(first.to_lowercase());
+            } else {
+                // Subsequent words: capitalize first char
+                result.extend(first.to_uppercase());
+            }
+            for c in chars {
+                result.push(c.to_ascii_lowercase());
+            }
+        }
+    }
+
+    result
+}
+
+fn to_constant_case(s: &str) -> String {
+    split_into_words(s)
+        .iter()
+        .map(|w| w.text.to_uppercase())
+        .collect::<Vec<_>>()
+        .join("_")
+}
+
+fn to_snake_case(s: &str) -> String {
+    split_into_words(s)
+        .iter()
+        .map(|w| w.text.to_lowercase())
+        .collect::<Vec<_>>()
+        .join("_")
 }
 
 #[cfg(test)]
@@ -214,22 +202,15 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_split_words() {
-        // camelCase
-        let words: Vec<_> = split_words("userId").iter().map(|s| s.word.clone()).collect();
-        assert_eq!(words, vec!["user", "Id"]);
+    fn test_split_into_words() {
+        let words =
+            |s| -> Vec<String> { split_into_words(s).into_iter().map(|w| w.text).collect() };
 
-        // PascalCase
-        let words: Vec<_> = split_words("UserProfile").iter().map(|s| s.word.clone()).collect();
-        assert_eq!(words, vec!["User", "Profile"]);
-
-        // snake_case
-        let words: Vec<_> = split_words("user_name").iter().map(|s| s.word.clone()).collect();
-        assert_eq!(words, vec!["user", "name"]);
-
-        // CONSTANT_CASE
-        let words: Vec<_> = split_words("HTTP_STATUS").iter().map(|s| s.word.clone()).collect();
-        assert_eq!(words, vec!["HTTP", "STATUS"]);
+        assert_eq!(words("userId"), vec!["user", "Id"]);
+        assert_eq!(words("UserProfile"), vec!["User", "Profile"]);
+        assert_eq!(words("user_name"), vec!["user", "name"]);
+        assert_eq!(words("HTTP_STATUS"), vec!["HTTP", "STATUS"]);
+        assert_eq!(words("XMLParser"), vec!["XMLParser"]); // No split in all-caps
     }
 
     #[test]
@@ -250,6 +231,7 @@ mod tests {
         // With transform_underscore = true
         assert_eq!(to_camel_case("user_name", true), "userName");
         assert_eq!(to_camel_case("HTTP_STATUS", true), "httpStatus");
+        assert_eq!(to_camel_case("UserProfile", true), "userProfile");
 
         // With transform_underscore = false
         assert_eq!(to_camel_case("user_name", false), "user_Name");
@@ -258,15 +240,22 @@ mod tests {
 
     #[test]
     fn test_constant_case() {
-        assert_eq!(to_constant_case("userName", false), "USER_NAME");
-        assert_eq!(to_constant_case("UserProfile", false), "USER_PROFILE");
-        assert_eq!(to_constant_case("user_name", false), "USER_NAME");
+        assert_eq!(to_constant_case("userName"), "USER_NAME");
+        assert_eq!(to_constant_case("UserProfile"), "USER_PROFILE");
+        assert_eq!(to_constant_case("user_name"), "USER_NAME");
     }
 
     #[test]
     fn test_snake_case() {
-        assert_eq!(to_snake_case("userName", false), "user_name");
-        assert_eq!(to_snake_case("UserProfile", false), "user_profile");
-        assert_eq!(to_snake_case("HTTP_STATUS", false), "http_status");
+        assert_eq!(to_snake_case("userName"), "user_name");
+        assert_eq!(to_snake_case("UserProfile"), "user_profile");
+        assert_eq!(to_snake_case("HTTP_STATUS"), "http_status");
+    }
+
+    #[test]
+    fn test_cow_borrowed_for_keep() {
+        let input = "SomeTypeName";
+        let result = NamingCase::Keep.apply(input, false);
+        assert!(matches!(result, Cow::Borrowed(_)));
     }
 }

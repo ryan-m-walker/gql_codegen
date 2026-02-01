@@ -8,6 +8,7 @@ use std::io::Write;
 use apollo_compiler::ast::{Selection, Type};
 use apollo_compiler::validation::Valid;
 use apollo_compiler::{Name, Schema};
+use rayon::prelude::*;
 
 use super::GeneratorContext;
 use crate::config::PluginOptions;
@@ -23,15 +24,41 @@ pub fn generate_typescript_operations(ctx: &GeneratorContext, writer: &mut dyn W
         options: ctx.options,
     };
 
-    // Generate fragment types first (operations may reference them)
-    for (name, fragment) in ctx.fragments.iter() {
-        generator.generate_fragment_type(writer, name, fragment)?;
-    }
+    // Generate fragment types in parallel
+    let t0 = std::time::Instant::now();
+    let fragments: Vec<_> = ctx.fragments.iter().collect();
+    let fragment_buffers: Vec<Vec<u8>> = fragments
+        .par_iter()
+        .map(|(name, fragment)| {
+            let mut buffer = Vec::new();
+            generator.generate_fragment_type(&mut buffer, name, fragment).ok();
+            buffer
+        })
+        .collect();
 
-    // Generate operation types
-    for (name, operation) in ctx.operations.iter() {
-        generator.generate_operation_type(writer, name, &operation.definition)?;
+    // Write all fragments to output
+    for buffer in &fragment_buffers {
+        writer.write_all(buffer)?;
     }
+    crate::timing!("    Fragments", t0.elapsed(), "{} total", ctx.fragments.len());
+
+    // Generate operation types in parallel
+    let t0 = std::time::Instant::now();
+    let operations: Vec<_> = ctx.operations.iter().collect();
+    let operation_buffers: Vec<Vec<u8>> = operations
+        .par_iter()
+        .map(|(name, operation)| {
+            let mut buffer = Vec::new();
+            generator.generate_operation_type(&mut buffer, name, &operation.definition).ok();
+            buffer
+        })
+        .collect();
+
+    // Write all operations to output
+    for buffer in &operation_buffers {
+        writer.write_all(buffer)?;
+    }
+    crate::timing!("    Operations", t0.elapsed(), "{} total", ctx.operations.len());
 
     Ok(())
 }

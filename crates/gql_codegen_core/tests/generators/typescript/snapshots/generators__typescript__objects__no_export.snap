@@ -1,0 +1,28 @@
+---
+source: crates/gql_codegen_core/tests/generators/typescript/objects.rs
+expression: output
+---
+type Maybe<T> = T | null;
+
+interface Query {
+  __typename: 'Query';
+  _empty: Maybe<string>;
+  user: Maybe<User>;
+  post: Maybe<Post>;
+}
+
+interface User {
+  __typename: 'User';
+  id: string;
+  name: string;
+  email: Maybe<string>;
+  age: Maybe<number>;
+}
+
+interface Post {
+  __typename: 'Post';
+  id: string;
+  title: string;
+  body: Maybe<string>;
+  published: boolean;
+}

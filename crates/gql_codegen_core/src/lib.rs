@@ -31,6 +31,7 @@ pub mod fs;
 mod generators;
 mod schema;
 mod source_cache;
+pub mod timing;
 pub mod writer;
 
 // Public API - Main entry points

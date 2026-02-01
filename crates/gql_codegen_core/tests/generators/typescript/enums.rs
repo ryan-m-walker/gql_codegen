@@ -34,3 +34,16 @@ fn test_enums_future_proof() {
     );
     insta::assert_snapshot!(output);
 }
+
+#[test]
+fn test_const_enums() {
+    let output = generate_with_options(
+        &["schemas/enum.graphql"],
+        PluginOptions {
+            enums_as_types: false,
+            const_enums: true,
+            ..Default::default()
+        },
+    );
+    insta::assert_snapshot!(output);
+}

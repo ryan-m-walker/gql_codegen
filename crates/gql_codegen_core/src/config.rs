@@ -131,6 +131,27 @@ pub struct PluginOptions {
     #[serde(default)]
     pub future_proof_enums: bool,
 
+    /// Prefix to add to enum type names
+    #[serde(default)]
+    pub enum_prefix: Option<String>,
+
+    /// Suffix to add to enum type names
+    #[serde(default)]
+    pub enum_suffix: Option<String>,
+
+    /// Use `const enum` instead of `enum` for better tree-shaking
+    #[serde(default)]
+    pub const_enums: bool,
+
+    /// Skip `export` keyword on generated types
+    #[serde(default)]
+    pub no_export: bool,
+
+    /// Only generate types that are used in operations
+    /// Reduces output size by omitting unused schema types
+    #[serde(default)]
+    pub only_operation_types: bool,
+
     /// Add future-proof entry to union types
     #[serde(default)]
     pub future_proof_unions: bool,

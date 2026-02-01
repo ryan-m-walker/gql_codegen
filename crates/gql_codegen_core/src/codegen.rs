@@ -102,8 +102,10 @@ pub fn generate_from_input(input: &GenerateInput) -> Result<GenerateResult> {
                 options: &options,
             };
 
+            let t0 = std::time::Instant::now();
             let mut buffer = Vec::new();
             run_generator(plugin_name, &ctx, &mut buffer)?;
+            crate::timing!(format!("  Plugin '{}'", plugin_name), t0.elapsed());
 
             // Safe: our generators only output valid UTF-8
             content.push_str(
@@ -228,14 +230,18 @@ pub fn generate_cached(
     config: &CodegenConfig,
     cache: &mut dyn Cache,
 ) -> Result<GenerateCachedResult> {
+    let start = std::time::Instant::now();
+
     let base_dir = config
         .base_dir
         .as_ref()
         .map(|s| PathBuf::from(s.as_str()))
         .unwrap_or_else(|| PathBuf::from("."));
 
+    let t0 = std::time::Instant::now();
     let schema_paths = resolve_schema_paths(&config.schema.as_vec(), Some(&base_dir));
     let document_paths = expand_document_globs(&config.documents, &base_dir)?;
+    crate::timing!("Glob expansion", t0.elapsed(), "{} files", document_paths.len());
 
     let all_paths: Vec<PathBuf> = schema_paths
         .iter()
@@ -244,43 +250,59 @@ pub fn generate_cached(
         .collect();
 
     // Phase 1: Quick metadata check (no file reads, just stat)
+    let t0 = std::time::Instant::now();
     let metadata_result = cache.check_metadata(&all_paths);
+    crate::timing!("Cache metadata check", t0.elapsed());
     if matches!(metadata_result, MetadataCheckResult::AllMatch) {
+        crate::timing!("Total (cache hit - metadata)", start.elapsed());
         return Ok(GenerateCachedResult::Fresh);
     }
 
+    let t0 = std::time::Instant::now();
     let schema_files: Vec<(PathBuf, String)> = schema_paths
         .into_iter()
         .filter_map(|p| std::fs::read_to_string(&p).ok().map(|c| (p, c)))
         .collect();
-
     let schema = load_schema_from_contents(&schema_files)?;
+    crate::timing!("Schema load + parse", t0.elapsed());
+
+    let t0 = std::time::Instant::now();
     let mut source_cache = SourceCache::with_capacity(document_paths.len());
     load_sources_from_paths(&document_paths, &mut source_cache)?;
+    crate::timing!("Document file loading", t0.elapsed());
 
     // Phase 2: Compute hashes from loaded content
+    let t0 = std::time::Instant::now();
     let computed = compute_hashes_from_cache(config, &source_cache, &schema_files);
+    crate::timing!("Hash computation", t0.elapsed());
 
     if cache.is_fresh(&computed) {
         // Metadata was stale but content matches - update cache and return fresh
         cache.store(computed).ok();
+        crate::timing!("Total (cache hit - content)", start.elapsed());
         return Ok(GenerateCachedResult::Fresh);
     }
 
     // TODO: actually use real passed config
+    let t0 = std::time::Instant::now();
     let extract_config = ExtractConfig::default();
     let documents = collect_documents(&source_cache, &extract_config);
+    crate::timing!("GraphQL extraction", t0.elapsed(), "{} ops, {} frags",
+        documents.operations.len(), documents.fragments.len());
 
+    let t0 = std::time::Instant::now();
     let input = GenerateInput {
         schema: &schema,
         documents: &documents,
         generates: &config.generates,
     };
-
     let result = generate_from_input(&input)?;
+    crate::timing!("Code generation", t0.elapsed());
 
     // Store cache after successful generation
     cache.store(computed).ok();
+
+    crate::timing!("Total", start.elapsed());
 
     Ok(GenerateCachedResult::Generated(result))
 }

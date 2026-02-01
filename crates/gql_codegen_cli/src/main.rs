@@ -23,6 +23,10 @@ use crate::logger::{LogLevel, Logger};
 fn main() -> ExitCode {
     let args = CliArgs::parse();
 
+    if args.timing {
+        gql_codegen_core::timing::enable_timing();
+    }
+
     let log_level = if args.quiet {
         LogLevel::Quiet
     } else if args.verbose {
