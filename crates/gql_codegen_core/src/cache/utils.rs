@@ -46,6 +46,20 @@ pub struct CacheData {
     pub config_hash: u64,
     /// Per-file metadata for fast change detection
     pub file_meta: HashMap<PathBuf, FileMeta>,
+    /// Cached glob results for fast file discovery
+    #[serde(default)]
+    pub glob_cache: Option<GlobCache>,
+}
+
+/// Cached glob expansion results
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GlobCache {
+    /// Hash of the glob patterns (to detect config changes)
+    pub patterns_hash: u64,
+    /// The resolved file paths
+    pub files: Vec<PathBuf>,
+    /// Directory mtimes at cache time (for invalidation)
+    pub dir_mtimes: HashMap<PathBuf, u64>,
 }
 
 /// Result of Phase 1 metadata check
@@ -120,6 +134,7 @@ pub fn compute_hashes_from_cache(
         inputs_hash,
         config_hash,
         file_meta,
+        glob_cache: None, // Set by caller if glob caching is used
     }
 }
 
@@ -189,4 +204,75 @@ pub fn output_matches_existing(path: &Path, new_content: &[u8]) -> bool {
         Ok(existing) => existing == new_content,
         Err(_) => false,
     }
+}
+
+/// Check if cached glob results are still valid
+pub fn is_glob_cache_valid(cache: &GlobCache, patterns: &[&str]) -> bool {
+    // Check if patterns changed
+    let current_hash = hash_patterns(patterns);
+    if cache.patterns_hash != current_hash {
+        return false;
+    }
+
+    // Check if any directory mtime changed (would indicate new/deleted files)
+    for (dir, cached_mtime) in &cache.dir_mtimes {
+        let current_mtime = get_dir_mtime(dir);
+        if current_mtime != Some(*cached_mtime) {
+            return false;
+        }
+    }
+
+    // Check that all cached files still exist
+    cache.files.par_iter().all(|f| f.exists())
+}
+
+/// Create a new glob cache from resolved paths
+pub fn create_glob_cache(patterns: &[&str], files: Vec<PathBuf>) -> GlobCache {
+    let patterns_hash = hash_patterns(patterns);
+
+    // Collect unique parent directories
+    let mut dirs: std::collections::HashSet<PathBuf> = std::collections::HashSet::new();
+    for file in &files {
+        if let Some(parent) = file.parent() {
+            // Add the immediate parent and walk up to capture structure changes
+            let mut current = parent;
+            loop {
+                dirs.insert(current.to_path_buf());
+                match current.parent() {
+                    Some(p) if !p.as_os_str().is_empty() => current = p,
+                    _ => break,
+                }
+            }
+        }
+    }
+
+    // Get mtimes for all directories
+    let dir_mtimes: HashMap<PathBuf, u64> = dirs
+        .into_iter()
+        .filter_map(|dir| {
+            get_dir_mtime(&dir).map(|mtime| (dir, mtime))
+        })
+        .collect();
+
+    GlobCache {
+        patterns_hash,
+        files,
+        dir_mtimes,
+    }
+}
+
+fn hash_patterns(patterns: &[&str]) -> u64 {
+    let mut hasher = DefaultHasher::new();
+    for p in patterns {
+        p.hash(&mut hasher);
+    }
+    hasher.finish()
+}
+
+fn get_dir_mtime(path: &Path) -> Option<u64> {
+    fs::metadata(path)
+        .ok()
+        .and_then(|m| m.modified().ok())
+        .and_then(|t| t.duration_since(SystemTime::UNIX_EPOCH).ok())
+        .map(|d| d.as_secs())
 }

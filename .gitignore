@@ -6,3 +6,5 @@ output.ts
 **/.DS_Store/**
 **/__generated__/**
 
+**/node_modules/**
+

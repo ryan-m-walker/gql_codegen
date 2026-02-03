@@ -1,0 +1,9 @@
+{
+  "name": "@sgc/core-linux-x64-gnu",
+  "version": "0.1.0",
+  "os": ["linux"],
+  "cpu": ["x64"],
+  "main": "sgc-core.linux-x64-gnu.node",
+  "files": ["*.node"],
+  "preferUnplugged": true
+}

@@ -42,6 +42,7 @@ mod tests {
             inputs_hash: 123,
             config_hash: 456,
             file_meta: HashMap::new(),
+            glob_cache: None,
         };
         assert!(!cache.is_fresh(&data));
     }

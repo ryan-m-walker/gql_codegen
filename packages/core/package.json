@@ -1,0 +1,45 @@
+{
+  "name": "@sgc/core",
+  "version": "0.1.0",
+  "description": "Speedy GraphQL Codegen - Native core module",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "*.node"
+  ],
+  "napi": {
+    "binaryName": "sgc-core",
+    "targets": [
+      "aarch64-apple-darwin",
+      "x86_64-apple-darwin",
+      "x86_64-unknown-linux-gnu",
+      "aarch64-unknown-linux-gnu",
+      "x86_64-pc-windows-msvc"
+    ]
+  },
+  "scripts": {
+    "build": "tsc",
+    "build:native": "napi build --platform --release --manifest-path ../../crates/gql_codegen_napi/Cargo.toml --output-dir .",
+    "build:native:debug": "napi build --platform --manifest-path ../../crates/gql_codegen_napi/Cargo.toml --output-dir ."
+  },
+  "devDependencies": {
+    "@napi-rs/cli": "^2.18.0",
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0"
+  },
+  "optionalDependencies": {
+    "@sgc/core-darwin-arm64": "0.1.0",
+    "@sgc/core-darwin-x64": "0.1.0",
+    "@sgc/core-linux-x64-gnu": "0.1.0",
+    "@sgc/core-linux-arm64-gnu": "0.1.0",
+    "@sgc/core-win32-x64-msvc": "0.1.0"
+  }
+}

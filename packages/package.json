@@ -1,0 +1,9 @@
+{
+  "name": "sgc-packages",
+  "private": true,
+  "scripts": {
+    "build": "pnpm -r build",
+    "build:core": "pnpm --filter @sgc/core build",
+    "build:cli": "pnpm --filter @sgc/cli build"
+  }
+}

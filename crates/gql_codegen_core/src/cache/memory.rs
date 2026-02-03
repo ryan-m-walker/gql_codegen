@@ -62,6 +62,7 @@ mod tests {
             inputs_hash: 123,
             config_hash: 456,
             file_meta: HashMap::new(),
+            glob_cache: None,
         };
         assert!(!cache.is_fresh(&data));
     }
@@ -73,6 +74,7 @@ mod tests {
             inputs_hash: 123,
             config_hash: 456,
             file_meta: HashMap::new(),
+            glob_cache: None,
         };
         cache.store(data.clone()).unwrap();
         assert!(cache.is_fresh(&data));
@@ -85,6 +87,7 @@ mod tests {
             inputs_hash: 123,
             config_hash: 456,
             file_meta: HashMap::new(),
+            glob_cache: None,
         };
         cache.store(data1).unwrap();
 
@@ -92,6 +95,7 @@ mod tests {
             inputs_hash: 999,
             config_hash: 456,
             file_meta: HashMap::new(),
+            glob_cache: None,
         };
         assert!(!cache.is_fresh(&data2));
     }

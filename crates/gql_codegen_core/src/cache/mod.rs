@@ -5,18 +5,22 @@
 //! 2. Content hash (from already-loaded SourceCache)
 
 mod fs;
+// pub mod glob_cache; // TODO: Incremental per-directory glob cache for future optimization
 mod memory;
 mod noop;
 pub mod utils;
 
 use std::path::PathBuf;
 
-pub use utils::{CacheData, MetadataCheckResult};
+pub use utils::{CacheData, GlobCache, MetadataCheckResult};
 
 pub use fs::FsCache;
 pub use memory::MemoryCache;
 pub use noop::NoCache;
-pub use utils::{compute_hashes_from_cache, hash_config_options, normalize_path, output_matches_existing};
+pub use utils::{
+    compute_hashes_from_cache, create_glob_cache, hash_config_options, is_glob_cache_valid,
+    normalize_path, output_matches_existing,
+};
 
 /// Cache trait for incremental caching
 pub trait Cache {

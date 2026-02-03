@@ -11,7 +11,7 @@ use std::path::PathBuf;
 use apollo_compiler::Schema;
 use apollo_compiler::validation::Valid;
 
-use crate::cache::{Cache, MetadataCheckResult, compute_hashes_from_cache};
+use crate::cache::{Cache, MetadataCheckResult, compute_hashes_from_cache, create_glob_cache, is_glob_cache_valid};
 use crate::config::{OutputConfig, PluginOptions};
 use crate::documents::{
     CollectedDocuments, collect_documents, expand_document_globs, load_sources_from_paths,
@@ -238,10 +238,22 @@ pub fn generate_cached(
         .map(|s| PathBuf::from(s.as_str()))
         .unwrap_or_else(|| PathBuf::from("."));
 
-    let t0 = std::time::Instant::now();
     let schema_paths = resolve_schema_paths(&config.schema.as_vec(), Some(&base_dir));
-    let document_paths = expand_document_globs(&config.documents, &base_dir)?;
-    crate::timing!("Glob expansion", t0.elapsed(), "{} files", document_paths.len());
+
+    // Try to use cached glob results
+    let t0 = std::time::Instant::now();
+    let patterns: Vec<&str> = config.documents.as_vec();
+    let (document_paths, glob_cache_hit) = match cache.stored().and_then(|c| c.glob_cache.as_ref()) {
+        Some(cached) if is_glob_cache_valid(cached, &patterns) => {
+            crate::timing!("Glob cache hit", t0.elapsed(), "{} files", cached.files.len());
+            (cached.files.clone(), true)
+        }
+        _ => {
+            let paths = expand_document_globs(&config.documents, &base_dir)?;
+            crate::timing!("Glob expansion", t0.elapsed(), "{} files", paths.len());
+            (paths, false)
+        }
+    };
 
     let all_paths: Vec<PathBuf> = schema_paths
         .iter()
@@ -258,22 +270,37 @@ pub fn generate_cached(
         return Ok(GenerateCachedResult::Fresh);
     }
 
+    // Load schema and documents in parallel
     let t0 = std::time::Instant::now();
-    let schema_files: Vec<(PathBuf, String)> = schema_paths
-        .into_iter()
-        .filter_map(|p| std::fs::read_to_string(&p).ok().map(|c| (p, c)))
-        .collect();
-    let schema = load_schema_from_contents(&schema_files)?;
-    crate::timing!("Schema load + parse", t0.elapsed());
-
-    let t0 = std::time::Instant::now();
-    let mut source_cache = SourceCache::with_capacity(document_paths.len());
-    load_sources_from_paths(&document_paths, &mut source_cache)?;
-    crate::timing!("Document file loading", t0.elapsed());
+    let doc_paths_len = document_paths.len();
+    let (schema_result, docs_result) = rayon::join(
+        || {
+            let schema_files: Vec<(PathBuf, String)> = schema_paths
+                .into_iter()
+                .filter_map(|p| std::fs::read_to_string(&p).ok().map(|c| (p, c)))
+                .collect();
+            load_schema_from_contents(&schema_files).map(|s| (s, schema_files))
+        },
+        || {
+            let mut source_cache = SourceCache::with_capacity(doc_paths_len);
+            load_sources_from_paths(&document_paths, &mut source_cache).map(|_| source_cache)
+        },
+    );
+    let (schema, schema_files) = schema_result?;
+    let source_cache = docs_result?;
+    crate::timing!("Schema + docs parallel load", t0.elapsed());
 
     // Phase 2: Compute hashes from loaded content
     let t0 = std::time::Instant::now();
-    let computed = compute_hashes_from_cache(config, &source_cache, &schema_files);
+    let mut computed = compute_hashes_from_cache(config, &source_cache, &schema_files);
+
+    // Store glob cache if it was a miss
+    if !glob_cache_hit {
+        computed.glob_cache = Some(create_glob_cache(&patterns, document_paths.clone()));
+    } else {
+        // Preserve existing glob cache
+        computed.glob_cache = cache.stored().and_then(|c| c.glob_cache.clone());
+    }
     crate::timing!("Hash computation", t0.elapsed());
 
     if cache.is_fresh(&computed) {

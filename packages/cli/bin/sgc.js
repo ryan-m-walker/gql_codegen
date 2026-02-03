@@ -5,17 +5,28 @@
  *
  * This script:
  * 1. Loads the config (JSON or TypeScript)
- * 2. Writes a temp JSON config if needed
- * 3. Invokes the native Rust binary
+ * 2. Uses @sgc/core native module (fast path)
+ * 3. Falls back to binary spawn if native unavailable
  */
 
-import { existsSync, writeFileSync, unlinkSync, mkdtempSync } from 'node:fs';
+import { existsSync, writeFileSync, unlinkSync, mkdtempSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { parseArgs } from 'node:util';
 
 import { loadConfig, configToJson, resolveConfigPaths } from '../dist/config.js';
 import { runBinary } from '../dist/binary.js';
+
+// Try to load native module
+let nativeCore = null;
+try {
+  nativeCore = await import('@sgc/core');
+  if (!nativeCore.isNativeAvailable()) {
+    nativeCore = null;
+  }
+} catch {
+  nativeCore = null;
+}
 
 const knownOptions = {
   config: { type: 'string', short: 'c' },
@@ -95,8 +106,8 @@ Examples:
 
   // Handle --version
   if (args.version) {
-    // TODO: Read from package.json
-    console.log('sgc 0.1.0');
+    const mode = nativeCore ? 'native' : 'binary';
+    console.log(`sgc 0.1.0 (${mode})`);
     process.exit(0);
   }
 
@@ -119,57 +130,136 @@ Examples:
     const { config, configPath } = await loadConfig(args.config);
     timing('Config load', performance.now() - t0);
 
-    // Check if config is already JSON - we can pass it directly
-    const isJsonConfig = configPath.endsWith('.json');
+    // Resolve paths relative to config file
+    t0 = performance.now();
+    const resolvedConfig = resolveConfigPaths(config, dirname(configPath));
+    timing('Config resolve', performance.now() - t0);
 
-    let tempConfigPath = null;
-    let finalConfigPath = configPath;
-
-    if (!isJsonConfig) {
-      // Write temp JSON config for the Rust binary
-      // Resolve all relative paths to absolute so they work from any directory
-      t0 = performance.now();
-      const resolvedConfig = resolveConfigPaths(config, dirname(configPath));
-      const tempDir = mkdtempSync(join(tmpdir(), 'sgc-'));
-      tempConfigPath = join(tempDir, 'config.json');
-      writeFileSync(tempConfigPath, configToJson(resolvedConfig));
-      finalConfigPath = tempConfigPath;
-      timing('Config resolve + write', performance.now() - t0);
+    // Handle --clean-cache
+    if (args['clean-cache']) {
+      if (nativeCore) {
+        const cleared = nativeCore.clearCache(resolvedConfig.baseDir || dirname(configPath));
+        console.log(cleared ? '✓ Cache cleared' : '✓ Cache already clean');
+      } else {
+        // Fall back to binary
+        await runBinaryMode(resolvedConfig, configPath, ['--clean-cache']);
+      }
+      process.exit(0);
     }
 
-    // Build args for the binary
-    const binaryArgs = [];
+    // Use native module if available
+    if (nativeCore) {
+      await runNativeMode(resolvedConfig, timing);
+    } else {
+      await runBinaryMode(resolvedConfig, configPath);
+    }
+
+    timing('Total', performance.now() - totalStart);
+    process.exit(0);
+  } catch (err) {
+    console.error('Error:', err instanceof Error ? err.message : err);
+    if (args.verbose && err instanceof Error && err.stack) {
+      console.error(err.stack);
+    }
+    process.exit(1);
+  }
+}
+
+/**
+ * Run using native NAPI module (fast path)
+ */
+async function runNativeMode(config, timing) {
+  const t0 = performance.now();
+
+  const result = nativeCore.generate({
+    configJson: JSON.stringify(config),
+    noCache: args['no-cache'],
+    timing: args.timing,
+  });
+
+  timing('Native generate', performance.now() - t0);
+
+  // Handle warnings
+  for (const warning of result.warnings) {
+    console.warn(`Warning: ${warning}`);
+  }
+
+  if (result.fresh) {
+    if (!args.quiet) {
+      console.log('✓ Nothing changed');
+    }
+    return; // Let main() print total timing
+  }
+
+  // Handle --stdout
+  if (args.stdout) {
+    for (const file of result.files) {
+      console.log(`// ${file.path}`);
+      console.log(file.content);
+    }
+    return;
+  }
+
+  // Handle --check
+  if (args.check) {
+    const count = result.files.length;
+    const plural = count === 1 ? '' : 's';
+    console.log(`Would generate ${count} file${plural}`);
+    return;
+  }
+
+  // Write files
+  const t1 = performance.now();
+  for (const file of result.files) {
+    const dir = dirname(file.path);
+    if (!existsSync(dir)) {
+      mkdirSync(dir, { recursive: true });
+    }
+    writeFileSync(file.path, file.content);
+    if (!args.quiet) {
+      console.log(`  ${file.path}`);
+    }
+  }
+  timing('File write', performance.now() - t1);
+
+  if (!args.quiet) {
+    const count = result.files.length;
+    const plural = count === 1 ? '' : 's';
+    console.log(`✓ Generated ${count} file${plural}`);
+  }
+}
+
+/**
+ * Fallback: Run using binary spawn
+ */
+async function runBinaryMode(resolvedConfig, configPath, extraArgs = []) {
+  // Write temp JSON config
+  const tempDir = mkdtempSync(join(tmpdir(), 'sgc-'));
+  const tempConfigPath = join(tempDir, 'config.json');
+  writeFileSync(tempConfigPath, JSON.stringify(resolvedConfig));
+
+  try {
+    const binaryArgs = [...extraArgs];
     if (args.check) binaryArgs.push('--check');
     if (args.stdout) binaryArgs.push('--stdout');
-    if (args.clean) binaryArgs.push('--clean-cache');
     if (args['no-cache']) binaryArgs.push('--no-cache');
     if (args.verbose) binaryArgs.push('--verbose');
     if (args.quiet) binaryArgs.push('--quiet');
     if (args.timing) binaryArgs.push('--timing');
 
-    // Run the binary
-    t0 = performance.now();
     const result = await runBinary({
-      configPath: finalConfigPath,
+      configPath: tempConfigPath,
       args: binaryArgs,
       stdio: 'inherit',
     });
-    timing('Binary execution', performance.now() - t0);
-    timing('Total (Node)', performance.now() - totalStart);
-
-    // Cleanup temp file
-    if (tempConfigPath) {
-      try {
-        unlinkSync(tempConfigPath);
-      } catch {
-        // Ignore cleanup errors
-      }
-    }
 
     process.exit(result.exitCode);
-  } catch (err) {
-    console.error('Error:', err instanceof Error ? err.message : err);
-    process.exit(1);
+  } finally {
+    try {
+      unlinkSync(tempConfigPath);
+    } catch {
+      // Ignore cleanup errors
+    }
   }
 }
 
