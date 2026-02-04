@@ -1,0 +1,21 @@
+---
+source: crates/gql_codegen_core/tests/generators/typescript/unions.rs
+assertion_line: 22
+expression: output
+---
+export type Query = {
+  _empty?: String | null;
+  search: Array<SearchResult>;
+};
+
+export type SearchResult = Book | Movie;
+
+export type Book = {
+  isbn: String;
+  title: String;
+};
+
+export type Movie = {
+  imdbId: String;
+  title: String;
+};

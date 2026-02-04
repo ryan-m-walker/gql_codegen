@@ -7,7 +7,8 @@ use std::path::PathBuf;
 
 use gql_codegen_core::{
     CollectedDocuments, ExtractConfig, GenerateInput, OutputConfig, PluginConfig, PluginOptions,
-    SourceCache, collect_documents, generate_from_input, load_schema_from_contents,
+    Preset, SourceCache, collect_documents, config_json_schema, generate_from_input,
+    load_schema_from_contents,
 };
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
@@ -16,6 +17,14 @@ use wasm_bindgen::prelude::*;
 #[wasm_bindgen(start)]
 pub fn init() {
     console_error_panic_hook::set_once();
+}
+
+/// Get the JSON Schema for PluginOptions configuration as a JSON string
+/// Use this for IDE intellisense in the playground
+#[wasm_bindgen(js_name = getConfigSchema)]
+pub fn get_config_schema() -> String {
+    let schema = config_json_schema();
+    serde_json::to_string(&schema).unwrap_or_else(|_| "{}".to_string())
 }
 
 /// Result of code generation
@@ -45,7 +54,10 @@ impl StringOrArray {
 
 /// Config input from JavaScript - matches SGC config format
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct WasmConfig {
+    #[serde(default)]
+    pub preset: Preset,
     #[serde(default)]
     pub schema: Option<StringOrArray>,
     #[serde(default)]
@@ -130,10 +142,12 @@ fn generate_internal(
     // Collect warnings from document parsing
     let warnings = documents.warnings.clone();
 
-    // Build generates config from wasm_config or use defaults
-    let generates: HashMap<String, OutputConfig> = match wasm_config {
+    // Extract preset and build generates config from wasm_config or use defaults
+    let (preset, generates): (Preset, HashMap<String, OutputConfig>) = match wasm_config {
         Some(cfg) => {
-            cfg.generates
+            let preset = cfg.preset;
+            let generates = cfg
+                .generates
                 .into_iter()
                 .map(|(path, out)| {
                     let output_config = OutputConfig {
@@ -148,7 +162,8 @@ fn generate_internal(
                     };
                     (path, output_config)
                 })
-                .collect()
+                .collect();
+            (preset, generates)
         }
         None => {
             // Default: typescript + typescript-operations
@@ -165,7 +180,7 @@ fn generate_internal(
                     documents_only: false,
                 },
             );
-            map
+            (Preset::default(), map)
         }
     };
 
@@ -174,6 +189,7 @@ fn generate_internal(
         schema: &schema,
         documents: &documents,
         generates: &generates,
+        preset,
     };
 
     match generate_from_input(&input) {

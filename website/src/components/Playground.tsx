@@ -27,6 +27,11 @@ function defineCustomTheme(monaco: Monaco) {
       { token: 'string', foreground: 'c3e88d' },
       { token: 'number', foreground: 'f78c6c' },
       { token: 'comment', foreground: '546e7a' },
+      // JSON-specific tokens
+      { token: 'string.key.json', foreground: '82aaff' },  // Property keys - blue
+      { token: 'string.value.json', foreground: 'c3e88d' }, // String values - green
+      { token: 'number.json', foreground: 'f78c6c' },       // Numbers - orange
+      { token: 'keyword.json', foreground: 'c792ea' },      // true/false/null - purple
     ],
     colors: {
       'editor.background': '#00000000', // Transparent
@@ -34,13 +39,26 @@ function defineCustomTheme(monaco: Monaco) {
       'editor.selectionBackground': '#ffffff20',
       'editorLineNumber.foreground': '#4a5568',
       'editorLineNumber.activeForeground': '#718096',
-      'editorCursor.foreground': '#22c55e',
+      'editorCursor.foreground': '#ffcb6b',
       'editor.selectionHighlightBackground': '#ffffff10',
       'editorIndentGuide.background': '#ffffff10',
       'editorIndentGuide.activeBackground': '#ffffff20',
       'scrollbarSlider.background': '#ffffff15',
       'scrollbarSlider.hoverBackground': '#ffffff25',
       'scrollbarSlider.activeBackground': '#ffffff30',
+      // Disable bracket pair colorization by setting all to same color
+      'editorBracketHighlight.foreground1': '#9ca3af',
+      'editorBracketHighlight.foreground2': '#9ca3af',
+      'editorBracketHighlight.foreground3': '#9ca3af',
+      'editorBracketHighlight.foreground4': '#9ca3af',
+      'editorBracketHighlight.foreground5': '#9ca3af',
+      'editorBracketHighlight.foreground6': '#9ca3af',
+      'editorBracketPairGuide.activeBackground1': '#00000000',
+      'editorBracketPairGuide.activeBackground2': '#00000000',
+      'editorBracketPairGuide.activeBackground3': '#00000000',
+      'editorBracketPairGuide.activeBackground4': '#00000000',
+      'editorBracketPairGuide.activeBackground5': '#00000000',
+      'editorBracketPairGuide.activeBackground6': '#00000000',
     },
   });
 }
@@ -58,11 +76,13 @@ interface WasmModule {
     operations: string | string[],
     config: unknown
   ) => WasmGenerateResult;
+  getConfigSchema: () => string;  // Returns JSON string
 }
 
 // Lazy-load WASM module
 let wasmModule: WasmModule | null = null;
 let wasmLoadPromise: Promise<WasmModule> | null = null;
+let configSchemaConfigured = false;
 
 async function loadWasm(): Promise<WasmModule> {
   if (wasmModule) return wasmModule;
@@ -76,6 +96,67 @@ async function loadWasm(): Promise<WasmModule> {
   })();
 
   return wasmLoadPromise;
+}
+
+// Configure Monaco JSON with the config schema for intellisense
+async function configureMonacoSchema(monaco: Monaco) {
+  if (configSchemaConfigured) return;
+
+  try {
+    const wasm = await loadWasm();
+    const schemaJson = wasm.getConfigSchema();
+    const pluginOptionsSchema = JSON.parse(schemaJson) as Record<string, unknown>;
+    console.log('SGC Plugin Options Schema:', pluginOptionsSchema);
+
+    // Wrap the PluginOptions schema into a full config schema
+    const fullSchema = {
+      type: 'object',
+      properties: {
+        preset: {
+          type: 'string',
+          enum: ['sgc', 'graphql-codegen'],
+          description: 'Preset for default configuration values. "sgc" is optimized for TypeScript performance, "graphql-codegen" is compatible with graphql-codegen output.',
+        },
+        generates: {
+          type: 'object',
+          additionalProperties: {
+            type: 'object',
+            properties: {
+              plugins: {
+                type: 'array',
+                items: {
+                  type: 'string',
+                  enum: ['typescript', 'typescript-operations'],
+                },
+                description: 'Plugins to run for this output file',
+              },
+              config: pluginOptionsSchema,
+            },
+            required: ['plugins'],
+          },
+          description: 'Output file configurations',
+        },
+      },
+    };
+
+    console.log('SGC Full Config Schema:', fullSchema);
+
+    monaco.languages.json.jsonDefaults.setDiagnosticsOptions({
+      validate: true,
+      schemas: [
+        {
+          uri: 'https://sgc.dev/config-schema.json',
+          fileMatch: ['*'],
+          schema: fullSchema,
+        },
+      ],
+    });
+
+    console.log('SGC Monaco schema configured successfully');
+    configSchemaConfigured = true;
+  } catch (e) {
+    console.warn('Failed to configure config schema:', e);
+  }
 }
 
 // URL state management - compress each param individually
@@ -178,6 +259,7 @@ fragment UserFields on User {
 
 type InputTab = 'schema' | 'operations' | 'config';
 type OutputTab = 'output' | 'diagnostics';
+type Preset = 'sgc' | 'graphql-codegen';
 
 // Matches real SGC/graphql-codegen config structure
 interface OutputConfig {
@@ -186,20 +268,19 @@ interface OutputConfig {
 }
 
 interface CodegenConfig {
+  preset?: Preset;
   generates: {
     [outputPath: string]: OutputConfig;
   };
 }
 
+// Default config - preset handles defaults internally in core
 const defaultConfig: CodegenConfig = {
+  preset: 'graphql-codegen',
   generates: {
     'types.ts': {
       plugins: ['typescript', 'typescript-operations'],
-      config: {
-        skipTypename: false,
-        enumsAsTypes: false,
-        declarationKind: 'type',
-      },
+      // No config needed - preset defaults applied by core
     },
   },
 };
@@ -371,8 +452,19 @@ const editorOptions = {
   occurrencesHighlight: 'off' as const,
   selectionHighlight: false,
   renderWhitespace: 'none' as const,
-  matchBrackets: 'near' as const,
+  // Disable rainbow brackets but keep bracket matching
+  bracketPairColorization: { enabled: false },
+  guides: { bracketPairs: false },
+  matchBrackets: 'always' as const,
   stickyScroll: { enabled: false },
+};
+
+// Config editor needs suggestions enabled for schema autocomplete
+const configEditorOptions = {
+  ...editorOptions,
+  quickSuggestions: true,
+  suggestOnTriggerCharacters: true,
+  hover: { enabled: true },
 };
 
 const readonlyEditorOptions = {
@@ -501,6 +593,17 @@ export default function Playground() {
   const hasWarnings = currentResult?.warnings && currentResult.warnings.length > 0;
   const hasDiagnostics = hasErrors || hasWarnings;
 
+  // Handle preset changes - applies preset defaults to config
+  // Handle preset changes - just update the preset name, core applies defaults
+  const handlePresetChange = useCallback((newPreset: Preset) => {
+    const newConfig: CodegenConfig = {
+      ...config,
+      preset: newPreset,
+    };
+    setConfig(newConfig);
+    setConfigJson(JSON.stringify(newConfig, null, 2));
+  }, [config]);
+
   return (
     <div className="flex flex-col h-full">
       {/* Toolbar */}
@@ -543,15 +646,30 @@ export default function Playground() {
             </span>
           ) : null}
         </div>
-        <button
-          onClick={handleShare}
+        <div className="flex items-center gap-3">
+          {/* Preset dropdown */}
+          <div className="flex items-center gap-2">
+            <label htmlFor="preset" className="text-xs text-gray-400">Preset:</label>
+            <select
+              id="preset"
+              value={config.preset || 'graphql-codegen'}
+              onChange={(e) => handlePresetChange(e.target.value as Preset)}
+              className="px-2 py-1 text-xs font-medium text-gray-300 bg-gray-800 hover:bg-gray-700 rounded border border-gray-700 focus:border-green-500 focus:outline-none transition-colors cursor-pointer"
+            >
+              <option value="sgc">SGC (Optimized)</option>
+              <option value="graphql-codegen">graphql-codegen (Compatible)</option>
+            </select>
+          </div>
+          <button
+            onClick={handleShare}
           className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-300 hover:text-white bg-gray-800 hover:bg-gray-700 rounded transition-colors"
         >
           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
           </svg>
           {shareMessage || 'Share'}
-        </button>
+          </button>
+        </div>
       </div>
 
       {/* Main content */}
@@ -610,8 +728,11 @@ export default function Playground() {
                     value={configJson}
                     onChange={handleConfigJsonChange}
                     theme="sgc-dark"
-                    options={editorOptions}
-                    beforeMount={defineCustomTheme}
+                    options={configEditorOptions}
+                    beforeMount={(monaco) => {
+                      defineCustomTheme(monaco);
+                      configureMonacoSchema(monaco);
+                    }}
                     loading={<div className="p-4 text-gray-500">Loading editor...</div>}
                   />
                 </div>

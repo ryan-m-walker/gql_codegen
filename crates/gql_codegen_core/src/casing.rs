@@ -5,11 +5,12 @@
 
 use std::borrow::Cow;
 
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 /// Naming convention configuration
 /// Supports both simple string format and detailed object configuration
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
 #[serde(untagged)]
 pub enum NamingConvention {
     /// Single convention applied to all names (e.g., "keep", "pascalCase")
@@ -25,7 +26,7 @@ impl Default for NamingConvention {
 }
 
 /// Detailed naming convention configuration
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct NamingConventionConfig {
     /// Convention for type names (interfaces, types, enums)
@@ -43,7 +44,7 @@ pub struct NamingConventionConfig {
 }
 
 /// Available naming case transformations
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub enum NamingCase {
     /// Keep original name unchanged

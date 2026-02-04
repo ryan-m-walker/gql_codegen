@@ -12,7 +12,7 @@ use apollo_compiler::Schema;
 use apollo_compiler::validation::Valid;
 
 use crate::cache::{Cache, MetadataCheckResult, compute_hashes_from_cache, create_glob_cache, is_glob_cache_valid};
-use crate::config::{OutputConfig, PluginOptions};
+use crate::config::{OutputConfig, PluginOptions, Preset};
 use crate::documents::{
     CollectedDocuments, collect_documents, expand_document_globs, load_sources_from_paths,
 };
@@ -59,6 +59,8 @@ pub struct GenerateInput<'a> {
     pub documents: &'a CollectedDocuments<'a>,
     /// Output configurations
     pub generates: &'a HashMap<String, OutputConfig>,
+    /// Preset for default options
+    pub preset: Preset,
 }
 
 /// Pure generation function - NO filesystem access
@@ -89,7 +91,11 @@ pub fn generate_from_input(input: &GenerateInput) -> Result<GenerateResult> {
             content.push('\n');
         }
 
-        let base_options = output_config.config.clone().unwrap_or_default();
+        // Start with preset defaults, then override with config
+        let mut base_options = input.preset.default_options();
+        if let Some(ref config_options) = output_config.config {
+            base_options = merge_options(&base_options, Some(config_options));
+        }
 
         for plugin in &output_config.plugins {
             let plugin_name = plugin.name();
@@ -153,52 +159,26 @@ pub fn generate(config: &CodegenConfig) -> Result<GenerateResult> {
         schema: &schema,
         documents: &documents,
         generates: &config.generates,
+        preset: config.preset,
     };
 
     generate_from_input(&input)
 }
 
 /// Merge base options with plugin-specific options
+///
+/// Plugin options fully override base options. This is intentional:
+/// - Preset defaults provide the base
+/// - User config (via plugin options) overrides everything
+///
+/// Note: Since serde gives default values for unset fields, the caller
+/// should ensure plugin options contain all desired values (including
+/// preset defaults for fields not being overridden).
 fn merge_options(base: &PluginOptions, plugin: Option<&PluginOptions>) -> PluginOptions {
     match plugin {
-        Some(p) => {
-            let mut merged = base.clone();
-
-            // Plugin options override base options
-            if !p.scalars.is_empty() {
-                merged.scalars = p.scalars.clone();
-            }
-
-            if p.immutable_types {
-                merged.immutable_types = true;
-            }
-
-            if !p.enums_as_types {
-                merged.enums_as_types = false;
-            }
-
-            if p.future_proof_enums {
-                merged.future_proof_enums = true;
-            }
-
-            if p.skip_typename {
-                merged.skip_typename = true;
-            }
-
-            if p.avoid_optionals {
-                merged.avoid_optionals = true;
-            }
-
-            if p.graphql_tag.is_some() {
-                merged.graphql_tag = p.graphql_tag;
-            }
-
-            if p.formatting.is_some() {
-                merged.formatting = p.formatting.clone();
-            }
-
-            merged
-        }
+        // Plugin options completely override base - the caller is responsible
+        // for including preset defaults in the plugin options if needed
+        Some(p) => p.clone(),
         None => base.clone(),
     }
 }
@@ -322,6 +302,7 @@ pub fn generate_cached(
         schema: &schema,
         documents: &documents,
         generates: &config.generates,
+        preset: config.preset,
     };
     let result = generate_from_input(&input)?;
     crate::timing!("Code generation", t0.elapsed());

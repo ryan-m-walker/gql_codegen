@@ -1,15 +1,74 @@
 //! Configuration types matching the TypeScript interface.
 
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap};
+use std::str::FromStr;
 
 // Re-export casing types for convenience
 pub use crate::casing::{NamingCase, NamingConvention, NamingConventionConfig};
 
+/// Preset determines default configuration values
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "kebab-case")]
+pub enum Preset {
+    /// SGC defaults: inline scalars/nullables, future-proof enums/unions
+    /// Optimized for TypeScript compiler performance
+    #[default]
+    Sgc,
+    /// graphql-codegen compatibility: Maybe<T> wrappers, Scalars map, utility types
+    /// Use for drop-in replacement with identical output
+    GraphqlCodegen,
+}
+
+impl Preset {
+    /// Get the default PluginOptions for this preset
+    pub fn default_options(&self) -> PluginOptions {
+        match self {
+            Preset::Sgc => PluginOptions {
+                // SGC defaults: optimized for TS performance and safety
+                use_utility_types: false,
+                future_proof_enums: true,
+                future_proof_unions: true,
+                immutable_types: true,
+                default_scalar_type: Some("unknown".to_string()),
+                ..Default::default()
+            },
+            Preset::GraphqlCodegen => PluginOptions {
+                // graphql-codegen compat: use wrappers, matches their defaults
+                use_utility_types: true,
+                future_proof_enums: false,
+                future_proof_unions: false,
+                default_scalar_type: Some("any".to_string()),
+                ..Default::default()
+            },
+        }
+    }
+}
+
+impl FromStr for Preset {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "sgc" => Ok(Preset::Sgc),
+            "graphql-codegen" | "graphqlcodegen" | "compat" => Ok(Preset::GraphqlCodegen),
+            _ => Err(format!(
+                "Unknown preset '{}'. Valid presets: sgc, graphql-codegen",
+                s
+            )),
+        }
+    }
+}
+
 /// Main configuration - matches TypeScript `CodegenConfig`
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct CodegenConfig {
+    /// Preset for default values: "sgc" (default) or "graphql-codegen"
+    #[serde(default)]
+    pub preset: Preset,
+
     /// Path to GraphQL schema file(s)
     pub schema: StringOrArray,
 
@@ -25,7 +84,7 @@ pub struct CodegenConfig {
 }
 
 /// Either a single string or array of strings
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(untagged)]
 pub enum StringOrArray {
     Single(String),
@@ -49,7 +108,7 @@ impl StringOrArray {
 }
 
 /// Configuration for a single output file
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct OutputConfig {
     /// Plugins to run
@@ -69,7 +128,7 @@ pub struct OutputConfig {
 }
 
 /// Plugin configuration - either just name or name with config
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(untagged)]
 pub enum PluginConfig {
     /// Just the plugin name string
@@ -98,9 +157,25 @@ impl PluginConfig {
 
 /// Plugin options - shared config structure
 /// Uses BTreeMap for scalars to enable Hash derivation (cache key generation)
-#[derive(Debug, Clone, Default, Hash, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Hash, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct PluginOptions {
+    /// ------------- SGC Specific ------------------
+    /// When false (default): inline scalars and nullables directly (e.g., `string`, `T | null`)
+    /// When true: generate utility types like `Maybe<T>`, `Scalars['String']['output']`
+    /// Use `true` for graphql-codegen compatibility
+    #[serde(default)]
+    pub use_utility_types: bool,
+
+    /// Inline fragment spreads into document text (document generator)
+    #[serde(default)]
+    pub inline_fragments: bool,
+
+    /// Remove duplicate field selections (document generator)
+    #[serde(default)]
+    pub dedupe_selections: bool,
+
+    /// -------- GraphQL Codegen Options ------------
     /// Custom scalar mappings (GraphQL scalar name -> TypeScript type)
     #[serde(default)]
     pub scalars: BTreeMap<String, String>,
@@ -203,14 +278,6 @@ pub struct PluginOptions {
     #[serde(default)]
     pub formatting: Option<FormattingOptions>,
 
-    /// Inline fragment spreads into document text (document generator)
-    #[serde(default)]
-    pub inline_fragments: bool,
-
-    /// Remove duplicate field selections (document generator)
-    #[serde(default)]
-    pub dedupe_selections: bool,
-
     /// Naming convention for generated types
     /// Can be a string ("keep", "pascalCase", etc.) or object with typeNames/enumValues
     #[serde(default)]
@@ -218,7 +285,7 @@ pub struct PluginOptions {
 }
 
 /// Declaration kind for generated types
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum DeclarationKind {
     #[default]
@@ -233,7 +300,7 @@ fn default_true() -> bool {
     true
 }
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum GraphqlTag {
     #[default]
@@ -243,7 +310,7 @@ pub enum GraphqlTag {
 }
 
 /// Formatting options for generated code
-#[derive(Debug, Clone, Hash, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct FormattingOptions {
     #[serde(default = "default_indent_width")]

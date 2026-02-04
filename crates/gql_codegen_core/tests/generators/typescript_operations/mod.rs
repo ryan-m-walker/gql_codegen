@@ -4,9 +4,9 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 use gql_codegen_core::{
-    ExtractConfig, GenerateInput, OutputConfig, PluginConfig, PluginOptions, SourceCache,
-    StringOrArray, collect_documents, generate_from_input, load_schema, load_sources,
-    resolve_schema_paths,
+    ExtractConfig, GenerateInput, OutputConfig, PluginConfig, PluginOptions, Preset,
+    SourceCache, StringOrArray, collect_documents, generate_from_input, load_schema,
+    load_sources, resolve_schema_paths,
 };
 
 /// Get the fixtures directory path
@@ -43,6 +43,7 @@ fn generate_operations(
         schema: &schema,
         documents: &docs,
         generates: &generates,
+        preset: Preset::default(),
     };
 
     let result = generate_from_input(&input).unwrap();

@@ -21,6 +21,7 @@ rayon = { version = "1.11.0" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0.149" }
 thiserror = { version = "2.0.18" }
+schemars = { version = "0.8" }
 anyhow = { version = "1.0.100" }
 walkdir = { version = "2.5.0" }
 glob = { version = "0.3.2" }

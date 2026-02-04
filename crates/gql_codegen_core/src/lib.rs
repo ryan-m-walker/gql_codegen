@@ -41,7 +41,7 @@ pub use codegen::{
 };
 pub use config::{
     CodegenConfig, DeclarationKind, FormattingOptions, GraphqlTag, NamingCase, NamingConvention,
-    NamingConventionConfig, OutputConfig, PluginConfig, PluginOptions, StringOrArray,
+    NamingConventionConfig, OutputConfig, PluginConfig, PluginOptions, Preset, StringOrArray,
 };
 pub use error::{Error, Result};
 
@@ -55,3 +55,9 @@ pub use source_cache::SourceCache;
 pub use extract::{ExtractConfig, Extracted};
 pub use schema::{load_schema, load_schema_from_contents, resolve_schema_paths};
 pub use writer::{FsWriter, MemoryWriter, StdoutWriter, WriteResult, Writer, write_outputs};
+
+/// Generate JSON Schema for the configuration types
+/// This can be used for IDE intellisense, validation, etc.
+pub fn config_json_schema() -> schemars::schema::RootSchema {
+    schemars::schema_for!(PluginOptions)
+}

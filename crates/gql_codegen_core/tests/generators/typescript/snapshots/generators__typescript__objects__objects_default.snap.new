@@ -1,0 +1,27 @@
+---
+source: crates/gql_codegen_core/tests/generators/typescript/objects.rs
+assertion_line: 10
+expression: output
+---
+export type Query = {
+  __typename?: 'Query';
+  _empty?: String | null;
+  user?: User | null;
+  post?: Post | null;
+};
+
+export type User = {
+  __typename?: 'User';
+  id: ID;
+  name: String;
+  email?: String | null;
+  age?: Int | null;
+};
+
+export type Post = {
+  __typename?: 'Post';
+  id: ID;
+  title: String;
+  body?: String | null;
+  published: Boolean;
+};

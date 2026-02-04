@@ -5,8 +5,8 @@ use std::path::PathBuf;
 
 use gql_codegen_core::{
     ExtractConfig, GenerateInput, GraphqlTag, OutputConfig, PluginConfig, PluginOptions,
-    SourceCache, StringOrArray, collect_documents, generate_from_input, load_schema, load_sources,
-    resolve_schema_paths,
+    Preset, SourceCache, StringOrArray, collect_documents, generate_from_input, load_schema,
+    load_sources, resolve_schema_paths,
 };
 
 fn fixtures_dir() -> PathBuf {
@@ -42,6 +42,7 @@ fn generate_docs(
         schema: &schema,
         documents: &docs,
         generates: &generates,
+        preset: Preset::default(),
     };
 
     let result = generate_from_input(&input).unwrap();

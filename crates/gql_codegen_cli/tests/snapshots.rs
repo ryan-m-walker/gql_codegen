@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 
 use gql_codegen_core::{
     collect_documents, generate_from_input, load_schema, load_sources, resolve_schema_paths,
-    CodegenConfig, ExtractConfig, GenerateInput, SourceCache, StringOrArray,
+    CodegenConfig, ExtractConfig, GenerateInput, SourceCache,
 };
 
 fn fixtures_dir() -> PathBuf {
@@ -38,6 +38,7 @@ fn load_and_generate(config_name: &str) -> HashMap<String, String> {
         schema: &schema,
         documents: &documents,
         generates: &config.generates,
+        preset: config.preset,
     };
 
     let result = generate_from_input(&input).expect("Failed to generate");
@@ -97,6 +98,7 @@ fn test_schema_types_only() {
         schema: &schema,
         documents: &documents,
         generates: &generates,
+        preset: gql_codegen_core::Preset::default(),
     };
 
     let result = generate_from_input(&input).expect("Failed to generate");

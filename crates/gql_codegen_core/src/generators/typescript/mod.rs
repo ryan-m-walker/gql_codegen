@@ -12,13 +12,17 @@ use apollo_compiler::schema::ExtendedType;
 use super::GeneratorContext;
 use crate::Result;
 use crate::config::{NamingCase, NamingConvention, PluginOptions};
-use crate::generators::typescript::base_types::generate_base_types;
-use crate::generators::typescript::scalars::generate_scalars;
-use crate::generators::typescript::utils::{
-    generate_decl_closing, generate_decl_opening, get_export_kw,
+use crate::generators::typescript::field::render_field;
+use crate::generators::typescript::helpers::{
+    get_export_kw, render_decl_closing, render_decl_opening, render_description,
 };
+use crate::generators::typescript::object::render_object;
+use crate::generators::typescript::scalars::render_scalars;
+use crate::generators::typescript::utils::generate_util_types;
 
-mod base_types;
+mod field;
+mod helpers;
+mod object;
 mod scalars;
 mod utils;
 
@@ -251,22 +255,22 @@ fn collect_operation_types(ctx: &GeneratorContext) -> HashSet<String> {
 
 /// Generate TypeScript types from the GraphQL schema
 pub fn generate_typescript(ctx: &GeneratorContext, writer: &mut dyn Write) -> Result<()> {
-    let options = ctx.options;
-    let schema = ctx.schema;
     let export = get_export_kw(ctx);
 
     // Collect referenced types if only_operation_types is enabled
-    let referenced_types = if options.only_operation_types {
+    let referenced_types = if ctx.options.only_operation_types {
         Some(collect_operation_types(ctx))
     } else {
         None
     };
 
-    generate_base_types(ctx, writer)?;
-    generate_scalars(ctx, writer)?;
+    if ctx.options.use_utility_types {
+        generate_util_types(ctx, writer)?;
+        render_scalars(ctx, writer)?;
+    }
 
     // Iterate over schema types
-    for (name, ty) in schema.types.iter() {
+    for (name, ty) in ctx.schema.types.iter() {
         // Skip built-in types
         if name.as_str().starts_with("__") {
             continue;
@@ -279,40 +283,46 @@ pub fn generate_typescript(ctx: &GeneratorContext, writer: &mut dyn Write) -> Re
             }
         }
 
-        let readonly = if options.immutable_types {
+        let readonly = if ctx.options.immutable_types {
             "readonly "
         } else {
             ""
         };
 
         // Apply naming convention to type name
-        let type_name = transform_type_name(name.as_str(), options);
+        let type_name = transform_type_name(name.as_str(), ctx.options);
 
         match ty {
             apollo_compiler::schema::ExtendedType::Object(obj) => {
-                generate_decl_opening(&type_name, ctx, writer)?;
-
-                if !options.skip_typename {
-                    // __typename uses original GraphQL name, not transformed
-                    writeln!(writer, "  {readonly}__typename: '{name}';")?;
-                }
-
-                for (field_name, field) in obj.fields.iter() {
-                    let field_type = format_type(&field.ty, options);
-                    writeln!(writer, "  {readonly}{field_name}: {field_type};")?;
-                }
-
-                generate_decl_closing(ctx, writer)?;
-                writeln!(writer)?;
+                render_object(obj, ctx, writer)?;
+                // render_description(&obj.description, 0, writer)?;
+                // render_decl_opening(&type_name, ctx, writer)?;
+                //
+                // if !ctx.options.skip_typename {
+                //     let optional = if ctx.options.non_optional_typename {
+                //         ""
+                //     } else {
+                //         "?"
+                //     };
+                //
+                //     writeln!(writer, "  {readonly}__typename{optional}: '{type_name}';")?;
+                // }
+                //
+                // for (field_name, field) in obj.fields.iter() {
+                //     render_field(field_name, field, ctx, writer)?;
+                // }
+                //
+                // render_decl_closing(ctx, writer)?;
+                // writeln!(writer)?;
             }
 
             apollo_compiler::schema::ExtendedType::Enum(en) => {
-                let enum_name = apply_enum_affixes(&type_name, options);
-                if options.enums_as_types {
+                let enum_name = apply_enum_affixes(&type_name, ctx.options);
+                if ctx.options.enums_as_types {
                     write!(writer, "{export}type {enum_name} = ")?;
 
                     for (i, value) in en.values.keys().enumerate() {
-                        let transformed_value = transform_enum_value(value.as_str(), options);
+                        let transformed_value = transform_enum_value(value.as_str(), ctx.options);
                         write!(writer, "'{transformed_value}'")?;
 
                         if i < en.values.len() - 1 {
@@ -320,16 +330,20 @@ pub fn generate_typescript(ctx: &GeneratorContext, writer: &mut dyn Write) -> Re
                         }
                     }
 
-                    if options.future_proof_enums {
+                    if ctx.options.future_proof_enums {
                         write!(writer, " | '%future added value'")?;
                     }
 
                     writeln!(writer, ";")?;
                 } else {
-                    let const_kw = if options.const_enums { "const " } else { "" };
+                    let const_kw = if ctx.options.const_enums {
+                        "const "
+                    } else {
+                        ""
+                    };
                     writeln!(writer, "{export}{const_kw}enum {enum_name} {{")?;
                     for value in en.values.keys() {
-                        let transformed_value = transform_enum_value(value.as_str(), options);
+                        let transformed_value = transform_enum_value(value.as_str(), ctx.options);
                         // Enum member name is transformed, value stays original
                         writeln!(writer, "  {transformed_value} = '{value}',")?;
                     }
@@ -339,14 +353,14 @@ pub fn generate_typescript(ctx: &GeneratorContext, writer: &mut dyn Write) -> Re
             }
 
             apollo_compiler::schema::ExtendedType::Interface(iface) => {
-                generate_decl_opening(&type_name, ctx, writer)?;
+                render_decl_opening(&type_name, ctx, writer)?;
 
                 for (field_name, field) in iface.fields.iter() {
-                    let field_type = format_type(&field.ty, options);
+                    let field_type = format_type(&field.ty, ctx.options);
                     writeln!(writer, "  {readonly}{field_name}: {field_type};")?;
                 }
 
-                generate_decl_closing(ctx, writer)?;
+                render_decl_closing(ctx, writer)?;
                 writeln!(writer)?;
             }
 
@@ -354,7 +368,7 @@ pub fn generate_typescript(ctx: &GeneratorContext, writer: &mut dyn Write) -> Re
                 let members: Vec<_> = union
                     .members
                     .iter()
-                    .map(|m| transform_type_name(m.name.as_str(), options))
+                    .map(|m| transform_type_name(m.name.as_str(), ctx.options))
                     .collect();
                 writeln!(
                     writer,
@@ -365,38 +379,40 @@ pub fn generate_typescript(ctx: &GeneratorContext, writer: &mut dyn Write) -> Re
             }
 
             apollo_compiler::schema::ExtendedType::InputObject(input) => {
-                generate_decl_opening(&type_name, ctx, writer)?;
+                render_decl_opening(&type_name, ctx, writer)?;
 
                 for (field_name, field) in input.fields.iter() {
                     // Use input-specific type formatting for input objects
-                    let field_type = format_input_type(&field.ty, options);
+                    let field_type = format_input_type(&field.ty, ctx.options);
                     let optional = if field.ty.is_non_null() { "" } else { "?" };
                     writeln!(writer, "  {readonly}{field_name}{optional}: {field_type};")?;
                 }
 
-                generate_decl_closing(ctx, writer)?;
+                render_decl_closing(ctx, writer)?;
                 writeln!(writer)?;
             }
 
-            apollo_compiler::schema::ExtendedType::Scalar(_) => {
-                // Skip built-in scalars
-                match name.as_str() {
-                    "String" | "ID" | "Int" | "Float" | "Boolean" => continue,
-                    _ => {}
+            apollo_compiler::schema::ExtendedType::Scalar(scalar) => {
+                if ctx.options.use_utility_types {
+                    continue;
                 }
 
-                // Check for custom scalar mapping
-                if let Some(ts_type) = options.scalars.get(name.as_str()) {
-                    writeln!(writer, "{export}type {type_name} = {ts_type};")?;
-                } else if options.strict_scalars {
-                    return Err(crate::Error::Config(format!(
-                        "Unknown scalar '{name}' found but strictScalars is enabled. Add it to the scalars config."
-                    )));
-                } else {
-                    // Use default_scalar_type or fallback to "unknown"
-                    let ts_type = options.default_scalar_type.as_deref().unwrap_or("unknown");
-                    writeln!(writer, "{export}type {type_name} = {ts_type};")?;
+                if matches!(name.as_str(), "String" | "ID" | "Int" | "Float" | "Boolean") {
+                    continue;
                 }
+
+                let custom_type = ctx.options.scalars.get(name.as_str());
+
+                let ts_type = if let Some(ref custom_type) = custom_type {
+                    custom_type
+                } else if let Some(ref default_type) = ctx.options.default_scalar_type {
+                    default_type
+                } else {
+                    "unknown"
+                };
+
+                render_description(&scalar.description, 0, writer)?;
+                writeln!(writer, "{export}type {type_name} = {ts_type};")?;
                 writeln!(writer)?;
             }
         }
@@ -467,23 +483,11 @@ fn format_type_with_context(
     }
 }
 
-// TODO: CLAUDE: double check replace T doesn't conflict with other Ts that might be used
-//
 /// Wrap a type with nullable wrapper (Maybe or explicit null)
+#[inline]
 fn wrap_nullable(ts_type: &str, options: &crate::config::PluginOptions, is_input: bool) -> String {
-    if options.avoid_optionals {
-        format!("{ts_type} | null")
-    } else if is_input {
-        // Use input_maybe_value if set, otherwise fall back to maybe_value pattern
-        if let Some(ref input_maybe) = options.input_maybe_value {
-            input_maybe.replace("T", ts_type)
-        } else if let Some(ref maybe) = options.maybe_value {
-            maybe.replace("T", ts_type)
-        } else {
-            format!("Maybe<{ts_type}>")
-        }
-    } else if let Some(ref maybe) = options.maybe_value {
-        maybe.replace("T", ts_type)
+    if is_input {
+        format!("InputMaybe<{ts_type}>")
     } else {
         format!("Maybe<{ts_type}>")
     }

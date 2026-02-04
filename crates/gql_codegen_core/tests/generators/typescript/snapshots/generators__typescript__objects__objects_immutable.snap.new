@@ -1,0 +1,27 @@
+---
+source: crates/gql_codegen_core/tests/generators/typescript/objects.rs
+assertion_line: 22
+expression: output
+---
+export type Query = {
+  readonly __typename?: 'Query';
+  readonly _empty?: String | null;
+  readonly user?: User | null;
+  readonly post?: Post | null;
+};
+
+export type User = {
+  readonly __typename?: 'User';
+  readonly id: ID;
+  readonly name: String;
+  readonly email?: String | null;
+  readonly age?: Int | null;
+};
+
+export type Post = {
+  readonly __typename?: 'Post';
+  readonly id: ID;
+  readonly title: String;
+  readonly body?: String | null;
+  readonly published: Boolean;
+};

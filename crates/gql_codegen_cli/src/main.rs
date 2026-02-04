@@ -58,6 +58,13 @@ fn run(args: &CliArgs, logger: &Logger) -> Result<()> {
     let mut config: CodegenConfig = serde_json::from_str(&config_content)
         .with_context(|| format!("Failed to parse config: {}", args.config.display()))?;
 
+    // CLI preset overrides config file preset
+    if let Some(preset) = args.preset {
+        config.preset = preset;
+    }
+
+    logger.debug(&format!("Preset: {:?}", config.preset));
+
     // Use baseDir from config if set (e.g., from Node CLI), otherwise derive from config path
     let base_dir = config
         .base_dir

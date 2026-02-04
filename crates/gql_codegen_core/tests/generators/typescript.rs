@@ -12,7 +12,7 @@ use std::path::PathBuf;
 
 use gql_codegen_core::{
     Error, ExtractConfig, GenerateInput, GenerateResult, OutputConfig, PluginConfig, PluginOptions,
-    SourceCache, collect_documents, generate_from_input, load_schema, resolve_schema_paths,
+    Preset, SourceCache, collect_documents, generate_from_input, load_schema, resolve_schema_paths,
 };
 
 /// Get the fixtures directory path
@@ -50,6 +50,7 @@ pub fn generate_with_options(schema_files: &[&str], options: PluginOptions) -> S
         schema: &schema,
         documents: &docs,
         generates: &generates,
+        preset: Preset::default(),
     };
 
     let result = generate_from_input(&input).unwrap();
@@ -87,6 +88,7 @@ pub fn try_generate_with_options(
         schema: &schema,
         documents: &docs,
         generates: &generates,
+        preset: Preset::default(),
     };
 
     generate_from_input(&input)

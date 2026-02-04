@@ -6,9 +6,7 @@ use crate::{
     Error, Result,
     generators::{
         GeneratorContext,
-        typescript::utils::{
-            generate_decl_closing, generate_decl_opening, get_decl_kind_kw, get_export_kw,
-        },
+        typescript::helpers::{render_decl_closing, render_decl_opening, render_description},
     },
 };
 
@@ -20,13 +18,13 @@ const DEFAULT_SCALARS: [(&str, &str); 5] = [
     ("Float", "number"),
 ];
 
-pub(crate) fn generate_scalars(ctx: &GeneratorContext, writer: &mut dyn Write) -> Result<()> {
+pub(crate) fn render_scalars(ctx: &GeneratorContext, writer: &mut dyn Write) -> Result<()> {
     writeln!(
         writer,
         "/** All built-in and custom scalars, mapped to their actual values */"
     )?;
 
-    generate_decl_opening("Scalars", ctx, writer)?;
+    render_decl_opening("Scalars", ctx, writer)?;
 
     let mut rendered = HashSet::new();
 
@@ -67,16 +65,18 @@ pub(crate) fn generate_scalars(ctx: &GeneratorContext, writer: &mut dyn Write) -
                 "unknown"
             };
 
+            render_description(&scalar.description, 1, writer)?;
+
             writeln!(
                 writer,
-                "  {name}: {{ input: {ts_type}; output: {ts_type}; }};"
+                "  {name}: {{ input: {ts_type}; output: {ts_type}; }}"
             )?;
 
             rendered.insert(name);
         }
     }
 
-    generate_decl_closing(ctx, writer)?;
+    render_decl_closing(ctx, writer)?;
     writeln!(writer)?;
 
     Ok(())

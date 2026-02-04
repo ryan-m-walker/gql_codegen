@@ -1,0 +1,26 @@
+---
+source: crates/gql_codegen_core/tests/generators/typescript/interfaces.rs
+assertion_line: 22
+expression: output
+---
+export type Query = {
+  readonly __typename?: 'Query';
+  readonly _empty?: String | null;
+  readonly node?: Node | null;
+};
+
+export type Node = {
+  readonly id: string;
+};
+
+export type Article = {
+  readonly __typename?: 'Article';
+  readonly id: ID;
+  readonly title: String;
+};
+
+export type Comment = {
+  readonly __typename?: 'Comment';
+  readonly id: ID;
+  readonly text: String;
+};

@@ -1,0 +1,18 @@
+---
+source: crates/gql_codegen_core/tests/generators/typescript/scalars.rs
+assertion_line: 13
+expression: output
+---
+export type Query = {
+  __typename?: 'Query';
+  _empty?: String | null;
+  createdAt?: DateTime | null;
+  amount?: Money | null;
+  data?: JSON | null;
+};
+
+export type DateTime = unknown;
+
+export type Money = unknown;
+
+export type JSON = unknown;

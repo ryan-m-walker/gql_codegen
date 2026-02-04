@@ -14,6 +14,7 @@ apollo-parser.workspace = true
 # Serialization (for receiving config from Node)
 serde.workspace = true
 serde_json.workspace = true
+schemars.workspace = true
 
 # File handling
 glob.workspace = true

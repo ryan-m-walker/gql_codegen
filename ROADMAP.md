@@ -102,7 +102,24 @@ src/
 
 ### Phase 4: Developer Experience
 
-#### 4.1 Watch Mode
+#### 4.1 Zero-Config Mode
+> Just run `sgc` and it works
+
+- [ ] Auto-discover schema files (`**/schema.graphql`, `**/*.graphql`)
+- [ ] Auto-discover operation files (`src/**/*.graphql`, `**/*.tsx`, etc.)
+- [ ] Default output to `__generated__/types.ts`
+- [ ] Detect common project patterns (Next.js, Apollo, Relay)
+
+#### 4.2 Init Command
+> Easy onboarding with `sgc init`
+
+- [ ] Interactive prompts for schema/documents/output paths
+- [ ] Preset selection (sgc vs graphql-codegen compat)
+- [ ] Generate `codegen.json` with sensible defaults
+- [ ] Option for non-interactive mode with defaults
+- [ ] Detect existing `.graphqlrc` and offer migration
+
+#### 4.3 Watch Mode
 > Depends on incremental caching
 
 - [ ] Add `--watch` flag
@@ -110,7 +127,7 @@ src/
 - [ ] Debounce rapid changes
 - [ ] Clear terminal and show summary on each run
 
-#### 4.2 Error Messages
+#### 4.4 Error Messages
 - [ ] Pretty-print errors with code snippets (miette)
 - [ ] Validation errors with suggestions
 - [ ] Schema/document compatibility checking
@@ -160,11 +177,12 @@ pub struct SizeHints {
 
 | Phase | Effort | Impact | Priority |
 |-------|--------|--------|----------|
+| Phase 4.1-4.2 (Zero-Config/Init) | Low-Medium | Very High | **P1** |
 | Phase 2 (Dynamic Paths) | Medium | Very High | **P1** |
 | Phase 3 (Incremental) | Medium-High | Very High | **P1** |
-| Phase 4.1 (Watch) | Medium | High | **P1** |
+| Phase 4.3 (Watch) | Medium | High | **P1** |
 | Phase 1 (Config Compat) | Low | Medium | P2 |
-| Phase 4.2-4.3 | Medium | Medium | P2 |
+| Phase 4.4-4.5 | Medium | Medium | P2 |
 | Phase 5 | High | Medium | P3 |
 
 ---

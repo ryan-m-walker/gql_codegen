@@ -1,0 +1,33 @@
+---
+source: crates/gql_codegen_core/tests/generators/typescript/naming.rs
+assertion_line: 56
+expression: output
+---
+export type QUERY = {
+  __typename?: 'QUERY';
+  _empty?: String | null;
+  userProfile?: UserProfile | null;
+  httpStatus?: HTTP_STATUS | null;
+};
+
+export type USER_PROFILE = {
+  __typename?: 'USER_PROFILE';
+  firstName: String;
+  lastName: String;
+};
+
+export type HTTP_STATUS = {
+  __typename?: 'HTTP_STATUS';
+  statusCode: Int;
+};
+
+export enum USER_ROLE {
+  ADMIN_USER = 'ADMIN_USER',
+  REGULAR_USER = 'regular_user',
+  GUEST_USER = 'GuestUser',
+}
+
+export type CREATE_USER_INPUT = {
+  user_name: string;
+  email_address: string;
+};

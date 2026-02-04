@@ -1,44 +1,44 @@
 use std::io::Write;
 
-use crate::Result;
-use crate::{DeclarationKind, generators::GeneratorContext};
+use crate::{
+    Result,
+    generators::{GeneratorContext, typescript::helpers::get_export_kw},
+};
 
-pub(crate) fn get_export_kw(ctx: &GeneratorContext) -> &'static str {
-    if ctx.options.no_export { "" } else { "export" }
-}
+const DEFAULT_MAYBE_VALUE: &str = "T | null";
+const DEFAULT_INPUT_MAYBE_VALUE: &str = "Maybe<T>";
 
-pub(crate) fn get_decl_kind_kw(ctx: &GeneratorContext) -> &'static str {
-    match ctx.options.declaration_kind {
-        Some(DeclarationKind::Type) | None => "type",
-        Some(DeclarationKind::Interface) => "interface",
-        Some(DeclarationKind::Class) => "class",
-        Some(DeclarationKind::AbstractClass) => "abstract class",
-    }
-}
+const DEFAULT_BASE_TYPES: [&str; 5] = [
+    "type Exact<T extends { [key: string]: unknown }> = { [K in keyof T]: T[K] };",
+    "type MakeOptional<T, K extends keyof T> = Omit<T, K> & { [SubKey in K]?: Maybe<T[SubKey]> };",
+    "type MakeMaybe<T, K extends keyof T> = Omit<T, K> & { [SubKey in K]: Maybe<T[SubKey]> };",
+    "type MakeEmpty<T extends { [key: string]: unknown }, K extends keyof T> = { [_ in K]?: never };",
+    "type Incremental<T> = T | { [P in keyof T]?: P extends ' $fragmentName' | '__typename' ? T[P] : never };",
+];
 
-pub(crate) fn generate_decl_opening(
-    name: &str,
-    ctx: &GeneratorContext,
-    writer: &mut dyn Write,
-) -> Result<()> {
+pub(crate) fn generate_util_types(ctx: &GeneratorContext, writer: &mut dyn Write) -> Result<()> {
     let export = get_export_kw(ctx);
-    let decl_kind = get_decl_kind_kw(ctx);
 
-    let separator = match ctx.options.declaration_kind {
-        Some(DeclarationKind::Type) | None => " = ",
-        _ => " ",
+    let maybe_value = ctx
+        .options
+        .maybe_value
+        .as_deref()
+        .unwrap_or(DEFAULT_MAYBE_VALUE);
+
+    let input_maybe_value = if let Some(ref input_maybe) = ctx.options.input_maybe_value {
+        input_maybe
+    } else if let Some(ref maybe) = ctx.options.maybe_value {
+        maybe
+    } else {
+        DEFAULT_INPUT_MAYBE_VALUE
     };
 
-    writeln!(writer, "{export} {decl_kind} {name}{separator}{{")?;
-    Ok(())
-}
+    writeln!(writer, "{export}type Maybe<T> = {maybe_value};",)?;
+    writeln!(writer, "{export}type InputMaybe<T> = {input_maybe_value};",)?;
 
-pub(crate) fn generate_decl_closing(ctx: &GeneratorContext, writer: &mut dyn Write) -> Result<()> {
-    let semi = match ctx.options.declaration_kind {
-        Some(DeclarationKind::Type) | None => ";",
-        _ => "",
-    };
+    for base_type in DEFAULT_BASE_TYPES {
+        writeln!(writer, "{export}{base_type}")?;
+    }
 
-    writeln!(writer, "}}{semi}")?;
     Ok(())
 }
