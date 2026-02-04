@@ -2,11 +2,14 @@
 source: crates/gql_codegen_core/tests/generators/documents/mod.rs
 expression: output
 ---
-export const UserFieldsDocument = `
-  fragment UserFields on User {
-    id
-    name
-    email
+export const GetUserWithFragmentsDocument = `
+  query GetUserWithFragments($id: ID!) {
+    user(id: $id) {
+      ...UserFields
+      posts {
+        ...PostFields
+      }
+    }
   }
 `;
 
@@ -18,13 +21,10 @@ export const PostFieldsDocument = `
   }
 `;
 
-export const GetUserWithFragmentsDocument = `
-  query GetUserWithFragments($id: ID!) {
-    user(id: $id) {
-      ...UserFields
-      posts {
-        ...PostFields
-      }
-    }
+export const UserFieldsDocument = `
+  fragment UserFields on User {
+    id
+    name
+    email
   }
 `;

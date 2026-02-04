@@ -2,24 +2,22 @@
 source: crates/gql_codegen_core/tests/generators/typescript/objects.rs
 expression: output
 ---
-export type Maybe<T> = T | null;
+export interface Post {
+  readonly id: string;
+  readonly title: string;
+  readonly body?: string | null;
+  readonly published: boolean;
+}
 
 export interface Query {
-  _empty: Maybe<string>;
-  user: Maybe<User>;
-  post: Maybe<Post>;
+  readonly _empty?: string | null;
+  readonly user?: User | null;
+  readonly post?: Post | null;
 }
 
 export interface User {
-  id: string;
-  name: string;
-  email: Maybe<string>;
-  age: Maybe<number>;
-}
-
-export interface Post {
-  id: string;
-  title: string;
-  body: Maybe<string>;
-  published: boolean;
+  readonly id: string;
+  readonly name: string;
+  readonly email?: string | null;
+  readonly age?: number | null;
 }

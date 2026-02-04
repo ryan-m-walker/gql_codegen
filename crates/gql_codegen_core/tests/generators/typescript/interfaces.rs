@@ -16,7 +16,7 @@ fn test_interfaces_immutable() {
         &["schemas/interface.graphql"],
         PluginOptions {
             immutable_types: true,
-            ..Default::default()
+            ..PluginOptions::serde_default()
         },
     );
     insta::assert_snapshot!(output);

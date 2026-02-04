@@ -88,8 +88,14 @@ mod tests {
         writer.write(Path::new("bar.txt"), b"world").unwrap();
 
         assert_eq!(writer.len(), 2);
-        assert_eq!(writer.get_string(Path::new("foo.txt")), Some("hello".into()));
-        assert_eq!(writer.get_string(Path::new("bar.txt")), Some("world".into()));
+        assert_eq!(
+            writer.get_string(Path::new("foo.txt")),
+            Some("hello".into())
+        );
+        assert_eq!(
+            writer.get_string(Path::new("bar.txt")),
+            Some("world".into())
+        );
     }
 
     #[test]
@@ -117,6 +123,9 @@ mod tests {
         writer.write(Path::new("foo.txt"), b"second").unwrap();
 
         assert_eq!(writer.len(), 1);
-        assert_eq!(writer.get_string(Path::new("foo.txt")), Some("second".into()));
+        assert_eq!(
+            writer.get_string(Path::new("foo.txt")),
+            Some("second".into())
+        );
     }
 }

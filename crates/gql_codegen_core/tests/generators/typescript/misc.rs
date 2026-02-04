@@ -6,11 +6,13 @@ use super::generate_with_options;
 
 #[test]
 fn test_maybe_value() {
+    // maybe_value only applies when use_utility_types is true
     let output = generate_with_options(
-        &["schemas/base.graphql"],
+        &[],
         PluginOptions {
             maybe_value: Some("T | null | undefined".to_string()),
-            ..Default::default()
+            use_utility_types: true,
+            ..PluginOptions::serde_default()
         },
     );
 

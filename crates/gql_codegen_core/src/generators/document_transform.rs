@@ -5,11 +5,11 @@
 use std::collections::HashSet;
 use std::io::Write;
 
-use apollo_compiler::ast::{OperationDefinition, Selection};
 use apollo_compiler::Name;
+use apollo_compiler::ast::{OperationDefinition, Selection};
 
-use crate::documents::ParsedFragment;
 use crate::Result;
+use crate::documents::ParsedFragment;
 
 /// Transform options for document generation
 pub struct TransformOptions {
@@ -110,7 +110,13 @@ fn write_selection_set<'a>(
                 // Write nested selection set
                 if !field.selection_set.is_empty() {
                     writeln!(writer, " {{")?;
-                    write_selection_set(writer, &field.selection_set, fragments, options, indent + 1)?;
+                    write_selection_set(
+                        writer,
+                        &field.selection_set,
+                        fragments,
+                        options,
+                        indent + 1,
+                    )?;
                     write!(writer, "{indent_str}}}")?;
                 }
 
@@ -146,7 +152,13 @@ fn write_selection_set<'a>(
                 }
 
                 writeln!(writer, " {{")?;
-                write_selection_set(writer, &inline.selection_set, fragments, options, indent + 1)?;
+                write_selection_set(
+                    writer,
+                    &inline.selection_set,
+                    fragments,
+                    options,
+                    indent + 1,
+                )?;
                 writeln!(writer, "{indent_str}}}")?;
             }
         }

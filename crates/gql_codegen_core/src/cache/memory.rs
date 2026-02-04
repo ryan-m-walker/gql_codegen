@@ -2,8 +2,8 @@
 
 use std::path::PathBuf;
 
-use super::utils::{check_metadata, CacheData, MetadataCheckResult};
 use super::Cache;
+use super::utils::{CacheData, MetadataCheckResult, check_metadata};
 
 /// In-memory cache - useful for testing
 pub struct MemoryCache {

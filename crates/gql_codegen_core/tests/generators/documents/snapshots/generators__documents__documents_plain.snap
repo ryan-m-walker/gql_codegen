@@ -2,6 +2,15 @@
 source: crates/gql_codegen_core/tests/generators/documents/mod.rs
 expression: output
 ---
+export const CreateUserDocument = `
+  mutation CreateUser($input: CreateUserInput!) {
+    createUser(input: $input) {
+      id
+      name
+    }
+  }
+`;
+
 export const GetUserDocument = `
   query GetUser($id: ID!) {
     user(id: $id) {
@@ -15,15 +24,6 @@ export const GetUserDocument = `
 export const GetUsersDocument = `
   query GetUsers {
     users {
-      id
-      name
-    }
-  }
-`;
-
-export const CreateUserDocument = `
-  mutation CreateUser($input: CreateUserInput!) {
-    createUser(input: $input) {
       id
       name
     }

@@ -48,12 +48,12 @@ pub use error::{Error, Result};
 // Public API - Building blocks for custom I/O handling
 // Use these when you need control over file loading, caching, etc.
 pub use documents::{
-    CollectedDocuments, ParsedFragment, ParsedOperation, collect_documents,
-    expand_document_globs, load_sources, load_sources_from_paths,
+    CollectedDocuments, ParsedFragment, ParsedOperation, collect_documents, expand_document_globs,
+    load_sources, load_sources_from_paths,
 };
-pub use source_cache::SourceCache;
 pub use extract::{ExtractConfig, Extracted};
 pub use schema::{load_schema, load_schema_from_contents, resolve_schema_paths};
+pub use source_cache::SourceCache;
 pub use writer::{FsWriter, MemoryWriter, StdoutWriter, WriteResult, Writer, write_outputs};
 
 /// Generate JSON Schema for the configuration types

@@ -2,61 +2,38 @@
 source: crates/gql_codegen_cli/tests/snapshots.rs
 expression: types
 ---
-export type Maybe<T> = T | null;
-
-export interface Query {
-  __typename: 'Query';
-  user: Maybe<User>;
-  users: Array<User>;
-  post: Maybe<Post>;
+export interface CreateUserInput {
+  readonly __typename?: 'CreateUserInput';
+  readonly name: string;
+  readonly email?: string | null;
+  readonly age?: number | null;
+  readonly role?: Role | null;
 }
+
+export type DateTime = unknown;
 
 export interface Mutation {
-  __typename: 'Mutation';
-  createUser: User;
-  updateUser: Maybe<User>;
-  deleteUser: boolean;
-}
-
-export interface User {
-  __typename: 'User';
-  id: string;
-  name: string;
-  email: Maybe<string>;
-  age: Maybe<number>;
-  role: Role;
-  posts: Array<Post>;
-  createdAt: DateTime;
+  readonly __typename?: 'Mutation';
+  readonly createUser: User;
+  readonly updateUser?: User | null;
+  readonly deleteUser: boolean;
 }
 
 export interface Post {
-  __typename: 'Post';
-  id: string;
-  title: string;
-  body: string;
-  published: boolean;
-  author: User;
-  tags: Array<string>;
+  readonly __typename?: 'Post';
+  readonly id: string;
+  readonly title: string;
+  readonly body: string;
+  readonly published: boolean;
+  readonly author: User;
+  readonly tags: ReadonlyArray<string>;
 }
 
-export interface CreateUserInput {
-  name: string;
-  email?: Maybe<string>;
-  age?: Maybe<number>;
-  role?: Maybe<Role>;
-}
-
-export interface UpdateUserInput {
-  name?: Maybe<string>;
-  email?: Maybe<string>;
-  age?: Maybe<number>;
-  role?: Maybe<Role>;
-}
-
-export interface UserFilter {
-  role?: Maybe<Role>;
-  minAge?: Maybe<number>;
-  maxAge?: Maybe<number>;
+export interface Query {
+  readonly __typename?: 'Query';
+  readonly user?: User | null;
+  readonly users: ReadonlyArray<User>;
+  readonly post?: Post | null;
 }
 
 export enum Role {
@@ -65,112 +42,136 @@ export enum Role {
   GUEST = 'GUEST',
 }
 
-export type DateTime = unknown;
-
-export interface UserFields {
-  id: string;
-  name: string;
-  email?: string | null;
-  age?: number | null;
-  role: Role;
-  createdAt: DateTime;
+export interface UpdateUserInput {
+  readonly __typename?: 'UpdateUserInput';
+  readonly name?: string | null;
+  readonly email?: string | null;
+  readonly age?: number | null;
+  readonly role?: Role | null;
 }
 
-export interface PostFields {
-  id: string;
-  title: string;
-  body: string;
-  published: boolean;
-  tags: Array<string>;
+export interface User {
+  readonly __typename?: 'User';
+  readonly id: string;
+  readonly name: string;
+  readonly email?: string | null;
+  readonly age?: number | null;
+  readonly role: Role;
+  readonly posts: ReadonlyArray<Post>;
+  readonly createdAt: unknown;
+}
+
+export interface UserFilter {
+  readonly __typename?: 'UserFilter';
+  readonly role?: Role | null;
+  readonly minAge?: number | null;
+  readonly maxAge?: number | null;
+}
+
+export interface CreateUser {
+  readonly createUser:  {
+    readonly id: string;
+    readonly name: string;
+    readonly email?: string | null;
+    readonly age?: number | null;
+    readonly role: Role;
+    readonly createdAt: DateTime;
+  };
+}
+
+export interface CreateUserVariables {
+  readonly input: CreateUserInput;
+}
+
+export interface DeleteUser {
+  readonly deleteUser: boolean;
+}
+
+export interface DeleteUserVariables {
+  readonly id: string;
+}
+
+export interface GetPost {
+  readonly post?:  {
+    readonly id: string;
+    readonly title: string;
+    readonly body: string;
+    readonly published: boolean;
+    readonly author:  {
+      readonly id: string;
+      readonly name: string;
+    };
+    readonly tags: Array<string>;
+  };
+}
+
+export interface GetPostVariables {
+  readonly id: string;
 }
 
 export interface GetUser {
-  user?:  {
-    id: string;
-    name: string;
-    email?: string | null;
-    age?: number | null;
-    role: Role;
-    createdAt: DateTime;
-    posts: Array< {
-      id: string;
-      title: string;
+  readonly user?:  {
+    readonly id: string;
+    readonly name: string;
+    readonly email?: string | null;
+    readonly age?: number | null;
+    readonly role: Role;
+    readonly createdAt: DateTime;
+    readonly posts: Array< {
+      readonly id: string;
+      readonly title: string;
     }>;
   };
 }
 
 export interface GetUserVariables {
-  id: string;
+  readonly id: string;
 }
 
 export interface GetUsers {
-  users: Array< {
-    id: string;
-    name: string;
-    email?: string | null;
-    age?: number | null;
-    role: Role;
-    createdAt: DateTime;
+  readonly users: Array< {
+    readonly id: string;
+    readonly name: string;
+    readonly email?: string | null;
+    readonly age?: number | null;
+    readonly role: Role;
+    readonly createdAt: DateTime;
   }>;
 }
 
 export interface GetUsersVariables {
-  filter?: UserFilter | null;
+  readonly filter?: UserFilter | null;
 }
 
-export interface GetPost {
-  post?:  {
-    id: string;
-    title: string;
-    body: string;
-    published: boolean;
-    author:  {
-      id: string;
-      name: string;
-    };
-    tags: Array<string>;
-  };
-}
-
-export interface GetPostVariables {
-  id: string;
-}
-
-export interface CreateUser {
-  createUser:  {
-    id: string;
-    name: string;
-    email?: string | null;
-    age?: number | null;
-    role: Role;
-    createdAt: DateTime;
-  };
-}
-
-export interface CreateUserVariables {
-  input: CreateUserInput;
+export interface PostFields {
+  readonly id: string;
+  readonly title: string;
+  readonly body: string;
+  readonly published: boolean;
+  readonly tags: Array<string>;
 }
 
 export interface UpdateUser {
-  updateUser?:  {
-    id: string;
-    name: string;
-    email?: string | null;
-    age?: number | null;
-    role: Role;
-    createdAt: DateTime;
+  readonly updateUser?:  {
+    readonly id: string;
+    readonly name: string;
+    readonly email?: string | null;
+    readonly age?: number | null;
+    readonly role: Role;
+    readonly createdAt: DateTime;
   };
 }
 
 export interface UpdateUserVariables {
-  id: string;
-  input: UpdateUserInput;
+  readonly id: string;
+  readonly input: UpdateUserInput;
 }
 
-export interface DeleteUser {
-  deleteUser: boolean;
-}
-
-export interface DeleteUserVariables {
-  id: string;
+export interface UserFields {
+  readonly id: string;
+  readonly name: string;
+  readonly email?: string | null;
+  readonly age?: number | null;
+  readonly role: Role;
+  readonly createdAt: DateTime;
 }

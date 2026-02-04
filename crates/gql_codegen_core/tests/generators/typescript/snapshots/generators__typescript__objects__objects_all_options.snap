@@ -2,6 +2,13 @@
 source: crates/gql_codegen_core/tests/generators/typescript/objects.rs
 expression: output
 ---
+export interface Post {
+  readonly id: string;
+  readonly title: string;
+  readonly body: string | null;
+  readonly published: boolean;
+}
+
 export interface Query {
   readonly _empty: string | null;
   readonly user: User | null;
@@ -13,11 +20,4 @@ export interface User {
   readonly name: string;
   readonly email: string | null;
   readonly age: number | null;
-}
-
-export interface Post {
-  readonly id: string;
-  readonly title: string;
-  readonly body: string | null;
-  readonly published: boolean;
 }

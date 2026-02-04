@@ -2,24 +2,33 @@
 source: crates/gql_codegen_cli/tests/snapshots.rs
 expression: docs
 ---
-export const UserFieldsDocument = `
-  fragment UserFields on User {
-    id
-    name
-    email
-    age
-    role
-    createdAt
+export const CreateUserDocument = `
+  mutation CreateUser($input: CreateUserInput!) {
+    createUser(input: $input) {
+      ...UserFields
+    }
   }
 `;
 
-export const PostFieldsDocument = `
-  fragment PostFields on Post {
-    id
-    title
-    body
-    published
-    tags
+export const DeleteUserDocument = `
+  mutation DeleteUser($id: ID!) {
+    deleteUser(id: $id)
+  }
+`;
+
+export const GetPostDocument = `
+  query GetPost($id: ID!) {
+    post(id: $id) {
+      id
+      title
+      body
+      published
+      author {
+        id
+        name
+      }
+      tags
+    }
   }
 `;
 
@@ -43,27 +52,13 @@ export const GetUsersDocument = `
   }
 `;
 
-export const GetPostDocument = `
-  query GetPost($id: ID!) {
-    post(id: $id) {
-      id
-      title
-      body
-      published
-      author {
-        id
-        name
-      }
-      tags
-    }
-  }
-`;
-
-export const CreateUserDocument = `
-  mutation CreateUser($input: CreateUserInput!) {
-    createUser(input: $input) {
-      ...UserFields
-    }
+export const PostFieldsDocument = `
+  fragment PostFields on Post {
+    id
+    title
+    body
+    published
+    tags
   }
 `;
 
@@ -75,8 +70,13 @@ export const UpdateUserDocument = `
   }
 `;
 
-export const DeleteUserDocument = `
-  mutation DeleteUser($id: ID!) {
-    deleteUser(id: $id)
+export const UserFieldsDocument = `
+  fragment UserFields on User {
+    id
+    name
+    email
+    age
+    role
+    createdAt
   }
 `;

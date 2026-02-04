@@ -16,7 +16,7 @@ fn test_inputs_immutable() {
         &["schemas/input.graphql"],
         PluginOptions {
             immutable_types: true,
-            ..Default::default()
+            ..PluginOptions::serde_default()
         },
     );
     insta::assert_snapshot!(output);
@@ -28,7 +28,7 @@ fn test_inputs_avoid_optionals() {
         &["schemas/input.graphql"],
         PluginOptions {
             avoid_optionals: true,
-            ..Default::default()
+            ..PluginOptions::serde_default()
         },
     );
     insta::assert_snapshot!(output);
@@ -41,7 +41,7 @@ fn test_inputs_maybe_value() {
         &["schemas/input.graphql"],
         PluginOptions {
             maybe_value: Some("T | null | undefined".to_string()),
-            ..Default::default()
+            ..PluginOptions::serde_default()
         },
     );
     insta::assert_snapshot!(output);
@@ -54,7 +54,7 @@ fn test_inputs_input_maybe_value() {
         &["schemas/input.graphql"],
         PluginOptions {
             input_maybe_value: Some("InputMaybe<T>".to_string()),
-            ..Default::default()
+            ..PluginOptions::serde_default()
         },
     );
     insta::assert_snapshot!(output);
@@ -68,7 +68,7 @@ fn test_inputs_separate_maybe_types() {
         PluginOptions {
             maybe_value: Some("Maybe<T>".to_string()),
             input_maybe_value: Some("InputMaybe<T>".to_string()),
-            ..Default::default()
+            ..PluginOptions::serde_default()
         },
     );
     insta::assert_snapshot!(output);

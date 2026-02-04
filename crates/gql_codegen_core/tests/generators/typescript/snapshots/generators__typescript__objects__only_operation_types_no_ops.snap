@@ -2,4 +2,4 @@
 source: crates/gql_codegen_core/tests/generators/typescript/objects.rs
 expression: output
 ---
-export type Maybe<T> = T | null;
+

@@ -4,9 +4,9 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 use gql_codegen_core::{
-    ExtractConfig, GenerateInput, OutputConfig, PluginConfig, PluginOptions, Preset,
-    SourceCache, StringOrArray, collect_documents, generate_from_input, load_schema,
-    load_sources, resolve_schema_paths,
+    ExtractConfig, GenerateInput, OutputConfig, PluginConfig, PluginOptions, Preset, SourceCache,
+    StringOrArray, collect_documents, generate_from_input, load_schema, load_sources,
+    resolve_schema_paths,
 };
 
 /// Get the fixtures directory path
@@ -24,7 +24,8 @@ fn generate_operations(
     let schema = load_schema(&resolve_schema_paths(&schema_refs, Some(&fixtures_dir()))).unwrap();
 
     let mut cache = SourceCache::new();
-    let doc_patterns = StringOrArray::Multiple(document_files.iter().map(|s| s.to_string()).collect());
+    let doc_patterns =
+        StringOrArray::Multiple(document_files.iter().map(|s| s.to_string()).collect());
     load_sources(&doc_patterns, Some(&fixtures_dir()), &mut cache).unwrap();
     let docs = collect_documents(&cache, &ExtractConfig::default());
 
@@ -78,7 +79,7 @@ fn test_operations_immutable() {
         &["documents/queries.graphql"],
         PluginOptions {
             immutable_types: true,
-            ..Default::default()
+            ..PluginOptions::serde_default()
         },
     );
     insta::assert_snapshot!(output);

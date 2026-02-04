@@ -52,10 +52,14 @@ fn test_collect_documents_from_graphql() {
 
     assert_eq!(docs.operations.len(), 3); // GetUser, GetUsers, CreateUser
     assert!(docs.operations.contains_key(&Name::new("GetUser").unwrap()));
-    assert!(docs.operations.contains_key(&Name::new("GetUsers").unwrap()));
-    assert!(docs
-        .operations
-        .contains_key(&Name::new("CreateUser").unwrap()));
+    assert!(
+        docs.operations
+            .contains_key(&Name::new("GetUsers").unwrap())
+    );
+    assert!(
+        docs.operations
+            .contains_key(&Name::new("CreateUser").unwrap())
+    );
 }
 
 #[test]
@@ -67,12 +71,14 @@ fn test_collect_documents_with_fragments() {
     let docs = collect_documents(&cache, &ExtractConfig::default());
 
     assert_eq!(docs.fragments.len(), 2); // UserFields, PostFields
-    assert!(docs
-        .fragments
-        .contains_key(&Name::new("UserFields").unwrap()));
-    assert!(docs
-        .fragments
-        .contains_key(&Name::new("PostFields").unwrap()));
+    assert!(
+        docs.fragments
+            .contains_key(&Name::new("UserFields").unwrap())
+    );
+    assert!(
+        docs.fragments
+            .contains_key(&Name::new("PostFields").unwrap())
+    );
 
     assert_eq!(docs.operations.len(), 1); // GetUserWithFragments
 }
@@ -87,12 +93,14 @@ fn test_collect_documents_from_tsx() {
 
     // Should extract gql`` and /* GraphQL */ tagged queries
     assert_eq!(docs.operations.len(), 2);
-    assert!(docs
-        .operations
-        .contains_key(&Name::new("GetUserFromTsx").unwrap()));
-    assert!(docs
-        .operations
-        .contains_key(&Name::new("GetPostsFromTsx").unwrap()));
+    assert!(
+        docs.operations
+            .contains_key(&Name::new("GetUserFromTsx").unwrap())
+    );
+    assert!(
+        docs.operations
+            .contains_key(&Name::new("GetPostsFromTsx").unwrap())
+    );
 }
 
 #[test]
@@ -105,12 +113,14 @@ fn test_collect_documents_from_broken_tsx() {
 
     // Should still extract GraphQL despite broken JS syntax
     assert_eq!(docs.operations.len(), 2);
-    assert!(docs
-        .operations
-        .contains_key(&Name::new("StillExtractable").unwrap()));
-    assert!(docs
-        .operations
-        .contains_key(&Name::new("AlsoExtractable").unwrap()));
+    assert!(
+        docs.operations
+            .contains_key(&Name::new("StillExtractable").unwrap())
+    );
+    assert!(
+        docs.operations
+            .contains_key(&Name::new("AlsoExtractable").unwrap())
+    );
 }
 
 #[test]

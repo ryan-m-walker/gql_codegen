@@ -4,11 +4,10 @@
 //! real filesystem or in-memory files (for testing).
 
 use std::collections::HashMap;
-use std::fs;
-use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::RwLock;
 use std::time::SystemTime;
+use std::{fs, io};
 
 use globset::{Glob, GlobSetBuilder};
 use walkdir::WalkDir;
@@ -131,7 +130,10 @@ impl MemoryFs {
 
     /// Add a file to the in-memory filesystem
     pub fn add_file(&self, path: impl Into<PathBuf>, content: impl Into<Vec<u8>>) {
-        self.files.write().unwrap().insert(path.into(), content.into());
+        self.files
+            .write()
+            .unwrap()
+            .insert(path.into(), content.into());
     }
 }
 
@@ -159,7 +161,10 @@ impl FileSystem for MemoryFs {
     }
 
     fn write(&self, path: &Path, content: &[u8]) -> io::Result<()> {
-        self.files.write().unwrap().insert(path.to_path_buf(), content.to_vec());
+        self.files
+            .write()
+            .unwrap()
+            .insert(path.to_path_buf(), content.to_vec());
         Ok(())
     }
 

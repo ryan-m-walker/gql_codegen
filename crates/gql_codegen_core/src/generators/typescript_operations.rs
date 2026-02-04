@@ -11,54 +11,75 @@ use apollo_compiler::{Name, Schema};
 use rayon::prelude::*;
 
 use super::GeneratorContext;
+use crate::Result;
 use crate::config::PluginOptions;
 use crate::documents::ParsedFragment;
-use crate::Result;
 use indexmap::IndexMap;
 
+/// Item to generate - either a fragment or operation
+enum GenerateItem<'a> {
+    Fragment(&'a Name, &'a ParsedFragment<'a>),
+    Operation(&'a Name, &'a apollo_compiler::ast::OperationDefinition),
+}
+
 /// Generate TypeScript types for operations
-pub fn generate_typescript_operations(ctx: &GeneratorContext, writer: &mut dyn Write) -> Result<()> {
+pub fn generate_typescript_operations(ctx: &mut GeneratorContext) -> Result<()> {
     let generator = OperationTypesGenerator {
         schema: ctx.schema,
         fragments: ctx.fragments,
         options: ctx.options,
     };
 
-    // Generate fragment types in parallel
+    // Collect all items and sort alphabetically for deterministic output
     let t0 = web_time::Instant::now();
-    let fragments: Vec<_> = ctx.fragments.iter().collect();
-    let fragment_buffers: Vec<Vec<u8>> = fragments
+    let mut items: Vec<GenerateItem> =
+        Vec::with_capacity(ctx.fragments.len() + ctx.operations.len());
+
+    for (name, fragment) in ctx.fragments.iter() {
+        items.push(GenerateItem::Fragment(name, fragment));
+    }
+    for (name, operation) in ctx.operations.iter() {
+        items.push(GenerateItem::Operation(name, &operation.definition));
+    }
+
+    items.sort_by_key(|item| match item {
+        GenerateItem::Fragment(name, _) => name.as_str(),
+        GenerateItem::Operation(name, _) => name.as_str(),
+    });
+
+    // Generate all items in parallel
+    let buffers: Vec<Vec<u8>> = items
         .par_iter()
-        .map(|(name, fragment)| {
+        .map(|item| {
             let mut buffer = Vec::new();
-            generator.generate_fragment_type(&mut buffer, name, fragment).ok();
+            match item {
+                GenerateItem::Fragment(name, fragment) => {
+                    generator
+                        .generate_fragment_type(&mut buffer, name, fragment)
+                        .ok();
+                }
+                GenerateItem::Operation(name, operation) => {
+                    generator
+                        .generate_operation_type(&mut buffer, name, operation)
+                        .ok();
+                }
+            }
             buffer
         })
         .collect();
 
-    // Write all fragments to output
-    for buffer in &fragment_buffers {
-        writer.write_all(buffer)?;
+    // Write all in sorted order
+    for buffer in &buffers {
+        ctx.writer.write_all(buffer)?;
     }
-    crate::timing!("    Fragments", t0.elapsed(), "{} total", ctx.fragments.len());
 
-    // Generate operation types in parallel
-    let t0 = web_time::Instant::now();
-    let operations: Vec<_> = ctx.operations.iter().collect();
-    let operation_buffers: Vec<Vec<u8>> = operations
-        .par_iter()
-        .map(|(name, operation)| {
-            let mut buffer = Vec::new();
-            generator.generate_operation_type(&mut buffer, name, &operation.definition).ok();
-            buffer
-        })
-        .collect();
-
-    // Write all operations to output
-    for buffer in &operation_buffers {
-        writer.write_all(buffer)?;
-    }
-    crate::timing!("    Operations", t0.elapsed(), "{} total", ctx.operations.len());
+    crate::timing!(
+        "    Operations",
+        t0.elapsed(),
+        "{} fragments, {} operations",
+        ctx.fragments.len(),
+        ctx.operations.len()
+    );
 
     Ok(())
 }
@@ -79,7 +100,12 @@ impl<'a> OperationTypesGenerator<'a> {
         let type_condition = &fragment.definition.type_condition;
 
         writeln!(writer, "export interface {name} {{")?;
-        self.render_selection_set(writer, &fragment.definition.selection_set, type_condition, 1)?;
+        self.render_selection_set(
+            writer,
+            &fragment.definition.selection_set,
+            type_condition,
+            1,
+        )?;
         writeln!(writer, "}}")?;
         writeln!(writer)?;
 
@@ -110,13 +136,21 @@ impl<'a> OperationTypesGenerator<'a> {
             for var in &operation.variables {
                 let ts_type = self.graphql_type_to_ts(&var.ty);
                 let optional = if var.ty.is_non_null() { "" } else { "?" };
-                let readonly = if self.options.immutable_types { "readonly " } else { "" };
+                let readonly = if self.options.immutable_types {
+                    "readonly "
+                } else {
+                    ""
+                };
 
                 // Handle default values
                 let has_default = var.default_value.is_some();
                 let optional = if has_default { "?" } else { optional };
 
-                writeln!(writer, "  {}{}{}: {};", readonly, var.name, optional, ts_type)?;
+                writeln!(
+                    writer,
+                    "  {}{}{}: {};",
+                    readonly, var.name, optional, ts_type
+                )?;
             }
             writeln!(writer, "}}")?;
             writeln!(writer)?;
@@ -133,7 +167,11 @@ impl<'a> OperationTypesGenerator<'a> {
         depth: usize,
     ) -> Result<()> {
         let indent = "  ".repeat(depth);
-        let readonly = if self.options.immutable_types { "readonly " } else { "" };
+        let readonly = if self.options.immutable_types {
+            "readonly "
+        } else {
+            ""
+        };
 
         for selection in selections {
             match selection {
@@ -155,7 +193,9 @@ impl<'a> OperationTypesGenerator<'a> {
                     };
 
                     // Check for @include/@skip directives
-                    let has_conditional = field.directives.iter()
+                    let has_conditional = field
+                        .directives
+                        .iter()
                         .any(|d| d.name.as_str() == "include" || d.name.as_str() == "skip");
 
                     let optional_marker = if has_conditional || !field_def.ty.is_non_null() {
@@ -171,12 +211,23 @@ impl<'a> OperationTypesGenerator<'a> {
                         // Determine wrapper based on type
                         let (open, close) = self.get_type_wrappers(&field_def.ty);
 
-                        writeln!(writer, "{indent}{readonly}{field_name}{optional_marker}: {open} {{")?;
-                        self.render_selection_set(writer, &field.selection_set, &inner_type_name, depth + 1)?;
+                        writeln!(
+                            writer,
+                            "{indent}{readonly}{field_name}{optional_marker}: {open} {{"
+                        )?;
+                        self.render_selection_set(
+                            writer,
+                            &field.selection_set,
+                            &inner_type_name,
+                            depth + 1,
+                        )?;
                         writeln!(writer, "{indent}}}{close};")?;
                     } else {
                         let ts_type = self.graphql_type_to_ts(&field_def.ty);
-                        writeln!(writer, "{indent}{readonly}{field_name}{optional_marker}: {ts_type};")?;
+                        writeln!(
+                            writer,
+                            "{indent}{readonly}{field_name}{optional_marker}: {ts_type};"
+                        )?;
                     }
                 }
 
@@ -197,10 +248,20 @@ impl<'a> OperationTypesGenerator<'a> {
                     if let Some(type_condition) = &inline.type_condition {
                         // TODO: Handle union/interface discrimination properly
                         // For now, just inline the fields
-                        self.render_selection_set(writer, &inline.selection_set, type_condition, depth)?;
+                        self.render_selection_set(
+                            writer,
+                            &inline.selection_set,
+                            type_condition,
+                            depth,
+                        )?;
                     } else {
                         // No type condition - just inline
-                        self.render_selection_set(writer, &inline.selection_set, parent_type, depth)?;
+                        self.render_selection_set(
+                            writer,
+                            &inline.selection_set,
+                            parent_type,
+                            depth,
+                        )?;
                     }
                 }
             }
@@ -216,9 +277,7 @@ impl<'a> OperationTypesGenerator<'a> {
                 let ts = self.scalar_to_ts(name);
                 format!("{ts} | null")
             }
-            Type::NonNullNamed(name) => {
-                self.scalar_to_ts(name)
-            }
+            Type::NonNullNamed(name) => self.scalar_to_ts(name),
             Type::List(inner) => {
                 let inner_ts = self.graphql_type_to_ts(inner);
                 format!("Array<{inner_ts}> | null")

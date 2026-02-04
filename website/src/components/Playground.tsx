@@ -208,18 +208,7 @@ function getInitialState(): PlaygroundState | null {
   }
 }
 
-const DEFAULT_SCHEMA = `type Query {
-  user(id: ID!): User
-  users: [User!]!
-}
-
-type User {
-  id: ID!
-  name: String!
-  email: String!
-  posts: [Post!]!
-  createdAt: DateTime!
-}
+const DEFAULT_SCHEMA = `scalar DateTime
 
 type Post {
   id: ID!
@@ -229,7 +218,25 @@ type Post {
   published: Boolean!
 }
 
-scalar DateTime`;
+type Query {
+  user(id: ID!): User
+  users: [User!]!
+}
+
+enum Role {
+    ADMIN
+    USER
+}
+
+type User {
+  id: ID!
+  name: String!
+  email: String!
+  posts: [Post!]!
+  role: Role!
+  createdAt: DateTime!
+}`;
+
 
 const DEFAULT_OPERATIONS = `query GetUser($id: ID!) {
   user(id: $id) {

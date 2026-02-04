@@ -151,11 +151,7 @@ fn generate_internal(
                 .into_iter()
                 .map(|(path, out)| {
                     let output_config = OutputConfig {
-                        plugins: out
-                            .plugins
-                            .into_iter()
-                            .map(PluginConfig::Name)
-                            .collect(),
+                        plugins: out.plugins.into_iter().map(PluginConfig::Name).collect(),
                         prelude: None,
                         config: out.config,
                         documents_only: false,
@@ -246,9 +242,20 @@ mod tests {
         "#;
 
         let result = generate_internal(&[schema.to_string()], &[operations.to_string()], None);
-        assert!(result.error.is_none(), "Expected no error: {:?}", result.error);
-        assert!(result.output.contains("GetUserQuery"));
-        assert!(result.output.contains("GetUserQueryVariables"));
+        assert!(
+            result.error.is_none(),
+            "Expected no error: {:?}",
+            result.error
+        );
+        // Operation types are named after the operation (GetUser) with Variables suffix
+        assert!(
+            result.output.contains("interface GetUser"),
+            "Expected interface GetUser in output"
+        );
+        assert!(
+            result.output.contains("GetUserVariables"),
+            "Expected GetUserVariables in output"
+        );
     }
 
     #[test]
@@ -265,7 +272,8 @@ mod tests {
 
         let result = generate_internal(&[schema.to_string()], &[], None);
         assert!(result.error.is_none());
-        assert!(result.output.contains("type User"));
+        // SGC preset uses interfaces by default
+        assert!(result.output.contains("interface User"));
     }
 
     #[test]

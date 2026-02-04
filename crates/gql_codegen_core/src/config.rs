@@ -33,6 +33,8 @@ impl Preset {
                 future_proof_unions: true,
                 immutable_types: true,
                 default_scalar_type: Some("unknown".to_string()),
+                // SGC style (internal)
+                pretty_documents: true,
                 ..Default::default()
             },
             Preset::GraphqlCodegen => PluginOptions {
@@ -41,6 +43,8 @@ impl Preset {
                 future_proof_enums: false,
                 future_proof_unions: false,
                 default_scalar_type: Some("any".to_string()),
+                // compat style (internal)
+                pretty_documents: false,
                 ..Default::default()
             },
         }
@@ -161,7 +165,9 @@ impl PluginConfig {
 #[derive(Debug, Clone, Default, Hash, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct PluginOptions {
-    /// ------------- SGC Specific ------------------
+    // ─────────────────────────────────────────────────────────────────────────
+    // SGC Specific
+    // ─────────────────────────────────────────────────────────────────────────
     /// When false (default): inline scalars and nullables directly (e.g., `string`, `T | null`)
     /// When true: generate utility types like `Maybe<T>`, `Scalars['String']['output']`
     /// Use `true` for graphql-codegen compatibility
@@ -176,7 +182,9 @@ pub struct PluginOptions {
     #[serde(default)]
     pub dedupe_selections: bool,
 
-    /// -------- GraphQL Codegen Options ------------
+    // ─────────────────────────────────────────────────────────────────────────
+    // GraphQL Codegen Options
+    // ─────────────────────────────────────────────────────────────────────────
     /// Custom scalar mappings (GraphQL scalar name -> TypeScript type)
     #[serde(default)]
     pub scalars: BTreeMap<String, String>,
@@ -283,6 +291,31 @@ pub struct PluginOptions {
     /// Can be a string ("keep", "pascalCase", etc.) or object with typeNames/enumValues
     #[serde(default)]
     pub naming_convention: Option<NamingConvention>,
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Internal preset-only flags (not exposed in config schema)
+    // These are set by presets and cannot be overridden by users
+    // ─────────────────────────────────────────────────────────────────────────
+    /// Pretty-print document strings with indentation
+    /// SGC style - graphql-codegen uses single-line
+    #[serde(skip)]
+    #[schemars(skip)]
+    pub pretty_documents: bool,
+}
+
+impl PluginOptions {
+    /// Create PluginOptions with serde default values.
+    /// Use this instead of `..Default::default()` when you want values that match
+    /// what serde would produce from an empty JSON object `{}`.
+    ///
+    /// Note: If you add a new field with a non-false/None serde default,
+    /// update this method and `merge_options()` in codegen.rs.
+    pub fn serde_default() -> Self {
+        Self {
+            enums_as_types: true, // #[serde(default = "default_true")]
+            ..Default::default()
+        }
+    }
 }
 
 /// Declaration kind for generated types

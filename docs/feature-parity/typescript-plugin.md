@@ -2,7 +2,7 @@
 
 Comparison of SGC (Speedy GraphQL Codegen) options vs [graphql-codegen TypeScript plugin](https://github.com/dotansimha/graphql-code-generator/tree/master/packages/plugins/typescript/typescript).
 
-Last updated: 2026-01-31
+Last updated: 2026-02-04
 
 ## Summary
 
@@ -91,7 +91,35 @@ Last updated: 2026-01-31
 
 | Option                         | SGC | graphql-codegen | Notes                        |
 |--------------------------------|-----|-----------------|------------------------------|
-| `onlyOperationTypes`           | ✅  | ✅              | Only types used in operations|
+| `onlyOperationTypes`           | ✅  | 🔶              | SGC has improved implementation (see below)|
+
+### `onlyOperationTypes` Implementation Differences
+
+SGC's implementation of `onlyOperationTypes` is significantly more sophisticated than graphql-codegen's:
+
+**graphql-codegen approach:**
+Simply skips entire type categories (objects, interfaces, unions, inputs) and only keeps enums and scalars - regardless of whether they're actually used. This has [known issues](https://github.com/dotansimha/graphql-code-generator/issues/4562) with users reporting 2MB+ generated files.
+
+**SGC approach:**
+Performs transitive closure analysis to include only types genuinely referenced by operations:
+1. Collects types directly referenced in operations and fragments
+2. Collects operation variable input types
+3. Transitively expands to include all field return types
+4. Includes union members and interface implementers
+
+This is what users actually want, as evidenced by:
+- [Feature request #4562](https://github.com/dotansimha/graphql-code-generator/issues/4562) - "Improve onlyOperationTypes implementation"
+- [Bug report #9665](https://github.com/dotansimha/graphql-code-generator/issues/9665) - "onlyOperationTypes generates unused input types"
+- [Third-party plugin](https://github.com/Stonepaw/graphql-codegen-typescript-operation-types) created to work around the limitation
+
+| Type Category | graphql-codegen | SGC |
+|---------------|-----------------|-----|
+| Objects       | ❌ Skip all     | ✅ If used |
+| Interfaces    | ❌ Skip all     | ✅ If used |
+| Unions        | ❌ Skip all     | ✅ If used |
+| Inputs        | ❌ Skip all     | ✅ If used |
+| Enums         | ✅ Keep all     | ✅ If used |
+| Scalars       | ✅ Keep all     | ✅ If used |
 | `dedupeFragments`              | 🔶  | ✅              | We have `dedupeSelections`   |
 | `externalFragments`            | ❌  | ✅              | External fragment definitions|
 | `fragmentVariableSuffix`       | ❌  | ✅              | Suffix for fragment variables|

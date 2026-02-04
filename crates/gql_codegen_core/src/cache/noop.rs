@@ -2,8 +2,8 @@
 
 use std::path::PathBuf;
 
-use super::utils::{CacheData, MetadataCheckResult};
 use super::Cache;
+use super::utils::{CacheData, MetadataCheckResult};
 
 /// No-op cache - always reports as stale (forces regeneration)
 pub struct NoCache;

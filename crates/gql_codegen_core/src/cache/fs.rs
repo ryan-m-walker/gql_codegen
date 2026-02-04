@@ -3,8 +3,8 @@
 use std::fs;
 use std::path::PathBuf;
 
-use super::utils::{check_metadata, CacheData, MetadataCheckResult};
 use super::Cache;
+use super::utils::{CacheData, MetadataCheckResult, check_metadata};
 
 /// Filesystem-based cache - persists to .sgc/cache.json
 pub struct FsCache {
@@ -45,8 +45,7 @@ impl Cache for FsCache {
         fs::create_dir_all(&self.cache_dir)?;
 
         let cache_file = self.cache_dir.join("cache.json");
-        let json = serde_json::to_string_pretty(&data)
-            .map_err(std::io::Error::other)?;
+        let json = serde_json::to_string_pretty(&data).map_err(std::io::Error::other)?;
 
         fs::write(cache_file, json)?;
         self.stored = Some(data);

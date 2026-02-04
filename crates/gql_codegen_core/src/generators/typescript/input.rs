@@ -1,5 +1,5 @@
 use apollo_compiler::Node;
-use apollo_compiler::schema::ObjectType;
+use apollo_compiler::schema::InputObjectType;
 
 use crate::Result;
 use crate::generators::GeneratorContext;
@@ -9,12 +9,11 @@ use crate::generators::typescript::helpers::{
     render_decl_closing, render_decl_opening, render_description,
 };
 
-/// Render a GraphQL object type as TypeScript type to the current writer.
+/// Render a GraphQL input object type as TypeScript type to the current writer.
 ///
 /// **Example Input:**
 /// ``` graphql
-/// type User {
-///   id: ID!
+/// input UserInput {
 ///   name: String!
 ///   email: String!
 /// }
@@ -22,24 +21,23 @@ use crate::generators::typescript::helpers::{
 ///
 /// **Output:**
 /// ``` typescript
-/// interface User {
-///   __typename: 'User';
-///   id: string;
+/// interface UserInput {
 ///   name: string;
 ///   email: string;
 /// }
 /// ```
-pub(crate) fn render_object(ctx: &mut GeneratorContext, object: &Node<ObjectType>) -> Result<()> {
-    let type_name = object.name.as_str();
+pub(crate) fn render_input(
+    ctx: &mut GeneratorContext,
+    input: &Node<InputObjectType>,
+) -> Result<()> {
+    let type_name = input.name.as_str();
 
-    // TODO: casing!
-
-    render_description(ctx, &object.description, 0)?;
-    render_decl_opening(ctx, &object.name, Some(&object.implements_interfaces))?;
+    render_description(ctx, &input.description, 0)?;
+    render_decl_opening(ctx, &input.name, None)?;
     render_typename(ctx, type_name)?;
 
-    for (field_name, field) in object.fields.iter() {
-        render_field(ctx, field_name, &FieldType::Object(field))?;
+    for (field_name, field) in input.fields.iter() {
+        render_field(ctx, field_name, &FieldType::InputObject(field))?;
     }
 
     render_decl_closing(ctx)?;

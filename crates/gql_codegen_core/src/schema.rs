@@ -2,7 +2,8 @@
 
 use std::path::{Path, PathBuf};
 
-use apollo_compiler::{Schema, validation::Valid};
+use apollo_compiler::Schema;
+use apollo_compiler::validation::Valid;
 
 use crate::{Error, Result};
 
@@ -47,10 +48,7 @@ pub fn load_schema_from_contents(files: &[(PathBuf, String)]) -> Result<Valid<Sc
 }
 
 /// Helper to resolve schema paths from config (convenience for simple cases)
-pub fn resolve_schema_paths(
-    patterns: &[&str],
-    base_dir: Option<&Path>,
-) -> Vec<PathBuf> {
+pub fn resolve_schema_paths(patterns: &[&str], base_dir: Option<&Path>) -> Vec<PathBuf> {
     patterns
         .iter()
         .map(|p| {
@@ -70,4 +68,3 @@ fn format_validation_errors(errors: &apollo_compiler::validation::DiagnosticList
         .collect::<Vec<_>>()
         .join("\n")
 }
-

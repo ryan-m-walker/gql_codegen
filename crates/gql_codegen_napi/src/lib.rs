@@ -6,10 +6,8 @@ use napi::bindgen_prelude::*;
 use napi_derive::napi;
 use std::path::PathBuf;
 
-use gql_codegen_core::{
-    cache::{Cache, FsCache, NoCache},
-    CodegenConfig, GenerateCachedResult,
-};
+use gql_codegen_core::cache::{Cache, FsCache, NoCache};
+use gql_codegen_core::{CodegenConfig, GenerateCachedResult};
 
 /// Result of code generation
 #[napi(object)]

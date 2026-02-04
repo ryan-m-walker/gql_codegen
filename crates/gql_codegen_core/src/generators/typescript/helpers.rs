@@ -1,9 +1,9 @@
-use std::io::Write;
-
 use apollo_compiler::Node;
+use apollo_compiler::collections::IndexSet;
+use apollo_compiler::schema::ComponentName;
 
-use crate::Result;
-use crate::{DeclarationKind, generators::GeneratorContext};
+use crate::generators::GeneratorContext;
+use crate::{DeclarationKind, Result};
 
 pub(crate) fn get_export_kw(ctx: &GeneratorContext) -> &'static str {
     if ctx.options.no_export { "" } else { "export " }
@@ -42,9 +42,9 @@ pub(crate) fn get_optional_prop_modifier(ctx: &GeneratorContext) -> &'static str
 }
 
 pub(crate) fn render_decl_opening(
+    ctx: &mut GeneratorContext,
     name: &str,
-    ctx: &GeneratorContext,
-    writer: &mut dyn Write,
+    _implements_interfaces: Option<&IndexSet<ComponentName>>,
 ) -> Result<()> {
     let export = get_export_kw(ctx);
     let decl_kind = get_decl_kind_kw(ctx);
@@ -54,27 +54,27 @@ pub(crate) fn render_decl_opening(
         _ => " ",
     };
 
-    writeln!(writer, "{export}{decl_kind} {name}{separator}{{")?;
+    writeln!(ctx.writer, "{export}{decl_kind} {name}{separator}{{")?;
     Ok(())
 }
 
-pub(crate) fn render_decl_closing(ctx: &GeneratorContext, writer: &mut dyn Write) -> Result<()> {
+pub(crate) fn render_decl_closing(ctx: &mut GeneratorContext) -> Result<()> {
     let semi = match ctx.options.declaration_kind {
         Some(DeclarationKind::Type) | None => ";",
         _ => "",
     };
 
-    writeln!(writer, "}}{semi}")?;
+    writeln!(ctx.writer, "}}{semi}")?;
     Ok(())
 }
 
 pub(crate) fn render_description(
+    ctx: &mut GeneratorContext,
     description: &Option<Node<str>>,
-    indent: usize,
-    writer: &mut dyn Write,
+    indent_level: usize,
 ) -> Result<()> {
-    let indent = if indent > 0 {
-        " ".repeat(indent * 2)
+    let indent = if indent_level > 0 {
+        " ".repeat(indent_level * 2)
     } else {
         "".to_string()
     };
@@ -83,15 +83,15 @@ pub(crate) fn render_description(
         if description.is_empty() {
             return Ok(());
         } else if description.lines().count() > 1 {
-            writeln!(writer, "{indent}/**")?;
+            writeln!(ctx.writer, "{indent}/**")?;
             for line in description.lines() {
-                writeln!(writer, "{indent} * {line}")?;
+                writeln!(ctx.writer, "{indent} * {line}")?;
             }
-            writeln!(writer, "{indent} */")?;
+            writeln!(ctx.writer, "{indent} */")?;
 
             return Ok(());
         } else {
-            writeln!(writer, "{indent}/** {description} */")?;
+            writeln!(ctx.writer, "{indent}/** {description} */")?;
         }
     }
 

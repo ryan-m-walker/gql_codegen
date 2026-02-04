@@ -2,15 +2,21 @@
 source: crates/gql_codegen_core/tests/generators/typescript/enums.rs
 expression: output
 ---
-export type Maybe<T> = T | null;
-
-export interface Query {
-  __typename: 'Query';
-  _empty: Maybe<string>;
-  status: Maybe<Status>;
-  color: Maybe<Color>;
+export enum Color {
+  RED = 'RED',
+  GREEN = 'GREEN',
+  BLUE = 'BLUE',
 }
 
-export type Status = 'ACTIVE' | 'INACTIVE' | 'PENDING' | '%future added value';
+export interface Query {
+  readonly __typename?: 'Query';
+  readonly _empty?: string | null;
+  readonly status?: Status | null;
+  readonly color?: Color | null;
+}
 
-export type Color = 'RED' | 'GREEN' | 'BLUE' | '%future added value';
+export enum Status {
+  ACTIVE = 'ACTIVE',
+  INACTIVE = 'INACTIVE',
+  PENDING = 'PENDING',
+}

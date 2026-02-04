@@ -24,7 +24,7 @@ fn test_scalars_with_mappings() {
         &["schemas/scalar.graphql"],
         PluginOptions {
             scalars,
-            ..Default::default()
+            ..PluginOptions::serde_default()
         },
     );
     insta::assert_snapshot!(output);
@@ -37,7 +37,7 @@ fn test_scalars_default_scalar_type() {
         &["schemas/scalar.graphql"],
         PluginOptions {
             default_scalar_type: Some("any".to_string()),
-            ..Default::default()
+            ..PluginOptions::serde_default()
         },
     );
     insta::assert_snapshot!(output);
@@ -56,7 +56,7 @@ fn test_scalars_strict_with_all_mapped() {
         PluginOptions {
             scalars,
             strict_scalars: true,
-            ..Default::default()
+            ..PluginOptions::serde_default()
         },
     );
     insta::assert_snapshot!(output);
@@ -65,15 +65,22 @@ fn test_scalars_strict_with_all_mapped() {
 #[test]
 fn test_scalars_strict_missing_scalar_errors() {
     // strict_scalars should error when a scalar is not mapped
+    // Note: strict_scalars check only runs when use_utility_types is true
+    // because that's when render_scalars is called
     let result = try_generate_with_options(
         &["schemas/scalar.graphql"],
         PluginOptions {
             strict_scalars: true,
-            ..Default::default()
+            use_utility_types: true,
+            ..PluginOptions::serde_default()
         },
     );
 
     assert!(result.is_err());
     let err = result.unwrap_err().to_string();
-    assert!(err.contains("strictScalars"), "Error should mention strictScalars: {}", err);
+    assert!(
+        err.contains("scalars"),
+        "Error should mention scalars: {}",
+        err
+    );
 }

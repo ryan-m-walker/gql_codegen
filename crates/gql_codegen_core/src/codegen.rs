@@ -11,7 +11,9 @@ use std::path::PathBuf;
 use apollo_compiler::Schema;
 use apollo_compiler::validation::Valid;
 
-use crate::cache::{Cache, MetadataCheckResult, compute_hashes_from_cache, create_glob_cache, is_glob_cache_valid};
+use crate::cache::{
+    Cache, MetadataCheckResult, compute_hashes_from_cache, create_glob_cache, is_glob_cache_valid,
+};
 use crate::config::{OutputConfig, PluginOptions, Preset};
 use crate::documents::{
     CollectedDocuments, collect_documents, expand_document_globs, load_sources_from_paths,
@@ -101,16 +103,18 @@ pub fn generate_from_input(input: &GenerateInput) -> Result<GenerateResult> {
             let plugin_name = plugin.name();
             let options = merge_options(&base_options, plugin.options());
 
-            let ctx = GeneratorContext {
+            let mut buffer = Vec::new();
+
+            let mut ctx = GeneratorContext {
                 schema: input.schema,
                 operations: &input.documents.operations,
                 fragments: &input.documents.fragments,
                 options: &options,
+                writer: &mut buffer,
             };
 
             let t0 = web_time::Instant::now();
-            let mut buffer = Vec::new();
-            run_generator(plugin_name, &ctx, &mut buffer)?;
+            run_generator(plugin_name, &mut ctx)?;
             crate::timing!(format!("  Plugin '{}'", plugin_name), t0.elapsed());
 
             // Safe: our generators only output valid UTF-8
@@ -167,19 +171,89 @@ pub fn generate(config: &CodegenConfig) -> Result<GenerateResult> {
 
 /// Merge base options with plugin-specific options
 ///
-/// Plugin options fully override base options. This is intentional:
-/// - Preset defaults provide the base
-/// - User config (via plugin options) overrides everything
-///
-/// Note: Since serde gives default values for unset fields, the caller
-/// should ensure plugin options contain all desired values (including
-/// preset defaults for fields not being overridden).
+/// This does field-by-field merging: for each field, if the plugin value
+/// differs from the serde default, use the plugin value; otherwise use base.
+/// This allows preset defaults to "show through" for fields the user didn't set.
 fn merge_options(base: &PluginOptions, plugin: Option<&PluginOptions>) -> PluginOptions {
-    match plugin {
-        // Plugin options completely override base - the caller is responsible
-        // for including preset defaults in the plugin options if needed
-        Some(p) => p.clone(),
-        None => base.clone(),
+    let Some(p) = plugin else {
+        return base.clone();
+    };
+
+    // Create the serde default to compare against
+    // Note: enums_as_types defaults to true via #[serde(default = "default_true")]
+    let serde_default = PluginOptions {
+        enums_as_types: true,
+        ..Default::default()
+    };
+
+    // Macro to merge a field: use plugin if it differs from serde default, else base
+    macro_rules! merge_field {
+        ($field:ident) => {
+            if p.$field != serde_default.$field {
+                p.$field.clone()
+            } else {
+                base.$field.clone()
+            }
+        };
+    }
+
+    PluginOptions {
+        // SGC specific
+        use_utility_types: merge_field!(use_utility_types),
+        inline_fragments: merge_field!(inline_fragments),
+        dedupe_selections: merge_field!(dedupe_selections),
+
+        // Scalars
+        scalars: if p.scalars.is_empty() {
+            base.scalars.clone()
+        } else {
+            p.scalars.clone()
+        },
+        strict_scalars: merge_field!(strict_scalars),
+        default_scalar_type: merge_field!(default_scalar_type),
+
+        // Types
+        immutable_types: merge_field!(immutable_types),
+        declaration_kind: merge_field!(declaration_kind),
+        types_prefix: merge_field!(types_prefix),
+        types_suffix: merge_field!(types_suffix),
+
+        // Enums
+        enums_as_types: merge_field!(enums_as_types),
+        enums_as_const: merge_field!(enums_as_const),
+        future_proof_enums: merge_field!(future_proof_enums),
+        enum_prefix: merge_field!(enum_prefix),
+        enum_suffix: merge_field!(enum_suffix),
+        const_enums: merge_field!(const_enums),
+
+        // Output control
+        no_export: merge_field!(no_export),
+        only_operation_types: merge_field!(only_operation_types),
+
+        // Unions
+        future_proof_unions: merge_field!(future_proof_unions),
+
+        // Typename
+        skip_typename: merge_field!(skip_typename),
+        non_optional_typename: merge_field!(non_optional_typename),
+
+        // Optionals/nullables
+        avoid_optionals: merge_field!(avoid_optionals),
+        maybe_value: merge_field!(maybe_value),
+        input_maybe_value: merge_field!(input_maybe_value),
+
+        // Imports
+        use_type_imports: merge_field!(use_type_imports),
+
+        // Documents
+        graphql_tag: merge_field!(graphql_tag),
+
+        // Formatting
+        formatting: merge_field!(formatting),
+        naming_convention: merge_field!(naming_convention),
+
+        // Internal preset-only flags (always from base, user can't override)
+        pretty_documents: base.pretty_documents,
     }
 }
 
@@ -223,9 +297,15 @@ pub fn generate_cached(
     // Try to use cached glob results
     let t0 = web_time::Instant::now();
     let patterns: Vec<&str> = config.documents.as_vec();
-    let (document_paths, glob_cache_hit) = match cache.stored().and_then(|c| c.glob_cache.as_ref()) {
+    let (document_paths, glob_cache_hit) = match cache.stored().and_then(|c| c.glob_cache.as_ref())
+    {
         Some(cached) if is_glob_cache_valid(cached, &patterns) => {
-            crate::timing!("Glob cache hit", t0.elapsed(), "{} files", cached.files.len());
+            crate::timing!(
+                "Glob cache hit",
+                t0.elapsed(),
+                "{} files",
+                cached.files.len()
+            );
             (cached.files.clone(), true)
         }
         _ => {
@@ -294,8 +374,13 @@ pub fn generate_cached(
     let t0 = web_time::Instant::now();
     let extract_config = ExtractConfig::default();
     let documents = collect_documents(&source_cache, &extract_config);
-    crate::timing!("GraphQL extraction", t0.elapsed(), "{} ops, {} frags",
-        documents.operations.len(), documents.fragments.len());
+    crate::timing!(
+        "GraphQL extraction",
+        t0.elapsed(),
+        "{} ops, {} frags",
+        documents.operations.len(),
+        documents.fragments.len()
+    );
 
     let t0 = web_time::Instant::now();
     let input = GenerateInput {

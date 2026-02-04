@@ -1,14 +1,12 @@
 use std::borrow::Cow;
-use std::io::Write;
 
-use apollo_compiler::{Node, schema::EnumType};
+use apollo_compiler::Node;
+use apollo_compiler::schema::EnumType;
 
-use crate::config::{NamingCase, NamingConvention};
-use crate::{
-    Result,
-    config::PluginOptions,
-    generators::{GeneratorContext, typescript::helpers::get_export_kw},
-};
+use crate::Result;
+use crate::config::{NamingCase, NamingConvention, PluginOptions};
+use crate::generators::GeneratorContext;
+use crate::generators::typescript::helpers::{get_export_kw, render_description};
 
 /// Render a GraphQL enum type as TypeScript type to the current writer.
 ///
@@ -24,20 +22,17 @@ use crate::{
 /// ``` typescript
 /// type Status = 'ACTIVE' | 'INACTIVE';
 /// ```
-pub(crate) fn render_enum(
-    enum_type: &Node<EnumType>,
-    ctx: &GeneratorContext,
-    writer: &mut dyn Write,
-) -> Result<()> {
+pub(crate) fn render_enum(ctx: &mut GeneratorContext, enum_type: &Node<EnumType>) -> Result<()> {
+    render_description(ctx, &enum_type.description, 0)?;
     let enum_name = apply_enum_affixes(enum_type.name.as_str(), ctx.options);
 
     if ctx.options.enums_as_types {
-        render_as_type_union(&enum_name, enum_type, ctx, writer)?;
+        render_as_type_union(ctx, &enum_name, enum_type)?;
     } else {
-        render_as_ts_enum(&enum_name, enum_type, ctx, writer)?;
+        render_as_ts_enum(ctx, &enum_name, enum_type)?;
     }
 
-    writeln!(writer)?;
+    writeln!(ctx.writer)?;
     Ok(())
 }
 
@@ -48,30 +43,29 @@ pub(crate) fn render_enum(
 /// type Status = 'ACTIVE' | 'INACTIVE';
 /// ```
 fn render_as_type_union(
+    ctx: &mut GeneratorContext,
     enum_name: &str,
     enum_type: &Node<EnumType>,
-    ctx: &GeneratorContext,
-    writer: &mut dyn Write,
 ) -> Result<()> {
     let export = get_export_kw(ctx);
 
-    write!(writer, "{export}type {enum_name} =")?;
+    write!(ctx.writer, "{export}type {enum_name} =")?;
 
     let values: Vec<_> = enum_type.values.keys().collect();
     for (i, value) in values.iter().enumerate() {
         let transformed = transform_enum_value(value.as_str(), ctx.options);
         if i == 0 {
-            write!(writer, " '{transformed}'")?;
+            write!(ctx.writer, " '{transformed}'")?;
         } else {
-            write!(writer, " | '{transformed}'")?;
+            write!(ctx.writer, " | '{transformed}'")?;
         }
     }
 
     if ctx.options.future_proof_enums {
-        write!(writer, " | '%future added value'")?;
+        write!(ctx.writer, " | '%future added value'")?;
     }
 
-    writeln!(writer, ";")?;
+    writeln!(ctx.writer, ";")?;
     Ok(())
 }
 
@@ -85,10 +79,9 @@ fn render_as_type_union(
 /// }
 /// ```
 fn render_as_ts_enum(
+    ctx: &mut GeneratorContext,
     enum_name: &str,
     enum_type: &Node<EnumType>,
-    ctx: &GeneratorContext,
-    writer: &mut dyn Write,
 ) -> Result<()> {
     let export = get_export_kw(ctx);
 
@@ -98,15 +91,15 @@ fn render_as_ts_enum(
         ""
     };
 
-    writeln!(writer, "{export}{const_kw}enum {enum_name} {{")?;
+    writeln!(ctx.writer, "{export}{const_kw}enum {enum_name} {{")?;
 
     for value in enum_type.values.keys() {
         let transformed = transform_enum_value(value.as_str(), ctx.options);
         // Enum member name is transformed, value stays original
-        writeln!(writer, "  {transformed} = '{value}',")?;
+        writeln!(ctx.writer, "  {transformed} = '{value}',")?;
     }
 
-    writeln!(writer, "}}")?;
+    writeln!(ctx.writer, "}}")?;
     Ok(())
 }
 

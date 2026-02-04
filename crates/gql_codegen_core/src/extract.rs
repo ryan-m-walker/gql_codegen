@@ -70,7 +70,9 @@ pub fn extract<'a>(source: &'a str, config: &ExtractConfig) -> Vec<Extracted<'a>
     let has_tag = config.tags.iter().any(|tag| source.contains(tag.as_str()));
     let has_magic = config.magic_comments.iter().any(|mc| {
         // Case-insensitive check without allocation for common case
-        source.to_ascii_lowercase().contains(&mc.to_ascii_lowercase())
+        source
+            .to_ascii_lowercase()
+            .contains(&mc.to_ascii_lowercase())
     });
 
     if !has_tag && !has_magic {
@@ -172,7 +174,10 @@ pub fn extract<'a>(source: &'a str, config: &ExtractConfig) -> Vec<Extracted<'a>
 
 /// Extract and convert to owned (for file operations where source doesn't outlive)
 pub fn extract_owned(source: &str, config: &ExtractConfig) -> Vec<ExtractedOwned> {
-    extract(source, config).into_iter().map(|e| e.to_owned()).collect()
+    extract(source, config)
+        .into_iter()
+        .map(|e| e.to_owned())
+        .collect()
 }
 
 /// Convenience function for files - reads and extracts with default config

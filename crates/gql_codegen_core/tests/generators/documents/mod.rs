@@ -4,20 +4,16 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 use gql_codegen_core::{
-    ExtractConfig, GenerateInput, GraphqlTag, OutputConfig, PluginConfig, PluginOptions,
-    Preset, SourceCache, StringOrArray, collect_documents, generate_from_input, load_schema,
-    load_sources, resolve_schema_paths,
+    ExtractConfig, GenerateInput, GraphqlTag, OutputConfig, PluginConfig, PluginOptions, Preset,
+    SourceCache, StringOrArray, collect_documents, generate_from_input, load_schema, load_sources,
+    resolve_schema_paths,
 };
 
 fn fixtures_dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures")
 }
 
-fn generate_docs(
-    schema_files: &[&str],
-    document_files: &[&str],
-    options: PluginOptions,
-) -> String {
+fn generate_docs(schema_files: &[&str], document_files: &[&str], options: PluginOptions) -> String {
     let schema_refs: Vec<&str> = schema_files.to_vec();
     let schema = load_schema(&resolve_schema_paths(&schema_refs, Some(&fixtures_dir()))).unwrap();
 
@@ -67,7 +63,7 @@ fn test_documents_with_gql_tag() {
         &["documents/queries.graphql"],
         PluginOptions {
             graphql_tag: Some(GraphqlTag::Gql),
-            ..Default::default()
+            ..PluginOptions::serde_default()
         },
     );
     insta::assert_snapshot!(output);

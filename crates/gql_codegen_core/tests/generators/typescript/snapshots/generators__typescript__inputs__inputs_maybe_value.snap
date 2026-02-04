@@ -2,21 +2,21 @@
 source: crates/gql_codegen_core/tests/generators/typescript/inputs.rs
 expression: output
 ---
-export type Maybe<T> = T | null | undefined;
+export interface PaginationInput {
+  readonly __typename?: 'PaginationInput';
+  readonly page: number;
+  readonly perPage?: number | null;
+}
 
 export interface Query {
-  __typename: 'Query';
-  _empty: string | null | undefined;
-  search: Array<string>;
+  readonly __typename?: 'Query';
+  readonly _empty?: string | null;
+  readonly search: ReadonlyArray<string>;
 }
 
 export interface SearchFilter {
-  query: string;
-  limit?: number | null | undefined;
-  tags?: Array<string> | null | undefined;
-}
-
-export interface PaginationInput {
-  page: number;
-  perPage?: number | null | undefined;
+  readonly __typename?: 'SearchFilter';
+  readonly query: string;
+  readonly limit?: number | null;
+  readonly tags?: ReadonlyArray<string> | null;
 }

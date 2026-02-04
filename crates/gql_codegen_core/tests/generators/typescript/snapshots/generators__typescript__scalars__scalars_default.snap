@@ -2,18 +2,16 @@
 source: crates/gql_codegen_core/tests/generators/typescript/scalars.rs
 expression: output
 ---
-export type Maybe<T> = T | null;
-
-export interface Query {
-  __typename: 'Query';
-  _empty: Maybe<string>;
-  createdAt: Maybe<DateTime>;
-  amount: Maybe<Money>;
-  data: Maybe<JSON>;
-}
-
 export type DateTime = unknown;
+
+export type JSON = unknown;
 
 export type Money = unknown;
 
-export type JSON = unknown;
+export interface Query {
+  readonly __typename?: 'Query';
+  readonly _empty?: string | null;
+  readonly createdAt?: unknown | null;
+  readonly amount?: unknown | null;
+  readonly data?: unknown | null;
+}

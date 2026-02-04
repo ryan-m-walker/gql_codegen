@@ -249,9 +249,7 @@ pub fn create_glob_cache(patterns: &[&str], files: Vec<PathBuf>) -> GlobCache {
     // Get mtimes for all directories
     let dir_mtimes: HashMap<PathBuf, u64> = dirs
         .into_iter()
-        .filter_map(|dir| {
-            get_dir_mtime(&dir).map(|mtime| (dir, mtime))
-        })
+        .filter_map(|dir| get_dir_mtime(&dir).map(|mtime| (dir, mtime)))
         .collect();
 
     GlobCache {

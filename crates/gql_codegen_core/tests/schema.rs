@@ -2,7 +2,7 @@
 
 use std::path::PathBuf;
 
-use gql_codegen_core::{load_schema, resolve_schema_paths, Error};
+use gql_codegen_core::{Error, load_schema, resolve_schema_paths};
 
 fn fixtures_dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures")

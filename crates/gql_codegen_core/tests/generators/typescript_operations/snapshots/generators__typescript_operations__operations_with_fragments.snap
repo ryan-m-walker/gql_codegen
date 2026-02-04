@@ -2,31 +2,31 @@
 source: crates/gql_codegen_core/tests/generators/typescript_operations/mod.rs
 expression: output
 ---
-export interface UserFields {
-  id: string;
-  name: string;
-  email?: string | null;
-}
-
-export interface PostFields {
-  id: string;
-  title: string;
-  body: string;
-}
-
 export interface GetUserWithFragments {
-  user?:  {
-    id: string;
-    name: string;
-    email?: string | null;
-    posts: Array< {
-      id: string;
-      title: string;
-      body: string;
+  readonly user?:  {
+    readonly id: string;
+    readonly name: string;
+    readonly email?: string | null;
+    readonly posts: Array< {
+      readonly id: string;
+      readonly title: string;
+      readonly body: string;
     }>;
   };
 }
 
 export interface GetUserWithFragmentsVariables {
-  id: string;
+  readonly id: string;
+}
+
+export interface PostFields {
+  readonly id: string;
+  readonly title: string;
+  readonly body: string;
+}
+
+export interface UserFields {
+  readonly id: string;
+  readonly name: string;
+  readonly email?: string | null;
 }

@@ -2,33 +2,32 @@
 source: crates/gql_codegen_core/tests/generators/typescript/naming.rs
 expression: output
 ---
-export type Maybe<T> = T | null;
+export interface CreateUserInput {
+  readonly __typename?: 'CreateUserInput';
+  readonly user_name: string;
+  readonly email_address: string;
+}
+
+export interface HTTP_STATUS {
+  readonly __typename?: 'HTTP_STATUS';
+  readonly statusCode: number;
+}
 
 export interface Query {
-  __typename: 'Query';
-  _empty: Maybe<string>;
-  userProfile: Maybe<UserProfile>;
-  httpStatus: Maybe<HTTP_STATUS>;
+  readonly __typename?: 'Query';
+  readonly _empty?: string | null;
+  readonly userProfile?: UserProfile | null;
+  readonly httpStatus?: HTTP_STATUS | null;
 }
 
 export interface UserProfile {
-  __typename: 'UserProfile';
-  firstName: string;
-  lastName: string;
+  readonly __typename?: 'UserProfile';
+  readonly firstName: string;
+  readonly lastName: string;
 }
 
-export interface HttpStatus {
-  __typename: 'HTTP_STATUS';
-  statusCode: number;
-}
-
-export enum UserRole {
+export enum user_role {
   ADMIN_USER = 'ADMIN_USER',
   REGULAR_USER = 'regular_user',
   GUEST_USER = 'GuestUser',
-}
-
-export interface CreateUserInput {
-  user_name: string;
-  email_address: string;
 }

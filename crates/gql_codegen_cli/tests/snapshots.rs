@@ -7,8 +7,8 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use gql_codegen_core::{
-    collect_documents, generate_from_input, load_schema, load_sources, resolve_schema_paths,
-    CodegenConfig, ExtractConfig, GenerateInput, SourceCache,
+    CodegenConfig, ExtractConfig, GenerateInput, SourceCache, collect_documents,
+    generate_from_input, load_schema, load_sources, resolve_schema_paths,
 };
 
 fn fixtures_dir() -> PathBuf {
@@ -68,7 +68,9 @@ fn test_generates_types() {
 #[test]
 fn test_generates_documents() {
     let files = load_and_generate("codegen.json");
-    let docs = files.get("documents.ts").expect("documents.ts not generated");
+    let docs = files
+        .get("documents.ts")
+        .expect("documents.ts not generated");
     insta::assert_snapshot!("documents_ts", docs);
 }
 

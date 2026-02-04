@@ -8,10 +8,9 @@ use std::process::ExitCode;
 
 use anyhow::{Context, Result};
 use clap::Parser;
+use gql_codegen_core::cache::{Cache, FsCache, NoCache};
 use gql_codegen_core::{
-    CodegenConfig, FsWriter, GenerateCachedResult, StdoutWriter,
-    cache::{Cache, FsCache, NoCache},
-    generate_cached, write_outputs,
+    CodegenConfig, FsWriter, GenerateCachedResult, StdoutWriter, generate_cached, write_outputs,
 };
 
 mod args;

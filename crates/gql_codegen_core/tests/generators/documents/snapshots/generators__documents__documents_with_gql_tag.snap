@@ -4,6 +4,15 @@ expression: output
 ---
 import { gql } from 'graphql-tag';
 
+export const CreateUserDocument = gql`
+  mutation CreateUser($input: CreateUserInput!) {
+    createUser(input: $input) {
+      id
+      name
+    }
+  }
+`;
+
 export const GetUserDocument = gql`
   query GetUser($id: ID!) {
     user(id: $id) {
@@ -17,15 +26,6 @@ export const GetUserDocument = gql`
 export const GetUsersDocument = gql`
   query GetUsers {
     users {
-      id
-      name
-    }
-  }
-`;
-
-export const CreateUserDocument = gql`
-  mutation CreateUser($input: CreateUserInput!) {
-    createUser(input: $input) {
       id
       name
     }

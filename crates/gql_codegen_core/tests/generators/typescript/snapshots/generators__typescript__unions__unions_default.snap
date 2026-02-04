@@ -2,24 +2,22 @@
 source: crates/gql_codegen_core/tests/generators/typescript/unions.rs
 expression: output
 ---
-export type Maybe<T> = T | null;
-
-export interface Query {
-  __typename: 'Query';
-  _empty: Maybe<string>;
-  search: Array<SearchResult>;
-}
-
-export type SearchResult = Book | Movie;
-
 export interface Book {
-  __typename: 'Book';
-  isbn: string;
-  title: string;
+  readonly __typename?: 'Book';
+  readonly isbn: string;
+  readonly title: string;
 }
 
 export interface Movie {
-  __typename: 'Movie';
-  imdbId: string;
-  title: string;
+  readonly __typename?: 'Movie';
+  readonly imdbId: string;
+  readonly title: string;
 }
+
+export interface Query {
+  readonly __typename?: 'Query';
+  readonly _empty?: string | null;
+  readonly search: ReadonlyArray<SearchResult>;
+}
+
+export type SearchResult = Book | Movie;
