@@ -27,6 +27,7 @@ impl Preset {
         match self {
             Preset::Sgc => PluginOptions {
                 // SGC defaults: optimized for TS performance and safety
+                declaration_kind: Some(DeclarationKind::Interface),
                 use_utility_types: false,
                 future_proof_enums: true,
                 future_proof_unions: true,

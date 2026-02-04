@@ -12,14 +12,15 @@ use apollo_compiler::schema::ExtendedType;
 use super::GeneratorContext;
 use crate::Result;
 use crate::config::{NamingCase, NamingConvention, PluginOptions};
-use crate::generators::typescript::field::render_field;
 use crate::generators::typescript::helpers::{
     get_export_kw, render_decl_closing, render_decl_opening, render_description,
 };
+use crate::generators::typescript::r#enum::render_enum;
 use crate::generators::typescript::object::render_object;
 use crate::generators::typescript::scalars::render_scalars;
 use crate::generators::typescript::utils::generate_util_types;
 
+mod r#enum;
 mod field;
 mod helpers;
 mod object;
@@ -39,45 +40,10 @@ fn get_type_name_case(options: &PluginOptions) -> (NamingCase, bool) {
     }
 }
 
-/// Get the naming case for enum values from options
-fn get_enum_value_case(options: &PluginOptions) -> (NamingCase, bool) {
-    match &options.naming_convention {
-        None => (NamingCase::Keep, false),
-        // Simple convention preserves underscores by default (matches graphql-codegen)
-        Some(NamingConvention::Simple(case)) => (*case, false),
-        Some(NamingConvention::Detailed(config)) => {
-            let case = config.enum_values.unwrap_or(NamingCase::Keep);
-            (case, config.transform_underscore)
-        }
-    }
-}
-
 /// Apply naming convention to a type name
 fn transform_type_name<'a>(name: &'a str, options: &PluginOptions) -> std::borrow::Cow<'a, str> {
     let (case, transform_underscore) = get_type_name_case(options);
     case.apply(name, transform_underscore)
-}
-
-/// Apply naming convention to an enum value
-fn transform_enum_value<'a>(value: &'a str, options: &PluginOptions) -> std::borrow::Cow<'a, str> {
-    let (case, transform_underscore) = get_enum_value_case(options);
-    case.apply(value, transform_underscore)
-}
-
-/// Apply enum prefix and suffix to a type name
-fn apply_enum_affixes<'a>(
-    type_name: &'a str,
-    options: &PluginOptions,
-) -> std::borrow::Cow<'a, str> {
-    use std::borrow::Cow;
-    match (&options.enum_prefix, &options.enum_suffix) {
-        (None, None) => Cow::Borrowed(type_name),
-        (prefix, suffix) => {
-            let prefix = prefix.as_deref().unwrap_or("");
-            let suffix = suffix.as_deref().unwrap_or("");
-            Cow::Owned(format!("{prefix}{type_name}{suffix}"))
-        }
-    }
 }
 
 /// Collect all types referenced in operations and fragments
@@ -317,39 +283,7 @@ pub fn generate_typescript(ctx: &GeneratorContext, writer: &mut dyn Write) -> Re
             }
 
             apollo_compiler::schema::ExtendedType::Enum(en) => {
-                let enum_name = apply_enum_affixes(&type_name, ctx.options);
-                if ctx.options.enums_as_types {
-                    write!(writer, "{export}type {enum_name} = ")?;
-
-                    for (i, value) in en.values.keys().enumerate() {
-                        let transformed_value = transform_enum_value(value.as_str(), ctx.options);
-                        write!(writer, "'{transformed_value}'")?;
-
-                        if i < en.values.len() - 1 {
-                            write!(writer, " | ")?;
-                        }
-                    }
-
-                    if ctx.options.future_proof_enums {
-                        write!(writer, " | '%future added value'")?;
-                    }
-
-                    writeln!(writer, ";")?;
-                } else {
-                    let const_kw = if ctx.options.const_enums {
-                        "const "
-                    } else {
-                        ""
-                    };
-                    writeln!(writer, "{export}{const_kw}enum {enum_name} {{")?;
-                    for value in en.values.keys() {
-                        let transformed_value = transform_enum_value(value.as_str(), ctx.options);
-                        // Enum member name is transformed, value stays original
-                        writeln!(writer, "  {transformed_value} = '{value}',")?;
-                    }
-                    writeln!(writer, "}}")?;
-                }
-                writeln!(writer)?;
+                render_enum(en, ctx, writer)?;
             }
 
             apollo_compiler::schema::ExtendedType::Interface(iface) => {
@@ -485,7 +419,7 @@ fn format_type_with_context(
 
 /// Wrap a type with nullable wrapper (Maybe or explicit null)
 #[inline]
-fn wrap_nullable(ts_type: &str, options: &crate::config::PluginOptions, is_input: bool) -> String {
+fn wrap_nullable(ts_type: &str, _options: &crate::config::PluginOptions, is_input: bool) -> String {
     if is_input {
         format!("InputMaybe<{ts_type}>")
     } else {

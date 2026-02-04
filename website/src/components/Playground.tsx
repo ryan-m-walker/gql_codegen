@@ -566,13 +566,18 @@ export default function Playground() {
     const json = value || '';
     setConfigJson(json);
     try {
-      const parsed = JSON.parse(json);
+      const parsed = JSON.parse(json) as CodegenConfig;
+      // Preserve preset from parsed JSON if present, otherwise keep current
+      // This prevents Rust's #[default] (Sgc) from overriding when preset is omitted
+      if (parsed.preset === undefined) {
+        parsed.preset = config.preset;
+      }
       setConfig(parsed);
       setConfigError(null);
     } catch (e) {
       setConfigError(e instanceof Error ? e.message : 'Invalid JSON');
     }
-  }, []);
+  }, [config.preset]);
 
   const handleGenerate = useCallback(async () => {
     setIsGenerating(true);

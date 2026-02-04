@@ -9,6 +9,17 @@ pub(crate) fn get_export_kw(ctx: &GeneratorContext) -> &'static str {
     if ctx.options.no_export { "" } else { "export " }
 }
 
+/// Map built-in GraphQL scalar types to TypeScript types.
+/// Returns None for custom scalars that need separate handling.
+pub(crate) fn gql_scalar_to_ts(name: &str) -> Option<&'static str> {
+    match name {
+        "String" | "ID" => Some("string"),
+        "Int" | "Float" => Some("number"),
+        "Boolean" => Some("boolean"),
+        _ => None,
+    }
+}
+
 pub(crate) fn get_decl_kind_kw(ctx: &GeneratorContext) -> &'static str {
     match ctx.options.declaration_kind {
         Some(DeclarationKind::Type) | None => "type",

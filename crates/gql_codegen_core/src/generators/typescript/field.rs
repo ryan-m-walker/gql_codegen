@@ -8,7 +8,12 @@ use apollo_compiler::{
 
 use crate::{
     Result,
-    generators::{GeneratorContext, typescript::helpers::render_description},
+    generators::{
+        GeneratorContext,
+        typescript::helpers::{
+            get_optional_prop_modifier, get_readonly_kw, gql_scalar_to_ts, render_description,
+        },
+    },
 };
 
 pub(crate) fn render_field(
@@ -17,13 +22,8 @@ pub(crate) fn render_field(
     ctx: &GeneratorContext,
     writer: &mut dyn Write,
 ) -> Result<()> {
-    let readonly = if ctx.options.immutable_types {
-        "readonly "
-    } else {
-        ""
-    };
-
-    let optional_field = if ctx.options.avoid_optionals { "" } else { "?" };
+    let readonly = get_readonly_kw(ctx);
+    let optional_field = get_optional_prop_modifier(ctx);
 
     let array_type = if ctx.options.immutable_types {
         "ReadonlyArray"
@@ -71,41 +71,46 @@ fn wrap_maybe(value: &str, ctx: &GeneratorContext) -> String {
     }
 }
 
-fn render_field_type<'a>(name: &'a Name, ctx: &'a GeneratorContext) -> Cow<'a, str> {
-    let scalar = ctx.schema.get_scalar(name);
+fn render_field_type(name: &Name, ctx: &GeneratorContext) -> Cow<'static, str> {
+    let name_str = name.as_str();
 
-    if let Some(scalar) = scalar {
-        let scalar_name = scalar.name.as_str();
-
+    if ctx.schema.get_scalar(name).is_some() {
         if ctx.options.use_utility_types {
-            return Cow::Owned(format!("Scalars['{scalar_name}']['output']"));
+            return Cow::Owned(format!("Scalars['{name_str}']['output']"));
         }
 
-        return Cow::Borrowed(scalar_name);
+        if let Some(mapped) = ctx.options.scalars.get(name_str) {
+            return Cow::Owned(mapped.clone());
+        }
+
+        if let Some(ts_type) = gql_scalar_to_ts(name_str) {
+            return Cow::Borrowed(ts_type);
+        }
+
+        return ctx
+            .options
+            .default_scalar_type
+            .as_ref()
+            .map(|s| Cow::Owned(s.clone()))
+            .unwrap_or(Cow::Borrowed("unknown"));
     }
 
-    Cow::Borrowed(name.as_str())
+    Cow::Owned(name_str.to_string())
 }
 
 /// Recursively render a type, handling nullability at each level
 fn render_type(ty: &Type, array_type: &str, ctx: &GeneratorContext) -> String {
     match ty {
         Type::Named(name) => {
-            // Nullable named type - wrap in Maybe
             let field_type = render_field_type(name, ctx);
             wrap_maybe(&field_type, ctx)
         }
-        Type::NonNullNamed(name) => {
-            // Non-null named type - no wrapping
-            render_field_type(name, ctx).into_owned()
-        }
+        Type::NonNullNamed(name) => render_field_type(name, ctx).into_owned(),
         Type::List(inner) => {
-            // Nullable list - wrap the array
             let inner_type = render_type(inner.as_ref(), array_type, ctx);
             wrap_maybe(&format!("{array_type}<{inner_type}>"), ctx)
         }
         Type::NonNullList(inner) => {
-            // Non-null list - don't wrap array
             let inner_type = render_type(inner.as_ref(), array_type, ctx);
             format!("{array_type}<{inner_type}>")
         }

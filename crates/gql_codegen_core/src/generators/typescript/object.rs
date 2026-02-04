@@ -2,20 +2,34 @@ use std::io::Write;
 
 use apollo_compiler::{Node, schema::ObjectType};
 
-use crate::{
-    Result,
-    generators::{
-        GeneratorContext,
-        typescript::{
-            field::render_field,
-            helpers::{
-                get_optional_prop_modifier, get_readonly_kw, render_decl_closing,
-                render_decl_opening, render_description,
-            },
-        },
-    },
+use crate::Result;
+use crate::generators::GeneratorContext;
+use crate::generators::typescript::field::render_field;
+use crate::generators::typescript::helpers::{
+    get_optional_prop_modifier, get_readonly_kw, render_decl_closing, render_decl_opening,
+    render_description,
 };
 
+/// Render a GraphQL object type as TypeScript type to the current writer.
+///
+/// **Example Input:**
+/// ``` graphql
+/// type User {
+///   id: ID!
+///   name: String!
+///   email: String!
+/// }
+/// ```
+///
+/// **Output:**
+/// ``` typescript
+/// interface User {
+///   __typename: 'User';
+///   id: string;
+///   name: string;
+///   email: string;
+/// }
+/// ```
 pub(crate) fn render_object(
     object: &Node<ObjectType>,
     ctx: &GeneratorContext,
@@ -39,6 +53,7 @@ pub(crate) fn render_object(
     }
 
     render_decl_closing(ctx, writer)?;
+    writeln!(writer)?;
 
     Ok(())
 }
