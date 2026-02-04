@@ -192,3 +192,9 @@ pub struct SizeHints {
 1. **Binary distribution**: GitHub releases? npm binary packages? Homebrew?
 2. **Plugin extensibility**: Curated set vs arbitrary plugins?
 3. **Naming**: Keep `sgc` or rebrand?
+
+
+DX: Warnings
+
+- Show warning when using conflicting options
+- Show warning when writing files to wrong ext (gql -> ts for example)

@@ -29,14 +29,9 @@ pub(crate) fn render_field(
         "Array"
     };
 
-    let description = match field {
-        FieldType::Object(field) => &field.description,
-        FieldType::InputObject(field) => &field.description,
-    };
-
-    let ty = match field {
-        FieldType::Object(field) => &field.ty,
-        FieldType::InputObject(field) => &field.ty,
+    let (description, ty) = match field {
+        FieldType::InputObject(field) => (&field.description, field.ty.as_ref()),
+        FieldType::Object(field) => (&field.description, &field.ty),
     };
 
     render_description(ctx, description, 1)?;
@@ -56,13 +51,11 @@ pub(crate) fn render_field(
             writeln!(ctx.writer)?;
         }
         Type::List(inner) => {
-            // Nullable list - wrap the array, and handle inner type nullability
             let inner_type = render_type(inner.as_ref(), array_type, ctx);
             let array = wrap_maybe(&format!("{array_type}<{inner_type}>"), ctx);
             writeln!(ctx.writer, "{optional_field}: {array};")?;
         }
         Type::NonNullList(inner) => {
-            // Non-null list - don't wrap array, but inner items may still be nullable
             let inner_type = render_type(inner.as_ref(), array_type, ctx);
             writeln!(ctx.writer, ": {array_type}<{inner_type}>;")?;
         }
