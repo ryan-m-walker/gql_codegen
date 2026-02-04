@@ -1,0 +1,45 @@
+---
+import '../styles/global.css'
+
+interface Props {
+  title: string;
+  description?: string;
+}
+
+const { title, description = "Speedy GraphQL Codegen - A blazing fast GraphQL code generator written in Rust" } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="description" content={description} />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>{title} | SGC</title>
+  </head>
+  <body class="bg-gray-950 text-gray-100 min-h-screen">
+    <nav class="border-b border-gray-800 px-6 py-4">
+      <div class="max-w-6xl mx-auto flex items-center justify-between">
+        <a href="/" class="text-xl font-bold text-white flex items-center gap-2">
+          <span class="text-2xl">⚡</span> SGC
+        </a>
+        <div class="flex items-center gap-6">
+          <a href="/docs" class="text-gray-400 hover:text-white transition-colors">Docs</a>
+          <a href="/playground" class="text-gray-400 hover:text-white transition-colors">Playground</a>
+          <a href="https://github.com/ryanwalker/sgc" class="text-gray-400 hover:text-white transition-colors">
+            GitHub
+          </a>
+        </div>
+      </div>
+    </nav>
+    <main>
+      <slot />
+    </main>
+    <footer class="border-t border-gray-800 px-6 py-8 mt-auto">
+      <div class="max-w-6xl mx-auto text-center text-gray-500 text-sm">
+        Built with Rust 🦀 and love
+      </div>
+    </footer>
+  </body>
+</html>

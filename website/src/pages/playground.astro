@@ -1,0 +1,10 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Playground from '../components/Playground';
+---
+
+<Layout title="Playground">
+  <div class="h-[calc(100vh-130px)]">
+    <Playground client:load />
+  </div>
+</Layout>

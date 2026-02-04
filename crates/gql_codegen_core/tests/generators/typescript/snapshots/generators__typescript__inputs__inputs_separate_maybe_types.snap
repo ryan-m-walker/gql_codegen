@@ -2,7 +2,7 @@
 source: crates/gql_codegen_core/tests/generators/typescript/inputs.rs
 expression: output
 ---
-export type Maybe<T> = T | null;
+export type Maybe<T> = Maybe<T>;
 
 export interface Query {
   __typename: 'Query';

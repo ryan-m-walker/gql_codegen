@@ -10,8 +10,17 @@ use apollo_compiler::ast::{Selection, Type};
 use apollo_compiler::schema::ExtendedType;
 
 use super::GeneratorContext;
-use crate::config::{NamingCase, NamingConvention, PluginOptions};
 use crate::Result;
+use crate::config::{NamingCase, NamingConvention, PluginOptions};
+use crate::generators::typescript::base_types::generate_base_types;
+use crate::generators::typescript::scalars::generate_scalars;
+use crate::generators::typescript::utils::{
+    generate_decl_closing, generate_decl_opening, get_export_kw,
+};
+
+mod base_types;
+mod scalars;
+mod utils;
 
 /// Get the naming case for type names from options
 fn get_type_name_case(options: &PluginOptions) -> (NamingCase, bool) {
@@ -52,7 +61,10 @@ fn transform_enum_value<'a>(value: &'a str, options: &PluginOptions) -> std::bor
 }
 
 /// Apply enum prefix and suffix to a type name
-fn apply_enum_affixes<'a>(type_name: &'a str, options: &PluginOptions) -> std::borrow::Cow<'a, str> {
+fn apply_enum_affixes<'a>(
+    type_name: &'a str,
+    options: &PluginOptions,
+) -> std::borrow::Cow<'a, str> {
     use std::borrow::Cow;
     match (&options.enum_prefix, &options.enum_suffix) {
         (None, None) => Cow::Borrowed(type_name),
@@ -62,11 +74,6 @@ fn apply_enum_affixes<'a>(type_name: &'a str, options: &PluginOptions) -> std::b
             Cow::Owned(format!("{prefix}{type_name}{suffix}"))
         }
     }
-}
-
-/// Get export keyword based on options
-fn export_kw(options: &PluginOptions) -> &'static str {
-    if options.no_export { "" } else { "export " }
 }
 
 /// Collect all types referenced in operations and fragments
@@ -223,7 +230,11 @@ fn collect_operation_types(ctx: &GeneratorContext) -> HashSet<String> {
             if let ExtendedType::Interface(_) = ty {
                 for (impl_name, impl_ty) in schema.types.iter() {
                     if let ExtendedType::Object(obj) = impl_ty {
-                        if obj.implements_interfaces.iter().any(|i| i.name.as_str() == type_name) {
+                        if obj
+                            .implements_interfaces
+                            .iter()
+                            .any(|i| i.name.as_str() == type_name)
+                        {
                             let name = impl_name.to_string();
                             if referenced.insert(name.clone()) {
                                 to_process.push(name);
@@ -242,7 +253,7 @@ fn collect_operation_types(ctx: &GeneratorContext) -> HashSet<String> {
 pub fn generate_typescript(ctx: &GeneratorContext, writer: &mut dyn Write) -> Result<()> {
     let options = ctx.options;
     let schema = ctx.schema;
-    let export = export_kw(options);
+    let export = get_export_kw(ctx);
 
     // Collect referenced types if only_operation_types is enabled
     let referenced_types = if options.only_operation_types {
@@ -251,11 +262,8 @@ pub fn generate_typescript(ctx: &GeneratorContext, writer: &mut dyn Write) -> Re
         None
     };
 
-    // Generate Maybe type alias (unless using null style)
-    if !options.avoid_optionals {
-        writeln!(writer, "{export}type Maybe<T> = T | null;")?;
-        writeln!(writer)?;
-    }
+    generate_base_types(ctx, writer)?;
+    generate_scalars(ctx, writer)?;
 
     // Iterate over schema types
     for (name, ty) in schema.types.iter() {
@@ -282,7 +290,7 @@ pub fn generate_typescript(ctx: &GeneratorContext, writer: &mut dyn Write) -> Re
 
         match ty {
             apollo_compiler::schema::ExtendedType::Object(obj) => {
-                writeln!(writer, "{export}interface {type_name} {{")?;
+                generate_decl_opening(&type_name, ctx, writer)?;
 
                 if !options.skip_typename {
                     // __typename uses original GraphQL name, not transformed
@@ -294,7 +302,7 @@ pub fn generate_typescript(ctx: &GeneratorContext, writer: &mut dyn Write) -> Re
                     writeln!(writer, "  {readonly}{field_name}: {field_type};")?;
                 }
 
-                writeln!(writer, "}}")?;
+                generate_decl_closing(ctx, writer)?;
                 writeln!(writer)?;
             }
 
@@ -331,14 +339,14 @@ pub fn generate_typescript(ctx: &GeneratorContext, writer: &mut dyn Write) -> Re
             }
 
             apollo_compiler::schema::ExtendedType::Interface(iface) => {
-                writeln!(writer, "{export}interface {type_name} {{")?;
+                generate_decl_opening(&type_name, ctx, writer)?;
 
                 for (field_name, field) in iface.fields.iter() {
                     let field_type = format_type(&field.ty, options);
                     writeln!(writer, "  {readonly}{field_name}: {field_type};")?;
                 }
 
-                writeln!(writer, "}}")?;
+                generate_decl_closing(ctx, writer)?;
                 writeln!(writer)?;
             }
 
@@ -348,12 +356,16 @@ pub fn generate_typescript(ctx: &GeneratorContext, writer: &mut dyn Write) -> Re
                     .iter()
                     .map(|m| transform_type_name(m.name.as_str(), options))
                     .collect();
-                writeln!(writer, "{export}type {type_name} = {};", members.join(" | "))?;
+                writeln!(
+                    writer,
+                    "{export}type {type_name} = {};",
+                    members.join(" | ")
+                )?;
                 writeln!(writer)?;
             }
 
             apollo_compiler::schema::ExtendedType::InputObject(input) => {
-                writeln!(writer, "{export}interface {type_name} {{")?;
+                generate_decl_opening(&type_name, ctx, writer)?;
 
                 for (field_name, field) in input.fields.iter() {
                     // Use input-specific type formatting for input objects
@@ -362,7 +374,7 @@ pub fn generate_typescript(ctx: &GeneratorContext, writer: &mut dyn Write) -> Re
                     writeln!(writer, "  {readonly}{field_name}{optional}: {field_type};")?;
                 }
 
-                writeln!(writer, "}}")?;
+                generate_decl_closing(ctx, writer)?;
                 writeln!(writer)?;
             }
 

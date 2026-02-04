@@ -102,7 +102,7 @@ pub fn generate_from_input(input: &GenerateInput) -> Result<GenerateResult> {
                 options: &options,
             };
 
-            let t0 = std::time::Instant::now();
+            let t0 = web_time::Instant::now();
             let mut buffer = Vec::new();
             run_generator(plugin_name, &ctx, &mut buffer)?;
             crate::timing!(format!("  Plugin '{}'", plugin_name), t0.elapsed());
@@ -230,7 +230,7 @@ pub fn generate_cached(
     config: &CodegenConfig,
     cache: &mut dyn Cache,
 ) -> Result<GenerateCachedResult> {
-    let start = std::time::Instant::now();
+    let start = web_time::Instant::now();
 
     let base_dir = config
         .base_dir
@@ -241,7 +241,7 @@ pub fn generate_cached(
     let schema_paths = resolve_schema_paths(&config.schema.as_vec(), Some(&base_dir));
 
     // Try to use cached glob results
-    let t0 = std::time::Instant::now();
+    let t0 = web_time::Instant::now();
     let patterns: Vec<&str> = config.documents.as_vec();
     let (document_paths, glob_cache_hit) = match cache.stored().and_then(|c| c.glob_cache.as_ref()) {
         Some(cached) if is_glob_cache_valid(cached, &patterns) => {
@@ -262,7 +262,7 @@ pub fn generate_cached(
         .collect();
 
     // Phase 1: Quick metadata check (no file reads, just stat)
-    let t0 = std::time::Instant::now();
+    let t0 = web_time::Instant::now();
     let metadata_result = cache.check_metadata(&all_paths);
     crate::timing!("Cache metadata check", t0.elapsed());
     if matches!(metadata_result, MetadataCheckResult::AllMatch) {
@@ -271,7 +271,7 @@ pub fn generate_cached(
     }
 
     // Load schema and documents in parallel
-    let t0 = std::time::Instant::now();
+    let t0 = web_time::Instant::now();
     let doc_paths_len = document_paths.len();
     let (schema_result, docs_result) = rayon::join(
         || {
@@ -291,7 +291,7 @@ pub fn generate_cached(
     crate::timing!("Schema + docs parallel load", t0.elapsed());
 
     // Phase 2: Compute hashes from loaded content
-    let t0 = std::time::Instant::now();
+    let t0 = web_time::Instant::now();
     let mut computed = compute_hashes_from_cache(config, &source_cache, &schema_files);
 
     // Store glob cache if it was a miss
@@ -311,13 +311,13 @@ pub fn generate_cached(
     }
 
     // TODO: actually use real passed config
-    let t0 = std::time::Instant::now();
+    let t0 = web_time::Instant::now();
     let extract_config = ExtractConfig::default();
     let documents = collect_documents(&source_cache, &extract_config);
     crate::timing!("GraphQL extraction", t0.elapsed(), "{} ops, {} frags",
         documents.operations.len(), documents.fragments.len());
 
-    let t0 = std::time::Instant::now();
+    let t0 = web_time::Instant::now();
     let input = GenerateInput {
         schema: &schema,
         documents: &documents,

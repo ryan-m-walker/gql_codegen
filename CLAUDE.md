@@ -8,3 +8,7 @@ Best practices:
 
 - Prefer smaller focused files
 - Prefer streaming to `write!` and `writeln!` when possible vs allocating temporary Strings or Vecs
+
+Tips:
+
+- Prefer `pnpm` over `npm` for package management

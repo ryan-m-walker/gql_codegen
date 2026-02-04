@@ -1,0 +1,24 @@
+---
+source: crates/gql_codegen_core/tests/generators/typescript/misc.rs
+expression: output
+---
+export type Maybe<T> = T | null | undefined;
+
+export interface Query {
+  __typename: 'Query';
+  _empty: string | null | undefined;
+  status: Status | null | undefined;
+  color: Color | null | undefined;
+}
+
+export enum Status {
+  ACTIVE = 'ACTIVE',
+  INACTIVE = 'INACTIVE',
+  PENDING = 'PENDING',
+}
+
+export enum Color {
+  RED = 'RED',
+  GREEN = 'GREEN',
+  BLUE = 'BLUE',
+}

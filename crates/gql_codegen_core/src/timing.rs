@@ -4,7 +4,7 @@
 //! or calling `enable_timing()`.
 
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::time::Instant;
+use web_time::Instant;
 
 static TIMING_ENABLED: AtomicBool = AtomicBool::new(false);
 

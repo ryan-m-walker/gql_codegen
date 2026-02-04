@@ -222,8 +222,11 @@ pub struct PluginOptions {
 #[serde(rename_all = "lowercase")]
 pub enum DeclarationKind {
     #[default]
-    Interface,
     Type,
+    Interface,
+    Class,
+    // TODO: add space
+    AbstractClass,
 }
 
 fn default_true() -> bool {

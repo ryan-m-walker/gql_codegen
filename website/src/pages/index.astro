@@ -1,0 +1,178 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="Home">
+  <!-- Hero -->
+  <section class="px-6 py-24 text-center">
+    <div class="max-w-4xl mx-auto">
+      <h1 class="text-5xl md:text-6xl font-bold mb-6">
+        <span class="text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500">
+          Speedy
+        </span> GraphQL Codegen
+      </h1>
+      <p class="text-xl text-gray-400 mb-8 max-w-2xl mx-auto">
+        A blazing fast GraphQL code generator written in Rust.
+        Drop-in replacement for graphql-codegen, up to <span class="text-white font-semibold">10x faster</span>.
+      </p>
+      <div class="flex gap-4 justify-center">
+        <a href="/docs" class="bg-white text-gray-900 px-6 py-3 rounded-lg font-semibold hover:bg-gray-200 transition-colors">
+          Get Started
+        </a>
+        <a href="/playground" class="border border-gray-700 px-6 py-3 rounded-lg font-semibold hover:border-gray-500 transition-colors">
+          Try Playground
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Install -->
+  <section class="px-6 py-12">
+    <div class="max-w-2xl mx-auto">
+      <div class="bg-gray-900 rounded-lg p-4 font-mono text-sm">
+        <span class="text-gray-500">$</span> <span class="text-green-400">npm install</span> @sgc/cli
+      </div>
+    </div>
+  </section>
+
+  <!-- Benchmarks -->
+  <section class="px-6 py-16">
+    <div class="max-w-4xl mx-auto">
+      <h2 class="text-3xl font-bold text-center mb-12">Performance</h2>
+      <div class="grid md:grid-cols-2 gap-8">
+        <div class="bg-gray-900 rounded-lg p-6">
+          <h3 class="text-lg font-semibold mb-4 text-gray-400">Cache Hit (Nothing Changed)</h3>
+          <div class="space-y-4">
+            <div>
+              <div class="flex justify-between text-sm mb-1">
+                <span>SGC</span>
+                <span class="text-green-400">~14ms</span>
+              </div>
+              <div class="h-3 bg-gray-800 rounded-full overflow-hidden">
+                <div class="h-full bg-green-500 rounded-full" style="width: 10%"></div>
+              </div>
+            </div>
+            <div>
+              <div class="flex justify-between text-sm mb-1">
+                <span>graphql-codegen</span>
+                <span class="text-gray-400">~1200ms</span>
+              </div>
+              <div class="h-3 bg-gray-800 rounded-full overflow-hidden">
+                <div class="h-full bg-gray-600 rounded-full" style="width: 100%"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="bg-gray-900 rounded-lg p-6">
+          <h3 class="text-lg font-semibold mb-4 text-gray-400">Full Generation</h3>
+          <div class="space-y-4">
+            <div>
+              <div class="flex justify-between text-sm mb-1">
+                <span>SGC</span>
+                <span class="text-green-400">~80ms</span>
+              </div>
+              <div class="h-3 bg-gray-800 rounded-full overflow-hidden">
+                <div class="h-full bg-green-500 rounded-full" style="width: 8%"></div>
+              </div>
+            </div>
+            <div>
+              <div class="flex justify-between text-sm mb-1">
+                <span>graphql-codegen</span>
+                <span class="text-gray-400">~3000ms</span>
+              </div>
+              <div class="h-3 bg-gray-800 rounded-full overflow-hidden">
+                <div class="h-full bg-gray-600 rounded-full" style="width: 100%"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="text-center text-gray-500 text-sm mt-6">
+        Benchmarked on 1477 files, 275 operations, 875 fragments
+      </p>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section class="px-6 py-16">
+    <div class="max-w-4xl mx-auto">
+      <h2 class="text-3xl font-bold text-center mb-12">Features</h2>
+      <div class="grid md:grid-cols-3 gap-6">
+        <div class="bg-gray-900 rounded-lg p-6">
+          <div class="text-3xl mb-4">🚀</div>
+          <h3 class="font-semibold mb-2">Blazing Fast</h3>
+          <p class="text-gray-400 text-sm">
+            Written in Rust with parallel processing. Smart caching means instant results when nothing changed.
+          </p>
+        </div>
+        <div class="bg-gray-900 rounded-lg p-6">
+          <div class="text-3xl mb-4">🔄</div>
+          <h3 class="font-semibold mb-2">Drop-in Compatible</h3>
+          <p class="text-gray-400 text-sm">
+            Same config format as graphql-codegen. Migrate in minutes, not days.
+          </p>
+        </div>
+        <div class="bg-gray-900 rounded-lg p-6">
+          <div class="text-3xl mb-4">📦</div>
+          <h3 class="font-semibold mb-2">Native Binaries</h3>
+          <p class="text-gray-400 text-sm">
+            Pre-built for macOS, Linux, and Windows. No compilation required.
+          </p>
+        </div>
+        <div class="bg-gray-900 rounded-lg p-6">
+          <div class="text-3xl mb-4">🧠</div>
+          <h3 class="font-semibold mb-2">Smart Caching</h3>
+          <p class="text-gray-400 text-sm">
+            Two-phase caching with glob optimization. Only regenerate what changed.
+          </p>
+        </div>
+        <div class="bg-gray-900 rounded-lg p-6">
+          <div class="text-3xl mb-4">🎯</div>
+          <h3 class="font-semibold mb-2">TypeScript First</h3>
+          <p class="text-gray-400 text-sm">
+            Generates clean, well-typed TypeScript. Supports all major patterns.
+          </p>
+        </div>
+        <div class="bg-gray-900 rounded-lg p-6">
+          <div class="text-3xl mb-4">⚙️</div>
+          <h3 class="font-semibold mb-2">Configurable</h3>
+          <p class="text-gray-400 text-sm">
+            TypeScript configs with full autocomplete. Customize everything.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Quick Start -->
+  <section class="px-6 py-16">
+    <div class="max-w-2xl mx-auto">
+      <h2 class="text-3xl font-bold text-center mb-8">Quick Start</h2>
+      <div class="bg-gray-900 rounded-lg p-6 font-mono text-sm space-y-4">
+        <div>
+          <span class="text-gray-500"># Install</span>
+          <br />
+          <span class="text-green-400">npm install</span> -D @sgc/cli
+        </div>
+        <div>
+          <span class="text-gray-500"># Create config (codegen.config.ts)</span>
+          <br />
+          <span class="text-blue-400">export default</span> {'{'}<br />
+          &nbsp;&nbsp;schema: <span class="text-yellow-400">'./schema.graphql'</span>,<br />
+          &nbsp;&nbsp;documents: <span class="text-yellow-400">'src/**/*.tsx'</span>,<br />
+          &nbsp;&nbsp;generates: {'{'}<br />
+          &nbsp;&nbsp;&nbsp;&nbsp;<span class="text-yellow-400">'./src/generated/types.ts'</span>: {'{'}<br />
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;plugins: [<span class="text-yellow-400">'typescript'</span>, <span class="text-yellow-400">'typescript-operations'</span>]<br />
+          &nbsp;&nbsp;&nbsp;&nbsp;{'}'}<br />
+          &nbsp;&nbsp;{'}'}<br />
+          {'}'};
+        </div>
+        <div>
+          <span class="text-gray-500"># Generate!</span>
+          <br />
+          <span class="text-green-400">npx sgc</span>
+        </div>
+      </div>
+    </div>
+  </section>
+</Layout>

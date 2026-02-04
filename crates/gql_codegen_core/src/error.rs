@@ -42,4 +42,9 @@ pub enum Error {
 
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
+
+    #[error(
+        "Unknown scalar type {0}. Please override it using the \"scalars\" configuration field!"
+    )]
+    UnknownScalar(String),
 }

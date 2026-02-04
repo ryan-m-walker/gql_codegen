@@ -1,0 +1,229 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="Documentation">
+  <div class="max-w-4xl mx-auto px-6 py-12">
+    <h1 class="text-4xl font-bold mb-8">Documentation</h1>
+
+    <!-- Installation -->
+    <section class="mb-12">
+      <h2 class="text-2xl font-semibold mb-4" id="installation">Installation</h2>
+      <div class="bg-gray-900 rounded-lg p-4 font-mono text-sm">
+        <span class="text-gray-500"># npm</span><br />
+        <span class="text-green-400">npm install</span> -D @sgc/cli<br /><br />
+        <span class="text-gray-500"># pnpm</span><br />
+        <span class="text-green-400">pnpm add</span> -D @sgc/cli<br /><br />
+        <span class="text-gray-500"># yarn</span><br />
+        <span class="text-green-400">yarn add</span> -D @sgc/cli
+      </div>
+    </section>
+
+    <!-- Configuration -->
+    <section class="mb-12">
+      <h2 class="text-2xl font-semibold mb-4" id="configuration">Configuration</h2>
+      <p class="text-gray-400 mb-4">
+        SGC uses the same configuration format as graphql-codegen. Create a <code class="bg-gray-800 px-2 py-1 rounded">codegen.config.ts</code> file in your project root:
+      </p>
+      <div class="bg-gray-900 rounded-lg p-4 font-mono text-sm overflow-x-auto">
+        <pre class="text-gray-300"><span class="text-blue-400">import</span> type {'{'} CodegenConfig {'}'} <span class="text-blue-400">from</span> <span class="text-yellow-400">'@sgc/cli'</span>;
+
+<span class="text-blue-400">const</span> config: CodegenConfig = {'{'}
+  schema: <span class="text-yellow-400">'./schema.graphql'</span>,
+  documents: <span class="text-yellow-400">'src/**/*.tsx'</span>,
+  generates: {'{'}
+    <span class="text-yellow-400">'./src/generated/types.ts'</span>: {'{'}
+      plugins: [<span class="text-yellow-400">'typescript'</span>, <span class="text-yellow-400">'typescript-operations'</span>]
+    {'}'}
+  {'}'}
+{'}'};
+
+<span class="text-blue-400">export default</span> config;</pre>
+      </div>
+    </section>
+
+    <!-- Schema -->
+    <section class="mb-12">
+      <h2 class="text-2xl font-semibold mb-4" id="schema">Schema Sources</h2>
+      <p class="text-gray-400 mb-4">
+        The <code class="bg-gray-800 px-2 py-1 rounded">schema</code> option accepts:
+      </p>
+      <ul class="list-disc list-inside text-gray-400 space-y-2 mb-4">
+        <li>A path to a <code class="bg-gray-800 px-1 rounded">.graphql</code> file</li>
+        <li>A glob pattern matching multiple schema files</li>
+        <li>An array of paths or patterns</li>
+      </ul>
+      <div class="bg-gray-900 rounded-lg p-4 font-mono text-sm">
+        <pre class="text-gray-300"><span class="text-gray-500">// Single file</span>
+schema: <span class="text-yellow-400">'./schema.graphql'</span>
+
+<span class="text-gray-500">// Multiple files</span>
+schema: [
+  <span class="text-yellow-400">'./schema/*.graphql'</span>,
+  <span class="text-yellow-400">'./extensions/**/*.graphql'</span>
+]</pre>
+      </div>
+    </section>
+
+    <!-- Documents -->
+    <section class="mb-12">
+      <h2 class="text-2xl font-semibold mb-4" id="documents">Documents</h2>
+      <p class="text-gray-400 mb-4">
+        The <code class="bg-gray-800 px-2 py-1 rounded">documents</code> option specifies where to find your GraphQL operations (queries, mutations, subscriptions, fragments):
+      </p>
+      <div class="bg-gray-900 rounded-lg p-4 font-mono text-sm">
+        <pre class="text-gray-300"><span class="text-gray-500">// Find operations in TypeScript/JavaScript files</span>
+documents: <span class="text-yellow-400">'src/**/*.tsx'</span>
+
+<span class="text-gray-500">// Multiple patterns</span>
+documents: [
+  <span class="text-yellow-400">'src/**/*.tsx'</span>,
+  <span class="text-yellow-400">'src/**/*.ts'</span>,
+  <span class="text-yellow-400">'!src/generated/**'</span>  <span class="text-gray-500">// Exclude generated files</span>
+]</pre>
+      </div>
+    </section>
+
+    <!-- Plugins -->
+    <section class="mb-12">
+      <h2 class="text-2xl font-semibold mb-4" id="plugins">Plugins</h2>
+      <p class="text-gray-400 mb-4">
+        SGC supports the following plugins:
+      </p>
+      <div class="space-y-4">
+        <div class="bg-gray-900 rounded-lg p-4">
+          <h3 class="font-semibold text-white mb-2">typescript</h3>
+          <p class="text-gray-400 text-sm">
+            Generates TypeScript types for your GraphQL schema (scalars, enums, input types, object types).
+          </p>
+        </div>
+        <div class="bg-gray-900 rounded-lg p-4">
+          <h3 class="font-semibold text-white mb-2">typescript-operations</h3>
+          <p class="text-gray-400 text-sm">
+            Generates TypeScript types for your GraphQL operations (queries, mutations, subscriptions) and fragments.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Plugin Options -->
+    <section class="mb-12">
+      <h2 class="text-2xl font-semibold mb-4" id="plugin-options">Plugin Options</h2>
+      <p class="text-gray-400 mb-4">
+        Configure plugin behavior with the <code class="bg-gray-800 px-2 py-1 rounded">config</code> option:
+      </p>
+      <div class="bg-gray-900 rounded-lg p-4 font-mono text-sm overflow-x-auto">
+        <pre class="text-gray-300">generates: {'{'}
+  <span class="text-yellow-400">'./src/generated/types.ts'</span>: {'{'}
+    plugins: [<span class="text-yellow-400">'typescript'</span>, <span class="text-yellow-400">'typescript-operations'</span>],
+    config: {'{'}
+      <span class="text-gray-500">// Use 'type' instead of 'interface'</span>
+      declarationKind: <span class="text-yellow-400">'type'</span>,
+
+      <span class="text-gray-500">// Make optional fields use T | undefined instead of Maybe&lt;T&gt;</span>
+      maybeValue: <span class="text-yellow-400">'T | undefined'</span>,
+
+      <span class="text-gray-500">// Skip __typename in output</span>
+      skipTypename: <span class="text-orange-400">true</span>,
+
+      <span class="text-gray-500">// Custom scalar mappings</span>
+      scalars: {'{'}
+        DateTime: <span class="text-yellow-400">'string'</span>,
+        JSON: <span class="text-yellow-400">'Record&lt;string, unknown&gt;'</span>
+      {'}'}
+    {'}'}
+  {'}'}
+{'}'}</pre>
+      </div>
+
+      <h3 class="text-xl font-semibold mt-8 mb-4">Available Options</h3>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-gray-800">
+              <th class="text-left py-3 px-4 text-gray-400">Option</th>
+              <th class="text-left py-3 px-4 text-gray-400">Type</th>
+              <th class="text-left py-3 px-4 text-gray-400">Default</th>
+              <th class="text-left py-3 px-4 text-gray-400">Description</th>
+            </tr>
+          </thead>
+          <tbody class="text-gray-300">
+            <tr class="border-b border-gray-800/50">
+              <td class="py-3 px-4 font-mono text-yellow-400">declarationKind</td>
+              <td class="py-3 px-4 font-mono">'type' | 'interface'</td>
+              <td class="py-3 px-4 font-mono">'type'</td>
+              <td class="py-3 px-4">Output as type aliases or interfaces</td>
+            </tr>
+            <tr class="border-b border-gray-800/50">
+              <td class="py-3 px-4 font-mono text-yellow-400">skipTypename</td>
+              <td class="py-3 px-4 font-mono">boolean</td>
+              <td class="py-3 px-4 font-mono">false</td>
+              <td class="py-3 px-4">Omit __typename from generated types</td>
+            </tr>
+            <tr class="border-b border-gray-800/50">
+              <td class="py-3 px-4 font-mono text-yellow-400">maybeValue</td>
+              <td class="py-3 px-4 font-mono">string</td>
+              <td class="py-3 px-4 font-mono">'T | null'</td>
+              <td class="py-3 px-4">Template for nullable types</td>
+            </tr>
+            <tr class="border-b border-gray-800/50">
+              <td class="py-3 px-4 font-mono text-yellow-400">scalars</td>
+              <td class="py-3 px-4 font-mono">Record&lt;string, string&gt;</td>
+              <td class="py-3 px-4 font-mono">{'{}'}</td>
+              <td class="py-3 px-4">Map custom scalars to TypeScript types</td>
+            </tr>
+            <tr class="border-b border-gray-800/50">
+              <td class="py-3 px-4 font-mono text-yellow-400">enumsAsTypes</td>
+              <td class="py-3 px-4 font-mono">boolean</td>
+              <td class="py-3 px-4 font-mono">false</td>
+              <td class="py-3 px-4">Generate enums as union types</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- CLI Usage -->
+    <section class="mb-12">
+      <h2 class="text-2xl font-semibold mb-4" id="cli">CLI Usage</h2>
+      <div class="bg-gray-900 rounded-lg p-4 font-mono text-sm">
+        <pre class="text-gray-300"><span class="text-gray-500"># Run with default config (codegen.config.ts)</span>
+<span class="text-green-400">npx sgc</span>
+
+<span class="text-gray-500"># Specify config file</span>
+<span class="text-green-400">npx sgc</span> -c ./my-config.ts
+
+<span class="text-gray-500"># Watch mode</span>
+<span class="text-green-400">npx sgc</span> --watch
+
+<span class="text-gray-500"># Skip cache (force regeneration)</span>
+<span class="text-green-400">npx sgc</span> --no-cache
+
+<span class="text-gray-500"># Show timing information</span>
+<span class="text-green-400">npx sgc</span> --timing</pre>
+      </div>
+    </section>
+
+    <!-- Migration -->
+    <section class="mb-12">
+      <h2 class="text-2xl font-semibold mb-4" id="migration">Migrating from graphql-codegen</h2>
+      <p class="text-gray-400 mb-4">
+        SGC is designed as a drop-in replacement. In most cases, you can:
+      </p>
+      <ol class="list-decimal list-inside text-gray-400 space-y-2 mb-4">
+        <li>Install <code class="bg-gray-800 px-1 rounded">@sgc/cli</code></li>
+        <li>Keep your existing <code class="bg-gray-800 px-1 rounded">codegen.ts</code> or <code class="bg-gray-800 px-1 rounded">codegen.yml</code></li>
+        <li>Replace <code class="bg-gray-800 px-1 rounded">graphql-codegen</code> with <code class="bg-gray-800 px-1 rounded">sgc</code> in your scripts</li>
+      </ol>
+      <div class="bg-gray-900 rounded-lg p-4 font-mono text-sm">
+        <pre class="text-gray-300"><span class="text-gray-500">// package.json</span>
+{'{'}
+  "scripts": {'{'}
+    <span class="text-red-400 line-through">"codegen": "graphql-codegen"</span>
+    <span class="text-green-400">"codegen": "sgc"</span>
+  {'}'}
+{'}'}</pre>
+      </div>
+    </section>
+  </div>
+</Layout>

@@ -25,7 +25,7 @@ pub fn generate_typescript_operations(ctx: &GeneratorContext, writer: &mut dyn W
     };
 
     // Generate fragment types in parallel
-    let t0 = std::time::Instant::now();
+    let t0 = web_time::Instant::now();
     let fragments: Vec<_> = ctx.fragments.iter().collect();
     let fragment_buffers: Vec<Vec<u8>> = fragments
         .par_iter()
@@ -43,7 +43,7 @@ pub fn generate_typescript_operations(ctx: &GeneratorContext, writer: &mut dyn W
     crate::timing!("    Fragments", t0.elapsed(), "{} total", ctx.fragments.len());
 
     // Generate operation types in parallel
-    let t0 = std::time::Instant::now();
+    let t0 = web_time::Instant::now();
     let operations: Vec<_> = ctx.operations.iter().collect();
     let operation_buffers: Vec<Vec<u8>> = operations
         .par_iter()

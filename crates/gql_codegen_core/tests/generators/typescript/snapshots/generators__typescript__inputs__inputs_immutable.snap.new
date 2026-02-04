@@ -1,0 +1,23 @@
+---
+source: crates/gql_codegen_core/tests/generators/typescript/inputs.rs
+assertion_line: 22
+expression: output
+---
+export type Maybe<T> = T | null;
+
+export interface Query {
+  readonly __typename: 'Query';
+  readonly _empty: Maybe<string>;
+  readonly search: ReadonlyArray<string>;
+}
+
+export interface SearchFilter {
+  readonly query: string;
+  readonly limit?: Maybe<number>;
+  readonly tags?: Maybe<ReadonlyArray<string>>;
+}
+
+export interface PaginationInput {
+  readonly page: number;
+  readonly perPage?: Maybe<number>;
+}
