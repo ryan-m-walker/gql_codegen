@@ -53,7 +53,6 @@ pub fn generate(options: GenerateOptions) -> Result<GenerateResult> {
 
     // Parse config from JSON — render structured error for parse failures
     let config: CodegenConfig = serde_json::from_str(&options.config_json).map_err(|e| {
-        let mut buf = Vec::new();
         let config_err = gql_codegen_core::ConfigError {
             message: e.to_string(),
             file: std::path::PathBuf::from("<config>"),
@@ -62,13 +61,7 @@ pub fn generate(options: GenerateOptions) -> Result<GenerateResult> {
             source_text: options.config_json.clone(),
         };
         let core_err = gql_codegen_core::Error::Config(config_err);
-        let _ = gql_codegen_core::diagnostic::render_error(
-            &core_err,
-            gql_codegen_core::diagnostic::Color::StderrIsTerminal,
-            max_diag,
-            &mut buf,
-        );
-        Error::from_reason(String::from_utf8(buf).unwrap_or_else(|_| format!("{core_err}")))
+        Error::from_reason(gql_codegen_core::diagnostic::render_error_string(&core_err, max_diag))
     })?;
 
     // Set up cache
@@ -86,14 +79,7 @@ pub fn generate(options: GenerateOptions) -> Result<GenerateResult> {
 
     // Run generation — render structured diagnostics on error
     let result = gql_codegen_core::generate_cached(&config, cache.as_mut()).map_err(|e| {
-        let mut buf = Vec::new();
-        let _ = gql_codegen_core::diagnostic::render_error(
-            &e,
-            gql_codegen_core::diagnostic::Color::StderrIsTerminal,
-            max_diag,
-            &mut buf,
-        );
-        Error::from_reason(String::from_utf8(buf).unwrap_or_else(|_| format!("{e}")))
+        Error::from_reason(gql_codegen_core::diagnostic::render_error_string(&e, max_diag))
     })?;
 
     // Convert to NAPI result
@@ -116,16 +102,7 @@ pub fn generate(options: GenerateOptions) -> Result<GenerateResult> {
             warnings: gen_result
                 .warnings
                 .iter()
-                .map(|w| {
-                    let mut buf = Vec::new();
-                    let _ = gql_codegen_core::diagnostic::render_warning(
-                        w,
-                        gql_codegen_core::diagnostic::Color::Never,
-                        max_diag,
-                        &mut buf,
-                    );
-                    String::from_utf8(buf).unwrap_or_else(|_| w.to_string())
-                })
+                .map(|w| gql_codegen_core::diagnostic::render_warning_string(w, max_diag))
                 .collect(),
         }),
     }

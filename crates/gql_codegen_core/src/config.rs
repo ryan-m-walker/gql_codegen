@@ -326,7 +326,7 @@ pub enum DeclarationKind {
     Type,
     Interface,
     Class,
-    // TODO: add space
+    #[serde(rename = "abstract class")]
     AbstractClass,
 }
 

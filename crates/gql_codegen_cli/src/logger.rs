@@ -24,18 +24,6 @@ impl Logger {
         }
     }
 
-    pub fn info(&self, msg: &str) {
-        if self.level != LogLevel::Quiet {
-            eprintln!("{} {}", style("•").cyan(), msg);
-        }
-    }
-
-    pub fn warn(&self, msg: &str) {
-        if self.level != LogLevel::Quiet {
-            eprintln!("{} {}", style("⚠").yellow().bold(), style(msg).yellow());
-        }
-    }
-
     pub fn error(&self, msg: &str) {
         eprintln!("{} {}", style("✗").red().bold(), style(msg).red());
     }
@@ -52,7 +40,4 @@ impl Logger {
         }
     }
 
-    pub fn is_verbose(&self) -> bool {
-        self.level == LogLevel::Verbose
-    }
 }

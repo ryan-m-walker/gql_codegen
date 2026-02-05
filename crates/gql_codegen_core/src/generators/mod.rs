@@ -31,18 +31,6 @@ pub struct GeneratorContext<'a> {
     pub writer: &'a mut dyn Write,
 }
 
-/// Trait for code generators
-pub trait Generator {
-    fn name(&self) -> &'static str;
-    fn generate(&self, ctx: &GeneratorContext, writer: &mut dyn Write) -> Result<()>;
-}
-
-/// Output from a generator (for in-memory generation)
-#[derive(Debug, Clone)]
-pub struct GeneratorOutput {
-    pub content: String,
-}
-
 /// Run a named generator
 pub fn run_generator(name: &str, ctx: &mut GeneratorContext) -> Result<()> {
     match name {

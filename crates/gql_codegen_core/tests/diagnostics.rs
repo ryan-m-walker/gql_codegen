@@ -10,7 +10,6 @@ use gql_codegen_core::{ConfigError, DocumentWarning, Error};
 
 /// Strip ANSI escape codes from rendered output.
 ///
-/// Apollo-compiler respects `Color::Never`, but ariadne emits ANSI by default.
 /// Stripping here keeps snapshots deterministic regardless of the renderer.
 fn strip_ansi(bytes: Vec<u8>) -> String {
     let stripped = strip_ansi_escapes::strip(&bytes);
@@ -78,11 +77,3 @@ fn document_warning_duplicate_name() {
     insta::assert_snapshot!(render_warn(&warn));
 }
 
-#[test]
-fn document_warning_parse_error() {
-    let warn = DocumentWarning::ParseError {
-        file: PathBuf::from("queries/broken.graphql"),
-        message: "expected a selection set".to_string(),
-    };
-    insta::assert_snapshot!(render_warn(&warn));
-}

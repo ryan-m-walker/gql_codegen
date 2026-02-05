@@ -5,7 +5,7 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-use gql_codegen_core::diagnostic::{Color, render_error, render_warning};
+use gql_codegen_core::diagnostic::{render_error_string, render_warning_string};
 use gql_codegen_core::{
     CollectedDocuments, ExtractConfig, GenerateInput, OutputConfig, PluginConfig, PluginOptions,
     Preset, SourceCache, collect_documents, config_json_schema, generate_from_input,
@@ -97,19 +97,7 @@ pub fn generate(schema: JsValue, operations: JsValue, config: JsValue) -> JsValu
     serde_wasm_bindgen::to_value(&result).unwrap_or(JsValue::NULL)
 }
 
-/// Render an error through our diagnostic pipeline (plain text for WASM)
-fn render_err_string(e: &gql_codegen_core::Error) -> String {
-    let mut buf = Vec::new();
-    render_error(e, Color::Never, gql_codegen_core::diagnostic::DEFAULT_MAX_DIAGNOSTICS, &mut buf).ok();
-    String::from_utf8(buf).unwrap_or_else(|_| format!("{e}"))
-}
-
-/// Render a warning through our diagnostic pipeline (plain text for WASM)
-fn render_warn_string(w: &gql_codegen_core::DocumentWarning) -> String {
-    let mut buf = Vec::new();
-    render_warning(w, Color::Never, gql_codegen_core::diagnostic::DEFAULT_MAX_DIAGNOSTICS, &mut buf).ok();
-    String::from_utf8(buf).unwrap_or_else(|_| w.to_string())
-}
+const MAX_DIAG: usize = gql_codegen_core::diagnostic::DEFAULT_MAX_DIAGNOSTICS;
 
 fn generate_internal(
     schemas: &[String],
@@ -136,7 +124,7 @@ fn generate_internal(
         Err(e) => {
             return GenerateResult {
                 output: String::new(),
-                error: Some(render_err_string(&e)),
+                error: Some(render_error_string(&e, MAX_DIAG)),
                 warnings: vec![],
             };
         }
@@ -155,7 +143,7 @@ fn generate_internal(
     let documents: CollectedDocuments = collect_documents(&source_cache, &extract_config);
 
     // Collect warnings from document parsing (rendered through our diagnostic pipeline)
-    let warnings: Vec<String> = documents.warnings.iter().map(render_warn_string).collect();
+    let warnings: Vec<String> = documents.warnings.iter().map(|w| render_warning_string(w, MAX_DIAG)).collect();
 
     // Extract preset and build generates config from wasm_config or use defaults
     let (preset, generates): (Preset, HashMap<String, OutputConfig>) = match wasm_config {
@@ -207,7 +195,7 @@ fn generate_internal(
         Ok(result) => {
             // Combine document warnings with generation warnings
             let mut all_warnings = warnings;
-            all_warnings.extend(result.warnings.iter().map(render_warn_string));
+            all_warnings.extend(result.warnings.iter().map(|w| render_warning_string(w, MAX_DIAG)));
 
             // Return the first (and only) generated file's content
             let output = result
@@ -225,7 +213,7 @@ fn generate_internal(
         }
         Err(e) => GenerateResult {
             output: String::new(),
-            error: Some(render_err_string(&e)),
+            error: Some(render_error_string(&e, MAX_DIAG)),
             warnings,
         },
     }

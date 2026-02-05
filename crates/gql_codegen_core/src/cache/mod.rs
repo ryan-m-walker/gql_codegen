@@ -5,7 +5,6 @@
 //! 2. Content hash (from already-loaded SourceCache)
 
 mod fs;
-// pub mod glob_cache; // TODO: Incremental per-directory glob cache for future optimization
 mod memory;
 mod noop;
 pub mod utils;

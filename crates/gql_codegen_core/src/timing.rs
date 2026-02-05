@@ -74,15 +74,7 @@ impl TimingGuard {
     }
 }
 
-impl Drop for TimingGuard {
-    fn drop(&mut self) {
-        // Only log if not already finished (check if start is still valid)
-        // We use a trick: if finish() was called, self would be moved
-        // Since Drop takes &mut self, this only runs if finish() wasn't called
-    }
-}
-
-/// Start a timing measurement (returns guard that logs on finish/drop)
+/// Start a timing measurement (returns guard that logs on `.finish()`)
 pub fn start(label: &'static str) -> TimingGuard {
     TimingGuard::new(label)
 }

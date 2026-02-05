@@ -9,7 +9,6 @@ description = "Core GraphQL code generation library"
 [dependencies]
 # GraphQL parsing
 apollo-compiler.workspace = true
-apollo-parser.workspace = true
 
 # Serialization (for receiving config from Node)
 serde.workspace = true
@@ -19,7 +18,6 @@ schemars.workspace = true
 # File handling
 glob.workspace = true
 globset.workspace = true
-walkdir.workspace = true
 
 # Parallelism
 rayon.workspace = true
@@ -29,9 +27,6 @@ indexmap.workspace = true
 
 # Error handling
 thiserror.workspace = true
-
-# Diagnostic rendering
-ariadne.workspace = true
 
 # Cross-platform time (works on WASM)
 web-time = "1.1"

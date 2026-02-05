@@ -18,7 +18,6 @@ use crate::source_cache::SourceCache;
 /// Structured warning from document collection (non-fatal)
 #[derive(Debug, Clone)]
 pub enum DocumentWarning {
-    ParseError { file: PathBuf, message: String },
     /// Parse errors with full diagnostic info (rendered through our pipeline)
     ParseErrors(DiagnosticList),
     DuplicateName { kind: &'static str, name: String },
@@ -27,9 +26,6 @@ pub enum DocumentWarning {
 impl fmt::Display for DocumentWarning {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            DocumentWarning::ParseError { file, message } => {
-                write!(f, "Parse error in {}: {}", file.display(), message)
-            }
             DocumentWarning::ParseErrors(diagnostics) => {
                 write!(f, "{} parse error(s)", diagnostics.len())
             }
@@ -57,9 +53,11 @@ pub struct ParsedOperation<'a> {
 impl<'a> ParsedOperation<'a> {
     /// Get the file path from the cache
     pub fn file_path<'c>(&self, cache: &'c SourceCache) -> &'c Path {
-        // TODO: CLAUDE verify this is safe
-        // Safety: source_idx is guaranteed to be valid
-        cache.get(self.source_idx).map(|(p, _)| p).unwrap()
+        // source_idx is always assigned from cache.iter() during collection
+        cache
+            .get(self.source_idx)
+            .map(|(p, _)| p)
+            .expect("source_idx should be valid — assigned from SourceCache during collection")
     }
 }
 
@@ -80,7 +78,10 @@ pub struct ParsedFragment<'a> {
 impl<'a> ParsedFragment<'a> {
     /// Get the file path from the cache
     pub fn file_path<'c>(&self, cache: &'c SourceCache) -> &'c Path {
-        cache.get(self.source_idx).map(|(p, _)| p).unwrap()
+        cache
+            .get(self.source_idx)
+            .map(|(p, _)| p)
+            .expect("source_idx should be valid — assigned from SourceCache during collection")
     }
 }
 

@@ -353,6 +353,24 @@ pub fn render_warning(
     }
 }
 
+/// Render an error to a `String` with no color (convenience for NAPI/WASM boundaries).
+///
+/// Falls back to `Display` if rendering fails.
+pub fn render_error_string(err: &Error, max_diagnostics: usize) -> String {
+    let mut buf = Vec::new();
+    render_error(err, Color::Never, max_diagnostics, &mut buf).ok();
+    String::from_utf8(buf).unwrap_or_else(|_| format!("{err}"))
+}
+
+/// Render a warning to a `String` with no color (convenience for NAPI/WASM boundaries).
+///
+/// Falls back to `Display` if rendering fails.
+pub fn render_warning_string(warn: &DocumentWarning, max_diagnostics: usize) -> String {
+    let mut buf = Vec::new();
+    render_warning(warn, Color::Never, max_diagnostics, &mut buf).ok();
+    String::from_utf8(buf).unwrap_or_else(|_| warn.to_string())
+}
+
 /// Build and render a Diagnostic for a config error (has source location).
 fn render_config_diagnostic(
     err: &ConfigError,

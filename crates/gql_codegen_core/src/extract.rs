@@ -8,8 +8,6 @@
 //! Inspired by Relay's approach:
 //! https://github.com/facebook/relay/blob/main/compiler/crates/extract-graphql/src/lib.rs
 
-use std::path::Path;
-
 /// Configuration for the extractor
 #[derive(Debug, Clone)]
 pub struct ExtractConfig {
@@ -170,29 +168,6 @@ pub fn extract<'a>(source: &'a str, config: &ExtractConfig) -> Vec<Extracted<'a>
     }
 
     results
-}
-
-/// Extract and convert to owned (for file operations where source doesn't outlive)
-pub fn extract_owned(source: &str, config: &ExtractConfig) -> Vec<ExtractedOwned> {
-    extract(source, config)
-        .into_iter()
-        .map(|e| e.to_owned())
-        .collect()
-}
-
-/// Convenience function for files - reads and extracts with default config
-pub fn extract_from_file(path: &Path) -> std::io::Result<Vec<ExtractedOwned>> {
-    let source = std::fs::read_to_string(path)?;
-    Ok(extract_owned(&source, &ExtractConfig::default()))
-}
-
-/// Convenience function for files with custom config
-pub fn extract_from_file_with_config(
-    path: &Path,
-    config: &ExtractConfig,
-) -> std::io::Result<Vec<ExtractedOwned>> {
-    let source = std::fs::read_to_string(path)?;
-    Ok(extract_owned(&source, config))
 }
 
 /// A single-pass character scanner with position tracking (zero-copy)

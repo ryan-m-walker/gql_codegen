@@ -28,7 +28,6 @@ pub mod diagnostic;
 mod documents;
 mod error;
 mod extract;
-pub mod fs;
 mod generators;
 mod schema;
 mod source_cache;
