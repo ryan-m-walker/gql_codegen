@@ -1,0 +1,8 @@
+{
+  "name": "scalars-default",
+  "description": "Generate custom scalar types with graphql-codegen default settings",
+  "schema": ["schemas/base.graphql", "schemas/scalar.graphql"],
+  "documents": [],
+  "plugins": ["typescript"],
+  "config": {}
+}

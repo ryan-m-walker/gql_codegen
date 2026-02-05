@@ -250,7 +250,7 @@ pub struct PluginOptions {
 
     /// Avoid using TypeScript optionals (?), use explicit null instead
     /// Alias: useNullForOptional
-    #[serde(default, alias = "useNullForOptional")]
+    #[serde(default)]
     pub avoid_optionals: bool,
 
     /// Customize the Maybe type (default: "T | null")

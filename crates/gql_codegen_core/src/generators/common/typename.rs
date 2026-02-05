@@ -8,11 +8,7 @@ pub(crate) fn render_typename(ctx: &mut GeneratorContext, type_name: &str) -> Re
     }
 
     let readonly = get_readonly_kw(ctx);
-    let optional = get_optional_prop_modifier(ctx);
-    writeln!(
-        ctx.writer,
-        "  {readonly}__typename{optional}: '{type_name}';"
-    )?;
+    writeln!(ctx.writer, "  {readonly}__typename?: '{type_name}';")?;
 
     Ok(())
 }

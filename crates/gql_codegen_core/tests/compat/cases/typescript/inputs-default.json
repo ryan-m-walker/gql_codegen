@@ -1,0 +1,8 @@
+{
+  "name": "inputs-default",
+  "description": "Generate input types with graphql-codegen default settings",
+  "schema": ["schemas/base.graphql", "schemas/input.graphql"],
+  "documents": [],
+  "plugins": ["typescript"],
+  "config": {}
+}

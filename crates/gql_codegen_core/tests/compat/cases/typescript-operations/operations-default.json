@@ -1,0 +1,8 @@
+{
+  "name": "operations-default",
+  "description": "Generate operation types with graphql-codegen default settings",
+  "schema": ["schemas/basic.graphql"],
+  "documents": ["documents/queries.graphql"],
+  "plugins": ["typescript-operations"],
+  "config": {}
+}

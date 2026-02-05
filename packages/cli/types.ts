@@ -113,11 +113,8 @@ export interface PluginOptions {
    */
   skipTypename?: boolean;
 
-  /**
-   * Use `T | null` instead of `T | undefined` for nullable fields
-   * @default false - uses `field?: T` style
-   */
-  useNullForOptional?: boolean;
+  // TODO: comment
+  avoidOptionals?: boolean;
 
   /**
    * GraphQL tag for document generation: 'gql' | 'graphql' | 'none'

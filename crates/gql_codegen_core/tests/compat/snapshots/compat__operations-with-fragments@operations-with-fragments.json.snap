@@ -1,0 +1,33 @@
+---
+source: crates/gql_codegen_core/tests/compat/main.rs
+expression: output
+input_file: crates/gql_codegen_core/tests/compat/cases/typescript-operations/operations-with-fragments.json
+---
+export interface GetUserWithFragments {
+  user?:  {
+    id: string;
+    name: string;
+    email?: string | null;
+    posts: Array< {
+      id: string;
+      title: string;
+      body: string;
+    }>;
+  };
+}
+
+export interface GetUserWithFragmentsVariables {
+  id: string;
+}
+
+export interface PostFields {
+  id: string;
+  title: string;
+  body: string;
+}
+
+export interface UserFields {
+  id: string;
+  name: string;
+  email?: string | null;
+}

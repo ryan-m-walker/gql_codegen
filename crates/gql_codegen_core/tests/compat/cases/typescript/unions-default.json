@@ -1,0 +1,8 @@
+{
+  "name": "unions-default",
+  "description": "Generate union types with graphql-codegen default settings",
+  "schema": ["schemas/base.graphql", "schemas/union.graphql"],
+  "documents": [],
+  "plugins": ["typescript"],
+  "config": {}
+}

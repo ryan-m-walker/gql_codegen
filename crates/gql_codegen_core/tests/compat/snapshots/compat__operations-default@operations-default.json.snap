@@ -1,0 +1,34 @@
+---
+source: crates/gql_codegen_core/tests/compat/main.rs
+expression: output
+input_file: crates/gql_codegen_core/tests/compat/cases/typescript-operations/operations-default.json
+---
+export interface CreateUser {
+  createUser:  {
+    id: string;
+    name: string;
+  };
+}
+
+export interface CreateUserVariables {
+  input: CreateUserInput;
+}
+
+export interface GetUser {
+  user?:  {
+    id: string;
+    name: string;
+    email?: string | null;
+  };
+}
+
+export interface GetUserVariables {
+  id: string;
+}
+
+export interface GetUsers {
+  users: Array< {
+    id: string;
+    name: string;
+  }>;
+}

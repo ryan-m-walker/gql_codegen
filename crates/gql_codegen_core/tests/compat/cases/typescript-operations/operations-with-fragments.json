@@ -1,0 +1,8 @@
+{
+  "name": "operations-with-fragments",
+  "description": "Generate operation types with fragments",
+  "schema": ["schemas/basic.graphql"],
+  "documents": ["documents/fragments.graphql"],
+  "plugins": ["typescript-operations"],
+  "config": {}
+}

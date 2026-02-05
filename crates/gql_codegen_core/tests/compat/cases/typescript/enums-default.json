@@ -1,0 +1,8 @@
+{
+  "name": "enums-default",
+  "description": "Generate enums with graphql-codegen default settings",
+  "schema": ["schemas/base.graphql", "schemas/enum.graphql"],
+  "documents": [],
+  "plugins": ["typescript"],
+  "config": {}
+}

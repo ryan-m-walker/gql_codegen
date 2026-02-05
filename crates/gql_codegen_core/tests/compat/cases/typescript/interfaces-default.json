@@ -1,0 +1,8 @@
+{
+  "name": "interfaces-default",
+  "description": "Generate interface types with graphql-codegen default settings",
+  "schema": ["schemas/base.graphql", "schemas/interface.graphql"],
+  "documents": [],
+  "plugins": ["typescript"],
+  "config": {}
+}

@@ -53,8 +53,8 @@ export interface PluginOptions {
   /** Skip __typename field in generated types */
   skipTypename?: boolean;
 
-  /** Use null instead of undefined for optional fields */
-  useNullForOptional?: boolean;
+  // TODO: 
+  avoidOptionals?: boolean;
 
   /** GraphQL tag style for documents */
   graphqlTag?: 'gql' | 'graphql' | 'none';
