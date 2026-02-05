@@ -22,6 +22,7 @@ use crate::extract::ExtractConfig;
 use crate::generators::{GeneratorContext, run_generator};
 use crate::schema::{load_schema, load_schema_from_contents, resolve_schema_paths};
 use crate::source_cache::SourceCache;
+use crate::documents::DocumentWarning;
 use crate::{CodegenConfig, Result};
 
 /// Result of code generation
@@ -30,7 +31,7 @@ pub struct GenerateResult {
     /// Generated files (path -> content)
     pub files: Vec<GeneratedFile>,
     /// Warnings encountered during generation
-    pub warnings: Vec<String>,
+    pub warnings: Vec<DocumentWarning>,
 }
 
 /// A single generated file

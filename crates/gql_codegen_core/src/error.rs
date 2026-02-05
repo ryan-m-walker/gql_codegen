@@ -1,20 +1,40 @@
 //! Error types for gql_codegen_core
 
+use std::fmt;
 use std::path::PathBuf;
+
+use apollo_compiler::validation::DiagnosticList;
 use thiserror::Error;
 
 pub type Result<T> = std::result::Result<T, Error>;
+
+/// Structured config error with source location for rich rendering
+#[derive(Debug)]
+pub struct ConfigError {
+    pub message: String,
+    pub file: PathBuf,
+    pub line: usize,
+    pub column: usize,
+    /// Config file contents for source display
+    pub source_text: String,
+}
+
+impl fmt::Display for ConfigError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Config error in {}: {}", self.file.display(), self.message)
+    }
+}
 
 #[derive(Debug, Error)]
 pub enum Error {
     #[error("Failed to read schema '{0}': {1}")]
     SchemaRead(PathBuf, String),
 
-    #[error("Failed to parse schema: {0}")]
-    SchemaParse(String),
+    #[error("{0}")]
+    SchemaParse(DiagnosticList),
 
-    #[error("Schema validation error: {0}")]
-    SchemaValidation(String),
+    #[error("{0}")]
+    SchemaValidation(DiagnosticList),
 
     #[error("Failed to read '{0}': {1}")]
     FileRead(PathBuf, String),
@@ -28,8 +48,8 @@ pub enum Error {
     #[error("Unknown plugin: '{0}'")]
     UnknownPlugin(String),
 
-    #[error("Configuration error: {0}")]
-    Config(String),
+    #[error("{0}")]
+    Config(ConfigError),
 
     #[error("Generation error: {0}")]
     Generation(String),

@@ -20,11 +20,11 @@ pub fn load_schema(paths: &[PathBuf]) -> Result<Valid<Schema>> {
 
     let schema = builder
         .build()
-        .map_err(|e| Error::SchemaParse(e.to_string()))?;
+        .map_err(|e| Error::SchemaParse(e.errors))?;
 
     schema
         .validate()
-        .map_err(|e| Error::SchemaValidation(format_validation_errors(&e.errors)))
+        .map_err(|e| Error::SchemaValidation(e.errors))
 }
 
 /// Load and validate a GraphQL schema from pre-loaded content.
@@ -40,11 +40,11 @@ pub fn load_schema_from_contents(files: &[(PathBuf, String)]) -> Result<Valid<Sc
 
     let schema = builder
         .build()
-        .map_err(|e| Error::SchemaParse(e.to_string()))?;
+        .map_err(|e| Error::SchemaParse(e.errors))?;
 
     schema
         .validate()
-        .map_err(|e| Error::SchemaValidation(format_validation_errors(&e.errors)))
+        .map_err(|e| Error::SchemaValidation(e.errors))
 }
 
 /// Helper to resolve schema paths from config (convenience for simple cases)
@@ -59,12 +59,4 @@ pub fn resolve_schema_paths(patterns: &[&str], base_dir: Option<&Path>) -> Vec<P
             }
         })
         .collect()
-}
-
-fn format_validation_errors(errors: &apollo_compiler::validation::DiagnosticList) -> String {
-    errors
-        .iter()
-        .map(|e| e.error.to_string())
-        .collect::<Vec<_>>()
-        .join("\n")
 }

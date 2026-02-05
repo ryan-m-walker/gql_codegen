@@ -13,6 +13,7 @@ gql_codegen_cli = { path = "crates/gql_codegen_cli" }
 gql_codegen_core = { path = "crates/gql_codegen_core" }
 
 apollo-compiler = { version = "1.31.0" }
+ariadne = { version = "0.5" }
 apollo-parser = { version = "0.8.4" }
 clap = { version = "4.5.56", features = ["derive"] }
 globset = { version = "0.4.18" }

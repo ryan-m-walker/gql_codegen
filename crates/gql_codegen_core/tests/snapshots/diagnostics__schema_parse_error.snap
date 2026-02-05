@@ -1,0 +1,9 @@
+---
+source: crates/gql_codegen_core/tests/diagnostics.rs
+expression: render_err(&err)
+---
+[Error]: syntax error: expected a Type
+
+ schema.graphql:1:21
+  1 │ type Query { field: }
+    │                     ^

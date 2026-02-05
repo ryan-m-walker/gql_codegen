@@ -1,9 +1,11 @@
 //! Zero-copy document discovery and parsing with parallel processing
 
+use std::fmt;
 use std::path::{Path, PathBuf};
 
 use apollo_compiler::Name;
 use apollo_compiler::ast::Definition;
+use apollo_compiler::validation::DiagnosticList;
 use globset::{Glob, GlobSetBuilder};
 use indexmap::IndexMap;
 use rayon::prelude::*;
@@ -12,6 +14,31 @@ use crate::config::StringOrArray;
 use crate::error::{Error, Result};
 use crate::extract::{self, ExtractConfig, Extracted};
 use crate::source_cache::SourceCache;
+
+/// Structured warning from document collection (non-fatal)
+#[derive(Debug, Clone)]
+pub enum DocumentWarning {
+    ParseError { file: PathBuf, message: String },
+    /// Parse errors with full diagnostic info (rendered through our pipeline)
+    ParseErrors(DiagnosticList),
+    DuplicateName { kind: &'static str, name: String },
+}
+
+impl fmt::Display for DocumentWarning {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            DocumentWarning::ParseError { file, message } => {
+                write!(f, "Parse error in {}: {}", file.display(), message)
+            }
+            DocumentWarning::ParseErrors(diagnostics) => {
+                write!(f, "{} parse error(s)", diagnostics.len())
+            }
+            DocumentWarning::DuplicateName { kind, name } => {
+                write!(f, "Duplicate {kind} '{name}' (skipped)")
+            }
+        }
+    }
+}
 
 /// A parsed GraphQL operation with metadata (zero-copy text)
 #[derive(Debug, Clone)]
@@ -63,7 +90,7 @@ pub struct CollectedDocuments<'a> {
     pub operations: IndexMap<Name, ParsedOperation<'a>>,
     pub fragments: IndexMap<Name, ParsedFragment<'a>>,
     /// Warnings encountered during collection (non-fatal)
-    pub warnings: Vec<String>,
+    pub warnings: Vec<DocumentWarning>,
 }
 
 /// Load all matching files into the source cache (parallel file reading)
@@ -258,18 +285,20 @@ pub fn collect_documents<'a>(
             } => {
                 for (name, op) in operations {
                     if result.operations.contains_key(&name) {
-                        result
-                            .warnings
-                            .push(format!("Duplicate operation '{name}' (skipped)"));
+                        result.warnings.push(DocumentWarning::DuplicateName {
+                            kind: "operation",
+                            name: name.to_string(),
+                        });
                     } else {
                         result.operations.insert(name, op);
                     }
                 }
                 for (name, frag) in fragments {
                     if result.fragments.contains_key(&name) {
-                        result
-                            .warnings
-                            .push(format!("Duplicate fragment '{name}' (skipped)"));
+                        result.warnings.push(DocumentWarning::DuplicateName {
+                            kind: "fragment",
+                            name: name.to_string(),
+                        });
                     } else {
                         result.fragments.insert(name, frag);
                     }
@@ -289,14 +318,14 @@ enum ParseResult<'a> {
         operations: Vec<(Name, ParsedOperation<'a>)>,
         fragments: Vec<(Name, ParsedFragment<'a>)>,
     },
-    Error(String),
+    Error(DocumentWarning),
 }
 
 fn parse_document<'a>(doc: &ExtractedDoc<'a>) -> ParseResult<'a> {
     let document = match apollo_compiler::ast::Document::parse(doc.text, doc.path) {
         Ok(d) => d,
         Err(e) => {
-            return ParseResult::Error(format!("{}:{}: {}", doc.path.display(), doc.line, e));
+            return ParseResult::Error(DocumentWarning::ParseErrors(e.errors));
         }
     };
 

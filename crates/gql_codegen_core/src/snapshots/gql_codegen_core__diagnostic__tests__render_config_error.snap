@@ -1,0 +1,11 @@
+---
+source: crates/gql_codegen_core/src/diagnostic.rs
+expression: "String::from_utf8(buf).unwrap()"
+---
+[Error]: expected a string
+
+ config.json:2:5
+  1 │ {
+  2 │     "key": value
+    │     ^
+  3 │ }

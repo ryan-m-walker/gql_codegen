@@ -66,3 +66,5 @@
    50-80% and speed up string comparisons significantly.
 
 DELETE CACHE ISSUE
+
+TODO: double warn for duplicate fragment names

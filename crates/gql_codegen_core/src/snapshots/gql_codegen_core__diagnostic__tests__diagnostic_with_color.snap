@@ -1,0 +1,5 @@
+---
+source: crates/gql_codegen_core/src/diagnostic.rs
+expression: output
+---
+[31m[1m[Error]: bad thing[0m

@@ -45,9 +45,24 @@ pub fn generate(options: GenerateOptions) -> Result<GenerateResult> {
         gql_codegen_core::timing::enable_timing();
     }
 
-    // Parse config from JSON
-    let config: CodegenConfig = serde_json::from_str(&options.config_json)
-        .map_err(|e| Error::from_reason(format!("Invalid config JSON: {e}")))?;
+    // Parse config from JSON — render structured error for parse failures
+    let config: CodegenConfig = serde_json::from_str(&options.config_json).map_err(|e| {
+        let mut buf = Vec::new();
+        let config_err = gql_codegen_core::ConfigError {
+            message: e.to_string(),
+            file: std::path::PathBuf::from("<config>"),
+            line: e.line(),
+            column: e.column(),
+            source_text: options.config_json.clone(),
+        };
+        let core_err = gql_codegen_core::Error::Config(config_err);
+        let _ = gql_codegen_core::diagnostic::render_error(
+            &core_err,
+            gql_codegen_core::diagnostic::Color::StderrIsTerminal,
+            &mut buf,
+        );
+        Error::from_reason(String::from_utf8(buf).unwrap_or_else(|_| format!("{core_err}")))
+    })?;
 
     // Set up cache
     let base_dir = config
@@ -62,9 +77,16 @@ pub fn generate(options: GenerateOptions) -> Result<GenerateResult> {
         Box::new(FsCache::new(base_dir.join(".sgc")))
     };
 
-    // Run generation
-    let result = gql_codegen_core::generate_cached(&config, cache.as_mut())
-        .map_err(|e| Error::from_reason(format!("Generation failed: {e}")))?;
+    // Run generation — render structured diagnostics on error
+    let result = gql_codegen_core::generate_cached(&config, cache.as_mut()).map_err(|e| {
+        let mut buf = Vec::new();
+        let _ = gql_codegen_core::diagnostic::render_error(
+            &e,
+            gql_codegen_core::diagnostic::Color::StderrIsTerminal,
+            &mut buf,
+        );
+        Error::from_reason(String::from_utf8(buf).unwrap_or_else(|_| format!("{e}")))
+    })?;
 
     // Convert to NAPI result
     match result {
@@ -83,7 +105,7 @@ pub fn generate(options: GenerateOptions) -> Result<GenerateResult> {
                     content: f.content,
                 })
                 .collect(),
-            warnings: gen_result.warnings,
+            warnings: gen_result.warnings.iter().map(|w| w.to_string()).collect(),
         }),
     }
 }

@@ -24,6 +24,7 @@ pub mod cache;
 mod casing;
 mod codegen;
 mod config;
+pub mod diagnostic;
 mod documents;
 mod error;
 mod extract;
@@ -43,7 +44,8 @@ pub use config::{
     CodegenConfig, DeclarationKind, FormattingOptions, GraphqlTag, NamingCase, NamingConvention,
     NamingConventionConfig, OutputConfig, PluginConfig, PluginOptions, Preset, StringOrArray,
 };
-pub use error::{Error, Result};
+pub use documents::DocumentWarning;
+pub use error::{ConfigError, Error, Result};
 
 // Public API - Building blocks for custom I/O handling
 // Use these when you need control over file loading, caching, etc.

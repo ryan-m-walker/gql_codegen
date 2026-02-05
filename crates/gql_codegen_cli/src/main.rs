@@ -9,8 +9,10 @@ use std::process::ExitCode;
 use anyhow::{Context, Result};
 use clap::Parser;
 use gql_codegen_core::cache::{Cache, FsCache, NoCache};
+use gql_codegen_core::diagnostic::Color;
 use gql_codegen_core::{
-    CodegenConfig, FsWriter, GenerateCachedResult, StdoutWriter, generate_cached, write_outputs,
+    CodegenConfig, ConfigError, FsWriter, GenerateCachedResult, StdoutWriter, generate_cached,
+    write_outputs,
 };
 
 mod args;
@@ -39,10 +41,20 @@ fn main() -> ExitCode {
     match run(&args, &logger) {
         Ok(()) => ExitCode::SUCCESS,
         Err(e) => {
-            logger.error(&e.to_string());
-            if args.verbose {
-                for cause in e.chain().skip(1) {
-                    eprintln!("  Caused by: {cause}");
+            // Try to render structured diagnostics for core errors
+            if let Some(core_err) = e.downcast_ref::<gql_codegen_core::Error>() {
+                let color = Color::StderrIsTerminal;
+                let _ = gql_codegen_core::diagnostic::render_error(
+                    core_err,
+                    color,
+                    &mut std::io::stderr(),
+                );
+            } else {
+                logger.error(&e.to_string());
+                if args.verbose {
+                    for cause in e.chain().skip(1) {
+                        eprintln!("  Caused by: {cause}");
+                    }
                 }
             }
             ExitCode::FAILURE
@@ -54,8 +66,16 @@ fn run(args: &CliArgs, logger: &Logger) -> Result<()> {
     let config_content = fs::read_to_string(&args.config)
         .with_context(|| format!("Failed to read config: {}", args.config.display()))?;
 
-    let mut config: CodegenConfig = serde_json::from_str(&config_content)
-        .with_context(|| format!("Failed to parse config: {}", args.config.display()))?;
+    let mut config: CodegenConfig = serde_json::from_str(&config_content).map_err(|e| {
+        let core_err = gql_codegen_core::Error::Config(ConfigError {
+            message: e.to_string(),
+            file: args.config.clone(),
+            line: e.line(),
+            column: e.column(),
+            source_text: config_content.clone(),
+        });
+        anyhow::Error::new(core_err)
+    })?;
 
     // CLI preset overrides config file preset
     if let Some(preset) = args.preset {
@@ -102,7 +122,7 @@ fn run(args: &CliArgs, logger: &Logger) -> Result<()> {
         }
         GenerateCachedResult::Generated(gen_result) => {
             for warning in &gen_result.warnings {
-                logger.warn(warning);
+                logger.warn(&warning.to_string());
             }
 
             if !args.check {

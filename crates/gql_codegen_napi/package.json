@@ -17,8 +17,8 @@
     }
   },
   "scripts": {
-    "build": "napi build --platform --release",
-    "build:debug": "napi build --platform"
+    "build": "napi build --platform --release --cargo-cwd ../../",
+    "build:debug": "napi build --platform --cargo-cwd ../../"
   },
   "devDependencies": {
     "@napi-rs/cli": "^2.18.0"

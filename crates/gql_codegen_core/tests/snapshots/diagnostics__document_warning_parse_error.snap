@@ -1,0 +1,5 @@
+---
+source: crates/gql_codegen_core/tests/diagnostics.rs
+expression: render_warn(&warn)
+---
+[Warning]: Parse error in queries/broken.graphql: expected a selection set

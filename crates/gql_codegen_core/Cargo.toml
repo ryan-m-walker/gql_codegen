@@ -30,8 +30,12 @@ indexmap.workspace = true
 # Error handling
 thiserror.workspace = true
 
+# Diagnostic rendering
+ariadne.workspace = true
+
 # Cross-platform time (works on WASM)
 web-time = "1.1"
 
 [dev-dependencies]
 insta = "1.46"
+strip-ansi-escapes = "0.2.1"
