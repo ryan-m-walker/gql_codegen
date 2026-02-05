@@ -20,14 +20,14 @@ fn strip_ansi(bytes: Vec<u8>) -> String {
 /// Helper: render an error to a String (no color).
 fn render_err(err: &Error) -> String {
     let mut buf = Vec::new();
-    render_error(err, Color::Never, &mut buf).expect("render should not fail");
+    render_error(err, Color::Never, 0, &mut buf).expect("render should not fail");
     strip_ansi(buf)
 }
 
 /// Helper: render a warning to a String (no color).
 fn render_warn(warn: &DocumentWarning) -> String {
     let mut buf = Vec::new();
-    render_warning(warn, Color::Never, &mut buf).expect("render should not fail");
+    render_warning(warn, Color::Never, 0, &mut buf).expect("render should not fail");
     strip_ansi(buf)
 }
 

@@ -43,6 +43,10 @@ pub(crate) struct CliArgs {
     /// Show timing information for performance debugging
     #[arg(long)]
     pub timing: bool,
+
+    /// Max diagnostics to show per error (0 = all, default 3)
+    #[arg(long)]
+    pub max_diagnostics: Option<usize>,
 }
 
 fn parse_preset(s: &str) -> Result<Preset, String> {

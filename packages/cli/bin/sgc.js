@@ -38,6 +38,7 @@ const knownOptions = {
   verbose: { type: 'boolean', short: 'v' },
   quiet: { type: 'boolean', short: 'q' },
   timing: { type: 'boolean', short: 't' },
+  'max-diagnostics': { type: 'string' },
   help: { type: 'boolean', short: 'h' },
   version: { type: 'boolean', short: 'V' },
 };
@@ -86,6 +87,7 @@ Options:
   -v, --verbose        Verbose output
   -q, --quiet          Suppress output (only show errors)
   -t, --timing         Show timing information for performance debugging
+      --max-diagnostics <N>  Max errors to show per group (0 = all, default 3)
   -h, --help           Show this help message
   -V, --version        Show version
 
@@ -157,10 +159,9 @@ Examples:
     timing('Total', performance.now() - totalStart);
     process.exit(0);
   } catch (err) {
-    console.error('Error:', err instanceof Error ? err.message : err);
-    if (args.verbose && err instanceof Error && err.stack) {
-      console.error(err.stack);
-    }
+    // Error messages from NAPI are already rendered through our diagnostic pipeline
+    const msg = err instanceof Error ? err.message : String(err);
+    process.stderr.write(msg.endsWith('\n') ? msg : msg + '\n');
     process.exit(1);
   }
 }
@@ -171,17 +172,22 @@ Examples:
 async function runNativeMode(config, timing) {
   const t0 = performance.now();
 
+  const maxDiag = args['max-diagnostics'] != null
+    ? parseInt(args['max-diagnostics'], 10)
+    : undefined;
+
   const result = nativeCore.generate({
     configJson: JSON.stringify(config),
     noCache: args['no-cache'],
     timing: args.timing,
+    maxDiagnostics: maxDiag,
   });
 
   timing('Native generate', performance.now() - t0);
 
-  // Handle warnings
+  // Handle warnings (already rendered through diagnostic pipeline by NAPI)
   for (const warning of result.warnings) {
-    console.warn(`Warning: ${warning}`);
+    process.stderr.write(warning);
   }
 
   if (result.fresh) {
@@ -246,6 +252,7 @@ async function runBinaryMode(resolvedConfig, configPath, extraArgs = []) {
     if (args.verbose) binaryArgs.push('--verbose');
     if (args.quiet) binaryArgs.push('--quiet');
     if (args.timing) binaryArgs.push('--timing');
+    if (args['max-diagnostics'] != null) binaryArgs.push(`--max-diagnostics=${args['max-diagnostics']}`);
 
     const result = await runBinary({
       configPath: tempConfigPath,

@@ -17,8 +17,8 @@
     }
   },
   "scripts": {
-    "build": "napi build --platform --release --cargo-cwd ../../",
-    "build:debug": "napi build --platform --cargo-cwd ../../"
+    "build": "napi build --platform --release --cargo-cwd ../../ --cargo-name gql_codegen_napi",
+    "build:debug": "napi build --platform --cargo-cwd ../../ --cargo-name gql_codegen_napi"
   },
   "devDependencies": {
     "@napi-rs/cli": "^2.18.0"

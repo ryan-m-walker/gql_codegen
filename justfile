@@ -18,11 +18,11 @@ cli-debug:
 
 # Build NAPI module for Node.js
 napi:
-    cd crates/gql_codegen_napi && pnpm build
+    cd packages/core && pnpm build:native
 
 # Build NAPI module (debug, faster)
 napi-debug:
-    cd crates/gql_codegen_napi && pnpm build:debug
+    cd packages/core && pnpm build:native:debug
 
 # Build WASM for website
 wasm:

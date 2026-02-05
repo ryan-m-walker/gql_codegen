@@ -100,14 +100,14 @@ pub fn generate(schema: JsValue, operations: JsValue, config: JsValue) -> JsValu
 /// Render an error through our diagnostic pipeline (plain text for WASM)
 fn render_err_string(e: &gql_codegen_core::Error) -> String {
     let mut buf = Vec::new();
-    render_error(e, Color::Never, &mut buf).ok();
+    render_error(e, Color::Never, gql_codegen_core::diagnostic::DEFAULT_MAX_DIAGNOSTICS, &mut buf).ok();
     String::from_utf8(buf).unwrap_or_else(|_| format!("{e}"))
 }
 
 /// Render a warning through our diagnostic pipeline (plain text for WASM)
 fn render_warn_string(w: &gql_codegen_core::DocumentWarning) -> String {
     let mut buf = Vec::new();
-    render_warning(w, Color::Never, &mut buf).ok();
+    render_warning(w, Color::Never, gql_codegen_core::diagnostic::DEFAULT_MAX_DIAGNOSTICS, &mut buf).ok();
     String::from_utf8(buf).unwrap_or_else(|_| w.to_string())
 }
 

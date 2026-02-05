@@ -35,6 +35,8 @@ pub struct GenerateOptions {
     pub no_cache: Option<bool>,
     /// Whether to enable timing output
     pub timing: Option<bool>,
+    /// Max diagnostics to show per error group (0 = unlimited, default 3)
+    pub max_diagnostics: Option<u32>,
 }
 
 /// Generate TypeScript types from GraphQL schema and operations
@@ -44,6 +46,10 @@ pub fn generate(options: GenerateOptions) -> Result<GenerateResult> {
     if options.timing.unwrap_or(false) {
         gql_codegen_core::timing::enable_timing();
     }
+
+    let max_diag = options.max_diagnostics.unwrap_or(
+        gql_codegen_core::diagnostic::DEFAULT_MAX_DIAGNOSTICS as u32,
+    ) as usize;
 
     // Parse config from JSON — render structured error for parse failures
     let config: CodegenConfig = serde_json::from_str(&options.config_json).map_err(|e| {
@@ -59,6 +65,7 @@ pub fn generate(options: GenerateOptions) -> Result<GenerateResult> {
         let _ = gql_codegen_core::diagnostic::render_error(
             &core_err,
             gql_codegen_core::diagnostic::Color::StderrIsTerminal,
+            max_diag,
             &mut buf,
         );
         Error::from_reason(String::from_utf8(buf).unwrap_or_else(|_| format!("{core_err}")))
@@ -83,6 +90,7 @@ pub fn generate(options: GenerateOptions) -> Result<GenerateResult> {
         let _ = gql_codegen_core::diagnostic::render_error(
             &e,
             gql_codegen_core::diagnostic::Color::StderrIsTerminal,
+            max_diag,
             &mut buf,
         );
         Error::from_reason(String::from_utf8(buf).unwrap_or_else(|_| format!("{e}")))
@@ -105,7 +113,20 @@ pub fn generate(options: GenerateOptions) -> Result<GenerateResult> {
                     content: f.content,
                 })
                 .collect(),
-            warnings: gen_result.warnings.iter().map(|w| w.to_string()).collect(),
+            warnings: gen_result
+                .warnings
+                .iter()
+                .map(|w| {
+                    let mut buf = Vec::new();
+                    let _ = gql_codegen_core::diagnostic::render_warning(
+                        w,
+                        gql_codegen_core::diagnostic::Color::Never,
+                        max_diag,
+                        &mut buf,
+                    );
+                    String::from_utf8(buf).unwrap_or_else(|_| w.to_string())
+                })
+                .collect(),
         }),
     }
 }

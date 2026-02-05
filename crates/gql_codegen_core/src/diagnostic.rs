@@ -19,8 +19,8 @@ pub(crate) struct Styles {
     bold: &'static str,
     red: &'static str,
     yellow: &'static str,
-    cyan: &'static str,
     dim: &'static str,
+    underline: &'static str,
     reset: &'static str,
 }
 
@@ -28,8 +28,8 @@ const COLORED: Styles = Styles {
     bold: "\x1b[1m",
     red: "\x1b[31m",
     yellow: "\x1b[33m",
-    cyan: "\x1b[36m",
     dim: "\x1b[2m",
+    underline: "\x1b[4m",
     reset: "\x1b[0m",
 };
 
@@ -37,8 +37,8 @@ const PLAIN: Styles = Styles {
     bold: "",
     red: "",
     yellow: "",
-    cyan: "",
     dim: "",
+    underline: "",
     reset: "",
 };
 
@@ -101,7 +101,7 @@ fn digit_count(n: usize) -> usize {
     count
 }
 
-/// Render a single source line with a dim gutter
+/// Render a single source line with bold line number and dim gutter pipe
 ///
 /// Format: `  {line_num} │ {text}`
 /// where line_num is right-aligned to `gutter_width`.
@@ -111,13 +111,16 @@ fn render_source_line(
     text: &str,
     gutter_width: usize,
     s: &Styles,
+    highlight: &str,
 ) -> io::Result<()> {
     writeln!(
         w,
-        "  {dim}{num:>width$} │{reset} {text}",
-        dim = s.dim,
+        "  {bold}{num:>width$}{reset} {dim}│{reset} {hl}{text}{reset}",
+        bold = s.bold,
         num = line_num,
         width = gutter_width,
+        dim = s.dim,
+        hl = highlight,
         reset = s.reset,
         text = text,
     )
@@ -130,8 +133,9 @@ impl Diagnostic<'_> {
     ///
     /// Uses the provided `Styles` for optional ANSI coloring:
     /// - Severity label: **bold** + red/yellow
-    /// - File location: **cyan**
-    /// - Gutter (line numbers + `│`): **dim**
+    /// - File path: **underlined**, `:line:col` dim
+    /// - Line numbers: **bold**, gutter pipe (`│`): dim
+    /// - Error line text: **bold** + red/yellow (matches severity)
     /// - Caret (`^`): **bold** + red/yellow (matches severity)
     ///
     /// **Without snippet:**
@@ -169,12 +173,13 @@ impl Diagnostic<'_> {
 
         writeln!(w)?;
 
-        // File location
+        // File location: underlined path, dim :line:col
         writeln!(
             w,
-            " {cyan}{file}:{line}:{col}{reset}",
-            cyan = s.cyan,
+            " {underline}{file}{reset}{dim}:{line}:{col}{reset}",
+            underline = s.underline,
             file = snippet.file.display(),
+            dim = s.dim,
             line = snippet.line,
             col = snippet.column,
             reset = s.reset,
@@ -191,38 +196,41 @@ impl Diagnostic<'_> {
             Severity::Warning => s.yellow,
         };
 
-        // Previous line
+        // Highlight string for the error line: red+bold for errors, yellow+bold for warnings
+        let line_highlight = format!("{}{}", severity_color, s.bold);
+
+        // Previous line (no highlight)
         if snippet.line >= 2 {
             if let Some(prev) = lines.get(line_idx.wrapping_sub(1)) {
-                render_source_line(w, snippet.line - 1, prev, gutter, s)?;
+                render_source_line(w, snippet.line - 1, prev, gutter, s, "")?;
             }
         }
 
-        // Error line
+        // Error line (highlighted)
         if let Some(current) = lines.get(line_idx) {
-            render_source_line(w, snippet.line, current, gutter, s)?;
+            render_source_line(w, snippet.line, current, gutter, s, &line_highlight)?;
         }
 
         // Caret line — blank gutter, offset to column, then carets
         write!(
             w,
-            "  {dim}{0:>gutter$} │{reset} {0:>col$}{color}{bold}",
+            "  {bold}{0:>gutter$}{reset} {dim}│{reset} {0:>col$}{color}{bold}",
             "",
-            dim = s.dim,
+            bold = s.bold,
             gutter = gutter,
+            dim = s.dim,
             reset = s.reset,
             col = snippet.column.saturating_sub(1),
             color = severity_color,
-            bold = s.bold,
         )?;
         for _ in 0..snippet.length.unwrap_or(1) {
             write!(w, "^")?;
         }
         writeln!(w, "{reset}", reset = s.reset)?;
 
-        // Next line
+        // Next line (no highlight)
         if let Some(next) = lines.get(line_idx + 1) {
-            render_source_line(w, snippet.line + 1, next, gutter, s)?;
+            render_source_line(w, snippet.line + 1, next, gutter, s, "")?;
         }
 
         writeln!(w)?;
@@ -233,40 +241,78 @@ impl Diagnostic<'_> {
 
 // ── Public API ──────────────────────────────────────────────────────────────
 
+/// Default cap for diagnostics from a single DiagnosticList.
+pub const DEFAULT_MAX_DIAGNOSTICS: usize = 3;
+
+/// Render diagnostics from a `DiagnosticList`, capped at `max` (0 = unlimited).
+fn render_diagnostic_list(
+    diagnostics: &apollo_compiler::validation::DiagnosticList,
+    severity: Severity,
+    max: usize,
+    s: &Styles,
+    w: &mut dyn io::Write,
+) -> io::Result<()> {
+    let total = diagnostics.len();
+
+    for (i, diag) in diagnostics.iter().enumerate() {
+        if max > 0 && i >= max {
+            let remaining = total - max;
+            let severity_color = match severity {
+                Severity::Error => s.red,
+                Severity::Warning => s.yellow,
+            };
+            writeln!(
+                w,
+                "{color}... and {remaining} more error{pl}{reset} {dim}(Hint: run with --max-diagnostics=0 to show all)\n",
+                color = severity_color,
+                remaining = remaining,
+                pl = if remaining == 1 { "" } else { "s" },
+                reset = s.reset,
+                dim = s.dim,
+            )?;
+            break;
+        }
+
+        let msg = diag.error.to_string();
+
+        let snippet = diag.error.location().and_then(|span| {
+            let file = diag.sources.get(&span.file_id())?;
+            let start = file.get_line_column(span.offset())?;
+            let len = span.end_offset().saturating_sub(span.offset());
+
+            Some(Snippet {
+                file: file.path(),
+                source: file.source_text(),
+                line: start.line,
+                column: start.column,
+                length: if len > 1 { Some(len) } else { None },
+            })
+        });
+
+        Diagnostic {
+            severity,
+            message: &msg,
+            snippet,
+        }
+        .render(w, s)?;
+    }
+
+    Ok(())
+}
+
 /// Render an error to a writer with optional color support.
 ///
-/// All error variants render through our `Diagnostic` struct for consistent output.
-/// Apollo schema errors are extracted from `DiagnosticList` into `Snippet`s
-/// using the public `SourceSpan` / `SourceFile` APIs.
-pub fn render_error(err: &Error, color: Color, w: &mut dyn io::Write) -> io::Result<()> {
+/// `max_diagnostics` caps cascading parse errors (0 = show all).
+pub fn render_error(
+    err: &Error,
+    color: Color,
+    max_diagnostics: usize,
+    w: &mut dyn io::Write,
+) -> io::Result<()> {
     let s = styles_for(color);
     match err {
         Error::SchemaParse(diagnostics) | Error::SchemaValidation(diagnostics) => {
-            for diag in diagnostics.iter() {
-                let msg = diag.error.to_string();
-
-                let snippet = diag.error.location().and_then(|span| {
-                    let file = diag.sources.get(&span.file_id())?;
-                    let start = file.get_line_column(span.offset())?;
-                    let len = span.end_offset().saturating_sub(span.offset());
-
-                    Some(Snippet {
-                        file: file.path(),
-                        source: file.source_text(),
-                        line: start.line,
-                        column: start.column,
-                        length: if len > 1 { Some(len) } else { None },
-                    })
-                });
-
-                Diagnostic {
-                    severity: Severity::Error,
-                    message: &msg,
-                    snippet,
-                }
-                .render(w, s)?;
-            }
-            Ok(())
+            render_diagnostic_list(diagnostics, Severity::Error, max_diagnostics, s, w)
         }
         Error::Config(config_err) => render_config_diagnostic(config_err, s, w),
         other => {
@@ -282,39 +328,18 @@ pub fn render_error(err: &Error, color: Color, w: &mut dyn io::Write) -> io::Res
 }
 
 /// Render a document warning to a writer.
+///
+/// `max_diagnostics` caps cascading parse errors (0 = show all).
 pub fn render_warning(
     warn: &DocumentWarning,
     color: Color,
+    max_diagnostics: usize,
     w: &mut dyn io::Write,
 ) -> io::Result<()> {
     let s = styles_for(color);
     match warn {
         DocumentWarning::ParseErrors(diagnostics) => {
-            for diag in diagnostics.iter() {
-                let msg = diag.error.to_string();
-
-                let snippet = diag.error.location().and_then(|span| {
-                    let file = diag.sources.get(&span.file_id())?;
-                    let start = file.get_line_column(span.offset())?;
-                    let len = span.end_offset().saturating_sub(span.offset());
-
-                    Some(Snippet {
-                        file: file.path(),
-                        source: file.source_text(),
-                        line: start.line,
-                        column: start.column,
-                        length: if len > 1 { Some(len) } else { None },
-                    })
-                });
-
-                Diagnostic {
-                    severity: Severity::Warning,
-                    message: &msg,
-                    snippet,
-                }
-                .render(w, s)?;
-            }
-            Ok(())
+            render_diagnostic_list(diagnostics, Severity::Warning, max_diagnostics, s, w)
         }
         other => {
             let msg = other.to_string();

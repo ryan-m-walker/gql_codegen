@@ -16,7 +16,7 @@
     "*.node"
   ],
   "napi": {
-    "binaryName": "sgc-core",
+    "name": "sgc-core",
     "targets": [
       "aarch64-apple-darwin",
       "x86_64-apple-darwin",
@@ -27,8 +27,8 @@
   },
   "scripts": {
     "build": "tsc",
-    "build:native": "napi build --platform --release --manifest-path ../../crates/gql_codegen_napi/Cargo.toml --output-dir .",
-    "build:native:debug": "napi build --platform --manifest-path ../../crates/gql_codegen_napi/Cargo.toml --output-dir ."
+    "build:native": "napi build --platform --release --cargo-cwd ../../ --cargo-name gql_codegen_napi",
+    "build:native:debug": "napi build --platform --cargo-cwd ../../ --cargo-name gql_codegen_napi"
   },
   "devDependencies": {
     "@napi-rs/cli": "^2.18.0",

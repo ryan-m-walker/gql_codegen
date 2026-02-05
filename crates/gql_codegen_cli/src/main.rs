@@ -9,7 +9,7 @@ use std::process::ExitCode;
 use anyhow::{Context, Result};
 use clap::Parser;
 use gql_codegen_core::cache::{Cache, FsCache, NoCache};
-use gql_codegen_core::diagnostic::Color;
+use gql_codegen_core::diagnostic::{Color, DEFAULT_MAX_DIAGNOSTICS, render_warning};
 use gql_codegen_core::{
     CodegenConfig, ConfigError, FsWriter, GenerateCachedResult, StdoutWriter, generate_cached,
     write_outputs,
@@ -38,6 +38,8 @@ fn main() -> ExitCode {
 
     let logger = Logger::new(log_level);
 
+    let max_diag = args.max_diagnostics.unwrap_or(DEFAULT_MAX_DIAGNOSTICS);
+
     match run(&args, &logger) {
         Ok(()) => ExitCode::SUCCESS,
         Err(e) => {
@@ -47,6 +49,7 @@ fn main() -> ExitCode {
                 let _ = gql_codegen_core::diagnostic::render_error(
                     core_err,
                     color,
+                    max_diag,
                     &mut std::io::stderr(),
                 );
             } else {
@@ -121,8 +124,10 @@ fn run(args: &CliArgs, logger: &Logger) -> Result<()> {
             logger.success("Nothing changed");
         }
         GenerateCachedResult::Generated(gen_result) => {
+            let color = Color::StderrIsTerminal;
+            let max = args.max_diagnostics.unwrap_or(DEFAULT_MAX_DIAGNOSTICS);
             for warning in &gen_result.warnings {
-                logger.warn(&warning.to_string());
+                let _ = render_warning(warning, color, max, &mut std::io::stderr());
             }
 
             if !args.check {
