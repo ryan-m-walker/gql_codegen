@@ -24,7 +24,8 @@ use crate::generators::typescript::helpers::{get_export_kw, render_description};
 /// ```
 pub(crate) fn render_enum(ctx: &mut GeneratorContext, enum_type: &Node<EnumType>) -> Result<()> {
     render_description(ctx, &enum_type.description, 0)?;
-    let enum_name = apply_enum_affixes(enum_type.name.as_str(), ctx.options);
+    let cased_name = ctx.transform_type_name(enum_type.name.as_str());
+    let enum_name = apply_enum_affixes(&cased_name, ctx.options);
 
     if ctx.options.enums_as_types {
         render_as_type_union(ctx, &enum_name, enum_type)?;

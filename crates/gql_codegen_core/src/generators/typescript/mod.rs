@@ -7,7 +7,6 @@ use apollo_compiler::schema::ExtendedType;
 
 use super::GeneratorContext;
 use crate::Result;
-use crate::config::{NamingCase, NamingConvention, PluginOptions};
 use crate::generators::typescript::r#enum::render_enum;
 use crate::generators::typescript::input::render_input;
 use crate::generators::typescript::interface::render_interface;
@@ -78,22 +77,3 @@ pub fn generate_typescript(ctx: &mut GeneratorContext) -> Result<()> {
     Ok(())
 }
 
-/// Get the naming case for type names from options
-fn get_type_name_case(options: &PluginOptions) -> (NamingCase, bool) {
-    match &options.naming_convention {
-        None => (NamingCase::Keep, false),
-        // Simple convention preserves underscores by default (matches graphql-codegen)
-        Some(NamingConvention::Simple(case)) => (*case, false),
-        Some(NamingConvention::Detailed(config)) => {
-            let case = config.type_names.unwrap_or(NamingCase::Keep);
-            (case, config.transform_underscore)
-        }
-    }
-}
-
-/// Apply naming convention to a type name
-/// TODO: pass ctx instead of options
-fn transform_type_name<'a>(name: &'a str, options: &PluginOptions) -> std::borrow::Cow<'a, str> {
-    let (case, transform_underscore) = get_type_name_case(options);
-    case.apply(name, transform_underscore)
-}

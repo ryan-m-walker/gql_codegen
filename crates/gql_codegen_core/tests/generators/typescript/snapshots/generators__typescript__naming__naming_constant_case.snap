@@ -2,8 +2,7 @@
 source: crates/gql_codegen_core/tests/generators/typescript/naming.rs
 expression: output
 ---
-export interface CreateUserInput {
-  readonly __typename?: 'CreateUserInput';
+export interface CREATE_USER_INPUT {
   readonly user_name: string;
   readonly email_address: string;
 }
@@ -13,20 +12,20 @@ export interface HTTP_STATUS {
   readonly statusCode: number;
 }
 
-export interface Query {
+export interface QUERY {
   readonly __typename?: 'Query';
   readonly _empty?: string | null;
-  readonly userProfile?: UserProfile | null;
+  readonly userProfile?: USER_PROFILE | null;
   readonly httpStatus?: HTTP_STATUS | null;
 }
 
-export interface UserProfile {
+export interface USER_PROFILE {
   readonly __typename?: 'UserProfile';
   readonly firstName: string;
   readonly lastName: string;
 }
 
-export enum user_role {
+export enum USER_ROLE {
   ADMIN_USER = 'ADMIN_USER',
   REGULAR_USER = 'regular_user',
   GUEST_USER = 'GuestUser',

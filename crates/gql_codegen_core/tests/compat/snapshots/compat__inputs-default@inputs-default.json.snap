@@ -20,9 +20,8 @@ export type Scalars = {
 };
 
 export type PaginationInput = {
-  __typename?: 'PaginationInput';
-  page: Scalars['Int']['output'];
-  perPage?: Maybe<Scalars['Int']['output']>;
+  page: Scalars['Int']['input'];
+  perPage?: InputMaybe<Scalars['Int']['input']>;
 };
 
 export type Query = {
@@ -32,8 +31,7 @@ export type Query = {
 };
 
 export type SearchFilter = {
-  __typename?: 'SearchFilter';
-  query: Scalars['String']['output'];
-  limit?: Maybe<Scalars['Int']['output']>;
-  tags?: Maybe<Array<Scalars['String']['output']>>;
+  query: Scalars['String']['input'];
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  tags?: InputMaybe<Array<Scalars['String']['input']>>;
 };

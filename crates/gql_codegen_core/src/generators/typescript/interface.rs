@@ -3,7 +3,8 @@ use apollo_compiler::schema::InterfaceType;
 
 use crate::Result;
 use crate::generators::GeneratorContext;
-use crate::generators::typescript::field::{FieldType, render_field};
+use crate::generators::common::helpers::FieldType;
+use crate::generators::typescript::field::render_field;
 use crate::generators::typescript::helpers::{
     render_decl_closing, render_decl_opening, render_description,
 };
@@ -31,10 +32,10 @@ pub(crate) fn render_interface(
     ctx: &mut GeneratorContext,
     interface: &Node<InterfaceType>,
 ) -> Result<()> {
-    // TODO: casing!
+    let type_name = ctx.transform_type_name(interface.name.as_str());
 
     render_description(ctx, &interface.description, 0)?;
-    render_decl_opening(ctx, &interface.name, None)?;
+    render_decl_opening(ctx, &type_name, None)?;
 
     for (field_name, field) in interface.fields.iter() {
         render_field(ctx, field_name, &FieldType::Object(field))?;

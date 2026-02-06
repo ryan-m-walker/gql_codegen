@@ -1,0 +1,12 @@
+{
+  "name": "inputs-avoid-optionals-default-value",
+  "description": "avoidOptionals.defaultValue=true makes non-null fields with defaults required (#5112)",
+  "schema": ["schemas/base.graphql", "schemas/input-defaults.graphql"],
+  "documents": [],
+  "plugins": ["typescript"],
+  "config": {
+    "avoidOptionals": {
+      "defaultValue": true
+    }
+  }
+}

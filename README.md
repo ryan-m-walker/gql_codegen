@@ -10,4 +10,3 @@
 - Great "AIX" (AI Experience): the tool should make AI agents faster and more effective in the same way it helps developers. clear actionable messages, fast quick feedback loop, reseliant and recoverable (collect all errors at once rather than only showing one at a time), no fancy output rendering, basic stdout
 - Deterministic: reproducible builds, no randomness
 - Drop in replacement for existing GraphQL codegen tools - migrating to SGC should be as easy as replacing `graphql-codegen` with `sgc --preset graphql-codegen`
-

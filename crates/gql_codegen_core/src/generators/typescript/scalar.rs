@@ -3,6 +3,7 @@ use std::collections::HashSet;
 use apollo_compiler::Node;
 use apollo_compiler::schema::{ExtendedType, ScalarType};
 
+use crate::config::ScalarConfig;
 use crate::generators::GeneratorContext;
 use crate::generators::typescript::helpers::{
     get_export_kw, render_decl_closing, render_decl_opening, render_description,
@@ -35,21 +36,34 @@ pub(crate) fn render_scalar(ctx: &mut GeneratorContext, scalar: &Node<ScalarType
         return Ok(());
     }
 
-    // TODO: complex scalar input/output types
-
     let custom_type = ctx.options.scalars.get(scalar.name.as_str());
 
-    let ts_type = if let Some(ref custom_type) = custom_type {
-        custom_type
-    } else if let Some(ref default_type) = ctx.options.default_scalar_type {
-        default_type
-    } else {
-        "unknown"
-    };
+    match custom_type {
+        Some(ScalarConfig::Simple(ts_type)) => {
+            render_description(ctx, &scalar.description, 0)?;
+            writeln!(ctx.writer, "{export}type {name} = {ts_type};")?;
+            writeln!(ctx.writer)?;
+        }
+        Some(ScalarConfig::Detailed { input, output }) => {
+            render_description(ctx, &scalar.description, 0)?;
+            writeln!(
+                ctx.writer,
+                "{export}type {name} = {{\n  input: {input};\n  output: {output};\n}};"
+            )?;
+            writeln!(ctx.writer)?;
+        }
+        None => {
+            let default_type = ctx
+                .options
+                .default_scalar_type
+                .as_deref()
+                .unwrap_or("unknown");
 
-    render_description(ctx, &scalar.description, 0)?;
-    writeln!(ctx.writer, "{export}type {name} = {ts_type};")?;
-    writeln!(ctx.writer)?;
+            render_description(ctx, &scalar.description, 0)?;
+            writeln!(ctx.writer, "{export}type {name} = {default_type};")?;
+            writeln!(ctx.writer)?;
+        }
+    }
 
     Ok(())
 }
@@ -68,15 +82,21 @@ pub(crate) fn render_scalars(ctx: &mut GeneratorContext) -> Result<()> {
     let mut rendered = HashSet::new();
 
     for (name, default_type) in DEFAULT_SCALARS {
-        let ts_type = if let Some(ref custom_type) = ctx.options.scalars.get(name) {
-            custom_type
-        } else {
-            default_type
+        let custom = ctx.options.scalars.get(name);
+
+        if rendered.contains(name) {
+            continue;
+        }
+
+        let (input, output) = match custom {
+            Some(ScalarConfig::Simple(value)) => (value.as_str(), value.as_str()),
+            Some(ScalarConfig::Detailed { input, output }) => (input.as_str(), output.as_str()),
+            None => (default_type, default_type),
         };
 
         writeln!(
             ctx.writer,
-            "  {name}: {{ input: {ts_type}; output: {ts_type}; }}"
+            "  {name}: {{ input: {input}; output: {output}; }}"
         )?;
 
         rendered.insert(name);
@@ -96,19 +116,21 @@ pub(crate) fn render_scalars(ctx: &mut GeneratorContext) -> Result<()> {
                 return Err(Error::UnknownScalar(name.to_string()));
             }
 
-            let ts_type = if let Some(ref custom_type) = custom_type {
-                custom_type
-            } else if let Some(ref default_type) = ctx.options.default_scalar_type {
-                default_type
-            } else {
-                "unknown"
-            };
+            let default_type = ctx
+                .options
+                .default_scalar_type
+                .as_deref()
+                .unwrap_or("unknown");
 
-            render_description(ctx, &scalar.description, 1)?;
+            let (input, output) = match custom_type {
+                Some(ScalarConfig::Simple(value)) => (value.as_str(), value.as_str()),
+                Some(ScalarConfig::Detailed { input, output }) => (input.as_str(), output.as_str()),
+                None => (default_type, default_type),
+            };
 
             writeln!(
                 ctx.writer,
-                "  {name}: {{ input: {ts_type}; output: {ts_type}; }}"
+                "  {name}: {{ input: {input}; output: {output}; }}"
             )?;
 
             rendered.insert(name);

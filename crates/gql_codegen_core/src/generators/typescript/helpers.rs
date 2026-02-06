@@ -37,13 +37,10 @@ pub(crate) fn get_readonly_kw(ctx: &GeneratorContext) -> &'static str {
     }
 }
 
-pub(crate) fn get_optional_prop_modifier(ctx: &GeneratorContext) -> &'static str {
-    if ctx.options.avoid_optionals { "" } else { "?" }
-}
-
 pub(crate) fn render_decl_opening(
     ctx: &mut GeneratorContext,
     name: &str,
+    // TODO:!!!!!!!!
     _implements_interfaces: Option<&IndexSet<ComponentName>>,
 ) -> Result<()> {
     let export = get_export_kw(ctx);

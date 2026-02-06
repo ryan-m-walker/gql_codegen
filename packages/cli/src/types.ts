@@ -5,76 +5,76 @@
  */
 
 export interface CodegenConfig {
-  /** Path to GraphQL schema file(s) */
-  schema: string | string[];
+    /** Path to GraphQL schema file(s) */
+    schema: string | string[]
 
-  /** Glob patterns for document files */
-  documents: string | string[];
+    /** Glob patterns for document files */
+    documents: string | string[]
 
-  /** Output configurations keyed by output path */
-  generates: Record<string, OutputConfig>;
+    /** Output configurations keyed by output path */
+    generates: Record<string, OutputConfig>
 
-  /**
-   * Base directory for resolving paths.
-   * @internal Set automatically by the CLI - do not set manually.
-   */
-  baseDir?: string;
+    /**
+     * Base directory for resolving paths.
+     * @internal Set automatically by the CLI - do not set manually.
+     */
+    baseDir?: string
 }
 
 export interface OutputConfig {
-  /** Plugins to run for this output */
-  plugins: PluginConfig[];
+    /** Plugins to run for this output */
+    plugins: PluginConfig[]
 
-  /** Content to prepend to the output */
-  prelude?: string;
+    /** Content to prepend to the output */
+    prelude?: string
 
-  /** Shared config for all plugins */
-  config?: PluginOptions;
+    /** Shared config for all plugins */
+    config?: PluginOptions
 
-  /** Only generate for documents, skip schema types */
-  documentsOnly?: boolean;
+    /** Only generate for documents, skip schema types */
+    documentsOnly?: boolean
 }
 
-export type PluginConfig = string | Record<string, PluginOptions>;
+export type PluginConfig = string | Record<string, PluginOptions>
 
 export interface PluginOptions {
-  /** Custom scalar type mappings */
-  scalars?: Record<string, string>;
+    /** Custom scalar type mappings */
+    scalars?: Record<string, string>
 
-  /** Add readonly modifier to generated types */
-  immutableTypes?: boolean;
+    /** Add readonly modifier to generated types */
+    immutableTypes?: boolean
 
-  /** Generate enums as string union types */
-  enumsAsTypes?: boolean;
+    /** Generate enums as string union types */
+    enumsAsTypes?: boolean
 
-  /** Add future-proof unknown value to enums */
-  futureProofEnums?: boolean;
+    /** Add future-proof unknown value to enums */
+    futureProofEnums?: boolean
 
-  /** Skip __typename field in generated types */
-  skipTypename?: boolean;
+    /** Skip __typename field in generated types */
+    skipTypename?: boolean
 
-  // TODO: 
-  avoidOptionals?: boolean;
+    // TODO:
+    avoidOptionals?: boolean
 
-  /** GraphQL tag style for documents */
-  graphqlTag?: 'gql' | 'graphql' | 'none';
+    /** GraphQL tag style for documents */
+    graphqlTag?: 'gql' | 'graphql' | 'none'
 
-  /** Formatting options */
-  formatting?: FormattingOptions;
+    /** Formatting options */
+    formatting?: FormattingOptions
 }
 
 export interface FormattingOptions {
-  /** Number of spaces per indent level (default: 2) */
-  indentWidth?: number;
+    /** Number of spaces per indent level (default: 2) */
+    indentWidth?: number
 
-  /** Use tabs instead of spaces */
-  useTabs?: boolean;
+    /** Use tabs instead of spaces */
+    useTabs?: boolean
 
-  /** Use single quotes (default: true) */
-  singleQuote?: boolean;
+    /** Use single quotes (default: true) */
+    singleQuote?: boolean
 
-  /** Add semicolons (default: true) */
-  semicolons?: boolean;
+    /** Add semicolons (default: true) */
+    semicolons?: boolean
 }
 
 /**
@@ -97,5 +97,5 @@ export interface FormattingOptions {
  * ```
  */
 export function defineConfig(config: CodegenConfig): CodegenConfig {
-  return config;
+    return config
 }

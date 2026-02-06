@@ -3,8 +3,8 @@ use apollo_compiler::schema::InputObjectType;
 
 use crate::Result;
 use crate::generators::GeneratorContext;
-use crate::generators::common::typename::render_typename;
-use crate::generators::typescript::field::{FieldType, render_field};
+use crate::generators::common::helpers::FieldType;
+use crate::generators::typescript::field::render_field;
 use crate::generators::typescript::helpers::{
     render_decl_closing, render_decl_opening, render_description,
 };
@@ -30,14 +30,13 @@ pub(crate) fn render_input(
     ctx: &mut GeneratorContext,
     input: &Node<InputObjectType>,
 ) -> Result<()> {
-    let type_name = input.name.as_str();
+    let type_name = ctx.transform_type_name(input.name.as_str());
 
     render_description(ctx, &input.description, 0)?;
-    render_decl_opening(ctx, &input.name, None)?;
-    render_typename(ctx, type_name)?;
+    render_decl_opening(ctx, &type_name, None)?;
 
     for (field_name, field) in input.fields.iter() {
-        render_field(ctx, field_name, &FieldType::InputObject(field))?;
+        render_field(ctx, field_name, &FieldType::InputObject(field.as_ref()))?;
     }
 
     render_decl_closing(ctx)?;

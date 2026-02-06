@@ -5,19 +5,19 @@ expression: output
 export interface Post {
   readonly id: string;
   readonly title: string;
-  readonly body: string | null;
+  readonly body?: string | null;
   readonly published: boolean;
 }
 
 export interface Query {
-  readonly _empty: string | null;
-  readonly user: User | null;
-  readonly post: Post | null;
+  readonly _empty?: string | null;
+  readonly user?: User | null;
+  readonly post?: Post | null;
 }
 
 export interface User {
   readonly id: string;
   readonly name: string;
-  readonly email: string | null;
-  readonly age: number | null;
+  readonly email?: string | null;
+  readonly age?: number | null;
 }

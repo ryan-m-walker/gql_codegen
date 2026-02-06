@@ -59,8 +59,7 @@ impl FromStr for Preset {
             "sgc" => Ok(Preset::Sgc),
             "graphql-codegen" | "graphqlcodegen" | "compat" => Ok(Preset::GraphqlCodegen),
             _ => Err(format!(
-                "Unknown preset '{}'. Valid presets: sgc, graphql-codegen",
-                s
+                "Unknown preset '{s}'. Valid presets: sgc, graphql-codegen",
             )),
         }
     }
@@ -160,6 +159,88 @@ impl PluginConfig {
     }
 }
 
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct AvoidOptionalsConfig {
+    field: Option<bool>,
+    object: Option<bool>,
+    input_value: Option<bool>,
+    default_value: Option<bool>,
+    resolvers: Option<bool>,
+    query: Option<bool>,
+    mutation: Option<bool>,
+    subscription: Option<bool>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
+#[serde(untagged)]
+pub enum AvoidOptionals {
+    Boolean(bool),
+    Complex(AvoidOptionalsConfig),
+}
+
+impl Default for AvoidOptionals {
+    fn default() -> Self {
+        AvoidOptionals::Boolean(false)
+    }
+}
+
+/// Resolved avoid-optionals flags — all fields are concrete bools.
+/// Mirrors JS `normalizeAvoidOptionals()` from visitor-plugin-common.
+#[derive(Debug, Clone, Copy)]
+pub struct NormalizedAvoidOptionals {
+    pub field: bool,
+    pub object: bool,
+    pub input_value: bool,
+    pub default_value: bool,
+}
+
+impl AvoidOptionals {
+    pub fn normalize(&self) -> NormalizedAvoidOptionals {
+        match self {
+            AvoidOptionals::Boolean(b) => NormalizedAvoidOptionals {
+                field: *b,
+                object: *b,
+                input_value: *b,
+                default_value: *b,
+            },
+            AvoidOptionals::Complex(c) => NormalizedAvoidOptionals {
+                field: c.field.unwrap_or(false),
+                object: c.object.unwrap_or(false),
+                input_value: c.input_value.unwrap_or(false),
+                default_value: c.default_value.unwrap_or(false),
+            },
+        }
+    }
+}
+
+pub struct ScalarConfigNormalized {
+    input: String,
+    output: String,
+}
+
+#[derive(Debug, Clone, Hash, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(untagged)]
+pub enum ScalarConfig {
+    Simple(String),
+    Detailed { input: String, output: String },
+}
+
+impl ScalarConfig {
+    pub fn normalize(&self) -> ScalarConfigNormalized {
+        match self {
+            ScalarConfig::Simple(s) => ScalarConfigNormalized {
+                input: s.clone(),
+                output: s.clone(),
+            },
+            ScalarConfig::Detailed { input, output } => ScalarConfigNormalized {
+                input: input.clone(),
+                output: output.clone(),
+            },
+        }
+    }
+}
+
 /// Plugin options - shared config structure
 /// Uses BTreeMap for scalars to enable Hash derivation (cache key generation)
 #[derive(Debug, Clone, Default, Hash, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -187,7 +268,7 @@ pub struct PluginOptions {
     // ─────────────────────────────────────────────────────────────────────────
     /// Custom scalar mappings (GraphQL scalar name -> TypeScript type)
     #[serde(default)]
-    pub scalars: BTreeMap<String, String>,
+    pub scalars: BTreeMap<String, ScalarConfig>,
 
     /// Error if a custom scalar is found without a mapping in `scalars`
     /// Helps catch missing scalar configurations early
@@ -249,9 +330,8 @@ pub struct PluginOptions {
     pub non_optional_typename: bool,
 
     /// Avoid using TypeScript optionals (?), use explicit null instead
-    /// Alias: useNullForOptional
     #[serde(default)]
-    pub avoid_optionals: bool,
+    pub avoid_optionals: AvoidOptionals,
 
     /// Customize the Maybe type (default: "T | null")
     /// Examples: "T | null | undefined", "Maybe<T>"
@@ -264,6 +344,7 @@ pub struct PluginOptions {
     pub input_maybe_value: Option<String>,
 
     /// Use `type` instead of `interface` for object types
+    /// TODO: parse as string for more resilant parsing -> fallback to default and emit warning
     #[serde(default)]
     pub declaration_kind: Option<DeclarationKind>,
 

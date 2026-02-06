@@ -3,7 +3,6 @@ source: crates/gql_codegen_core/tests/generators/typescript/inputs.rs
 expression: output
 ---
 export interface PaginationInput {
-  readonly __typename?: 'PaginationInput';
   readonly page: number;
   readonly perPage?: number | null;
 }
@@ -14,8 +13,11 @@ export interface Query {
   readonly search: ReadonlyArray<string>;
 }
 
+export interface QuerySearchArgs {
+  readonly filter: SearchFilter;
+}
+
 export interface SearchFilter {
-  readonly __typename?: 'SearchFilter';
   readonly query: string;
   readonly limit?: number | null;
   readonly tags?: ReadonlyArray<string> | null;

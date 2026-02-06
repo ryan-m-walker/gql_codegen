@@ -32,6 +32,7 @@ mod generators;
 mod schema;
 mod source_cache;
 pub mod timing;
+pub mod types;
 pub mod writer;
 
 // Public API - Main entry points
@@ -40,8 +41,9 @@ pub use codegen::{
     generate_from_input,
 };
 pub use config::{
-    CodegenConfig, DeclarationKind, FormattingOptions, GraphqlTag, NamingCase, NamingConvention,
-    NamingConventionConfig, OutputConfig, PluginConfig, PluginOptions, Preset, StringOrArray,
+    AvoidOptionals, CodegenConfig, DeclarationKind, FormattingOptions, GraphqlTag, NamingCase,
+    NamingConvention, NamingConventionConfig, OutputConfig, PluginConfig, PluginOptions, Preset,
+    ScalarConfig, StringOrArray,
 };
 pub use documents::DocumentWarning;
 pub use error::{ConfigError, Error, Result};

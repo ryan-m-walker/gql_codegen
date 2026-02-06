@@ -8,7 +8,7 @@ use std::path::PathBuf;
 use gql_codegen_core::diagnostic::{render_error_string, render_warning_string};
 use gql_codegen_core::{
     CollectedDocuments, ExtractConfig, GenerateInput, OutputConfig, PluginConfig, PluginOptions,
-    Preset, SourceCache, collect_documents, config_json_schema, generate_from_input,
+    Preset, SourceCache, StringOrArray, collect_documents, config_json_schema, generate_from_input,
     load_schema_from_contents,
 };
 use serde::{Deserialize, Serialize};
@@ -34,23 +34,6 @@ pub struct GenerateResult {
     pub output: String,
     pub error: Option<String>,
     pub warnings: Vec<String>,
-}
-
-/// String or array of strings (matches core StringOrArray)
-#[derive(Deserialize)]
-#[serde(untagged)]
-pub enum StringOrArray {
-    Single(String),
-    Multiple(Vec<String>),
-}
-
-impl StringOrArray {
-    fn into_vec(self) -> Vec<String> {
-        match self {
-            Self::Single(s) => vec![s],
-            Self::Multiple(v) => v,
-        }
-    }
 }
 
 /// Config input from JavaScript - matches SGC config format
@@ -91,9 +74,20 @@ pub fn generate(schema: JsValue, operations: JsValue, config: JsValue) -> JsValu
     let ops: Vec<String> = serde_wasm_bindgen::from_value::<StringOrArray>(operations)
         .map(|s| s.into_vec())
         .unwrap_or_default();
-    let wasm_config: Option<WasmConfig> = serde_wasm_bindgen::from_value(config).ok();
+    let wasm_config: Result<Option<WasmConfig>, _> = if config.is_null() || config.is_undefined() {
+        Ok(None)
+    } else {
+        serde_wasm_bindgen::from_value(config).map(Some)
+    };
 
-    let result = generate_internal(&schemas, &ops, wasm_config);
+    let result = match wasm_config {
+        Ok(cfg) => generate_internal(&schemas, &ops, cfg),
+        Err(e) => GenerateResult {
+            output: String::new(),
+            error: Some(format!("Invalid config: {e}")),
+            warnings: vec![],
+        },
+    };
     serde_wasm_bindgen::to_value(&result).unwrap_or(JsValue::NULL)
 }
 
@@ -143,7 +137,11 @@ fn generate_internal(
     let documents: CollectedDocuments = collect_documents(&source_cache, &extract_config);
 
     // Collect warnings from document parsing (rendered through our diagnostic pipeline)
-    let warnings: Vec<String> = documents.warnings.iter().map(|w| render_warning_string(w, MAX_DIAG)).collect();
+    let warnings: Vec<String> = documents
+        .warnings
+        .iter()
+        .map(|w| render_warning_string(w, MAX_DIAG))
+        .collect();
 
     // Extract preset and build generates config from wasm_config or use defaults
     let (preset, generates): (Preset, HashMap<String, OutputConfig>) = match wasm_config {
@@ -195,7 +193,12 @@ fn generate_internal(
         Ok(result) => {
             // Combine document warnings with generation warnings
             let mut all_warnings = warnings;
-            all_warnings.extend(result.warnings.iter().map(|w| render_warning_string(w, MAX_DIAG)));
+            all_warnings.extend(
+                result
+                    .warnings
+                    .iter()
+                    .map(|w| render_warning_string(w, MAX_DIAG)),
+            );
 
             // Return the first (and only) generated file's content
             let output = result

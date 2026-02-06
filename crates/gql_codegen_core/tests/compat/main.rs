@@ -130,7 +130,7 @@ fn apply_overrides(
         target.non_optional_typename = overrides.non_optional_typename;
     }
     if obj.contains_key("avoidOptionals") {
-        target.avoid_optionals = overrides.avoid_optionals;
+        target.avoid_optionals = overrides.avoid_optionals.clone();
     }
     if obj.contains_key("noExport") {
         target.no_export = overrides.no_export;

@@ -1,6 +1,6 @@
 //! Tests for input object generation with different configuration options
 
-use gql_codegen_core::PluginOptions;
+use gql_codegen_core::{AvoidOptionals, PluginOptions};
 
 use super::generate_with_options;
 
@@ -27,7 +27,7 @@ fn test_inputs_avoid_optionals() {
     let output = generate_with_options(
         &["schemas/input.graphql"],
         PluginOptions {
-            avoid_optionals: true,
+            avoid_optionals: AvoidOptionals::Boolean(true),
             ..PluginOptions::serde_default()
         },
     );

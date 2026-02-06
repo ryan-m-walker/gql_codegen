@@ -1,0 +1,11 @@
+# Input types with default values for testing avoidOptionals.defaultValue
+extend type Query {
+  test(input: MyInput!): String
+}
+
+input MyInput {
+  a: String = "default"
+  b: String! = "default"
+  c: String
+  d: String!
+}

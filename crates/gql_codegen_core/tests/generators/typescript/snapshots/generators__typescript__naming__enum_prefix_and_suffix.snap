@@ -3,7 +3,6 @@ source: crates/gql_codegen_core/tests/generators/typescript/naming.rs
 expression: output
 ---
 export interface CreateUserInput {
-  readonly __typename?: 'CreateUserInput';
   readonly user_name: string;
   readonly email_address: string;
 }

@@ -1,1 +1,1 @@
-{"flagWords":[],"words":["indexmap","swapi","codegen","walkdir","globset","fmtd","insta","strs","thiserror","napi","iface"],"language":"en","version":"0.2"}
+{"version":"0.2","language":"en","flagWords":[],"words":["indexmap","swapi","codegen","walkdir","globset","fmtd","insta","strs","thiserror","napi","iface","schemars"]}

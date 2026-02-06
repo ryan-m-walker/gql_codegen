@@ -12,7 +12,7 @@ use rayon::prelude::*;
 
 use super::GeneratorContext;
 use crate::Result;
-use crate::config::PluginOptions;
+use crate::config::{PluginOptions, ScalarConfig};
 use crate::documents::ParsedFragment;
 use indexmap::IndexMap;
 
@@ -291,9 +291,13 @@ impl<'a> OperationTypesGenerator<'a> {
 
     /// Convert a scalar/named type to TypeScript
     fn scalar_to_ts(&self, name: &Name) -> String {
-        // Check custom scalars first
-        if let Some(custom) = self.options.scalars.get(name.as_str()) {
-            return custom.clone();
+        let custom = self.options.scalars.get(name.as_str());
+
+        if let Some(custom) = custom {
+            match custom {
+                ScalarConfig::Simple(value) => return value.clone(),
+                ScalarConfig::Detailed { input: _, output } => return output.clone(),
+            }
         }
 
         // Built-in scalar mappings

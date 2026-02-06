@@ -2,7 +2,7 @@
 
 use std::collections::BTreeMap;
 
-use gql_codegen_core::PluginOptions;
+use gql_codegen_core::{PluginOptions, ScalarConfig};
 
 use super::{generate_with_options, try_generate_with_options};
 
@@ -16,9 +16,9 @@ fn test_scalars_default() {
 #[test]
 fn test_scalars_with_mappings() {
     let mut scalars = BTreeMap::new();
-    scalars.insert("DateTime".to_string(), "string".to_string());
-    scalars.insert("Money".to_string(), "number".to_string());
-    scalars.insert("JSON".to_string(), "Record<string, unknown>".to_string());
+    scalars.insert("DateTime".to_string(), ScalarConfig::Simple("string".to_string()));
+    scalars.insert("Money".to_string(), ScalarConfig::Simple("number".to_string()));
+    scalars.insert("JSON".to_string(), ScalarConfig::Simple("Record<string, unknown>".to_string()));
 
     let output = generate_with_options(
         &["schemas/scalar.graphql"],
@@ -47,9 +47,9 @@ fn test_scalars_default_scalar_type() {
 fn test_scalars_strict_with_all_mapped() {
     // strict_scalars should pass when all scalars are mapped
     let mut scalars = BTreeMap::new();
-    scalars.insert("DateTime".to_string(), "string".to_string());
-    scalars.insert("Money".to_string(), "number".to_string());
-    scalars.insert("JSON".to_string(), "Record<string, unknown>".to_string());
+    scalars.insert("DateTime".to_string(), ScalarConfig::Simple("string".to_string()));
+    scalars.insert("Money".to_string(), ScalarConfig::Simple("number".to_string()));
+    scalars.insert("JSON".to_string(), ScalarConfig::Simple("Record<string, unknown>".to_string()));
 
     let output = generate_with_options(
         &["schemas/scalar.graphql"],

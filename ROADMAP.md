@@ -148,6 +148,9 @@ src/
 
 #### 5.2 Schema Features
 - [ ] Remote schema introspection
+- [ ] JSON introspection file as schema input
+- [ ] Programmatic schema support (requires embedding a JS runtime, e.g. `deno_core` / `boa_engine`)
+- [ ] `ignoreEnumValuesFromSchema` config (only meaningful with programmatic schemas — no-op for SDL)
 - [ ] Multiple schema sources
 - [ ] Federation directive handling
 
@@ -194,7 +197,7 @@ pub struct SizeHints {
 3. **Naming**: Keep `sgc` or rebrand?
 
 
-DX: Warnings
+DX: Warning
 
 - Show warning when using conflicting options
 - Show warning when writing files to wrong ext (gql -> ts for example)
