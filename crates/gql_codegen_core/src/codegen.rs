@@ -16,13 +16,13 @@ use crate::cache::{
 };
 use crate::config::{OutputConfig, PluginOptions, Preset};
 use crate::documents::{
-    CollectedDocuments, collect_documents, expand_document_globs, load_sources_from_paths,
+    CollectedDocuments, DocumentWarning, collect_documents, expand_document_globs,
+    load_sources_from_paths,
 };
 use crate::extract::ExtractConfig;
 use crate::generators::{GeneratorContext, run_generator};
 use crate::schema::{load_schema_from_contents, resolve_schema_paths};
 use crate::source_cache::SourceCache;
-use crate::documents::DocumentWarning;
 use crate::{CodegenConfig, Result};
 
 /// Result of code generation
@@ -99,6 +99,9 @@ pub fn generate_from_input(input: &GenerateInput) -> Result<GenerateResult> {
         if let Some(ref config_options) = output_config.config {
             base_options = merge_options(&base_options, Some(config_options));
         }
+
+        // Validate resolved options and collect config warnings
+        validate_options(&base_options, &mut result.warnings);
 
         for plugin in &output_config.plugins {
             let plugin_name = plugin.name();
@@ -190,17 +193,17 @@ pub fn generate(config: &CodegenConfig) -> Result<GenerateResult> {
 /// This does field-by-field merging: for each field, if the plugin value
 /// differs from the serde default, use the plugin value; otherwise use base.
 /// This allows preset defaults to "show through" for fields the user didn't set.
+///
+/// Fields that need tri-state semantics (user-set vs not-set matters) use
+/// `Option<T>` so serde default `None` is distinguishable from `Some(val)`.
 fn merge_options(base: &PluginOptions, plugin: Option<&PluginOptions>) -> PluginOptions {
     let Some(p) = plugin else {
         return base.clone();
     };
 
-    // Create the serde default to compare against
-    // Note: enums_as_types defaults to true via #[serde(default = "default_true")]
-    let serde_default = PluginOptions {
-        enums_as_types: true,
-        ..Default::default()
-    };
+    // Create the serde default to compare against.
+    // This must match what serde produces from an empty JSON `{}`.
+    let serde_default = PluginOptions::serde_default();
 
     // Macro to merge a field: use plugin if it differs from serde default, else base
     macro_rules! merge_field {
@@ -218,6 +221,7 @@ fn merge_options(base: &PluginOptions, plugin: Option<&PluginOptions>) -> Plugin
         use_utility_types: merge_field!(use_utility_types),
         inline_fragments: merge_field!(inline_fragments),
         dedupe_selections: merge_field!(dedupe_selections),
+        disable_descriptions: merge_field!(disable_descriptions),
 
         // Scalars
         scalars: if p.scalars.is_empty() {
@@ -235,12 +239,16 @@ fn merge_options(base: &PluginOptions, plugin: Option<&PluginOptions>) -> Plugin
         types_suffix: merge_field!(types_suffix),
 
         // Enums
+        // enums_as_types is Option<bool>: None (not set) matches serde default,
+        // Some(val) (user-set) differs — merge_field handles this correctly.
         enums_as_types: merge_field!(enums_as_types),
         enums_as_const: merge_field!(enums_as_const),
         future_proof_enums: merge_field!(future_proof_enums),
         enum_prefix: merge_field!(enum_prefix),
         enum_suffix: merge_field!(enum_suffix),
         const_enums: merge_field!(const_enums),
+        numeric_enums: merge_field!(numeric_enums),
+        only_enums: merge_field!(only_enums),
 
         // Output control
         no_export: merge_field!(no_export),
@@ -271,6 +279,11 @@ fn merge_options(base: &PluginOptions, plugin: Option<&PluginOptions>) -> Plugin
         // Internal preset-only flags (always from base, user can't override)
         pretty_documents: base.pretty_documents,
     }
+}
+
+/// Validate resolved plugin options and emit warnings for conflicting settings.
+fn validate_options(_options: &PluginOptions, _warnings: &mut Vec<DocumentWarning>) {
+    // TODO(human): Add config conflict checks here
 }
 
 /// Generate with caching support (two-phase optimization)

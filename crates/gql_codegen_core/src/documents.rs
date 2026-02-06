@@ -21,6 +21,8 @@ pub enum DocumentWarning {
     /// Parse errors with full diagnostic info (rendered through our pipeline)
     ParseErrors(DiagnosticList),
     DuplicateName { kind: &'static str, name: String },
+    /// Conflicting or redundant config options
+    ConfigConflict { message: String },
 }
 
 impl fmt::Display for DocumentWarning {
@@ -31,6 +33,9 @@ impl fmt::Display for DocumentWarning {
             }
             DocumentWarning::DuplicateName { kind, name } => {
                 write!(f, "Duplicate {kind} '{name}' (skipped)")
+            }
+            DocumentWarning::ConfigConflict { message } => {
+                write!(f, "{message}")
             }
         }
     }

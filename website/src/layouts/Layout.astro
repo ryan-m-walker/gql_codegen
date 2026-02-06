@@ -17,17 +17,42 @@ const { title, description = "Speedy GraphQL Codegen - A blazing fast GraphQL co
     <meta name="description" content={description} />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>{title} | SGC</title>
+    <script is:inline>
+      // Runs before paint to prevent flash of wrong theme
+      (function() {
+        const stored = localStorage.getItem('theme');
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (stored === 'dark' || (!stored && prefersDark)) {
+          document.documentElement.classList.add('dark');
+        }
+      })();
+    </script>
   </head>
-  <body class="bg-gray-950 text-gray-100 min-h-screen">
-    <nav class="border-b border-gray-800 px-6 py-4">
-      <div class="max-w-6xl mx-auto flex items-center justify-between">
-        <a href="/" class="text-xl font-bold text-white flex items-center gap-2">
+  <body class="bg-surface text-text-primary min-h-screen">
+    <nav class="border-b border-border-default px-6 py-4">
+      <div class="flex items-center justify-between">
+        <a href="/" class="text-xl font-bold text-text-heading flex items-center gap-2">
           <span class="text-2xl">⚡</span> SGC
         </a>
         <div class="flex items-center gap-6">
-          <a href="/docs" class="text-gray-400 hover:text-white transition-colors">Docs</a>
-          <a href="/playground" class="text-gray-400 hover:text-white transition-colors">Playground</a>
-          <a href="https://github.com/ryanwalker/sgc" class="text-gray-400 hover:text-white transition-colors">
+          <a href="/docs" class="text-text-muted hover:text-text-heading transition-colors">Docs</a>
+          <a href="/playground" class="text-text-muted hover:text-text-heading transition-colors">Playground</a>
+          <button
+            id="theme-toggle"
+            type="button"
+            class="text-text-muted hover:text-text-heading transition-colors p-1"
+            aria-label="Toggle theme"
+          >
+            <!-- Sun icon (shown in dark mode) -->
+            <svg class="w-5 h-5 hidden dark:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+            </svg>
+            <!-- Moon icon (shown in light mode) -->
+            <svg class="w-5 h-5 block dark:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+            </svg>
+          </button>
+          <a href="https://github.com/ryanwalker/sgc" class="text-text-muted hover:text-text-heading transition-colors">
             GitHub
           </a>
         </div>
@@ -36,10 +61,17 @@ const { title, description = "Speedy GraphQL Codegen - A blazing fast GraphQL co
     <main>
       <slot />
     </main>
-    <footer class="border-t border-gray-800 px-6 py-8 mt-auto">
-      <div class="max-w-6xl mx-auto text-center text-gray-500 text-sm">
+    <footer class="border-t border-border-default px-6 py-8 mt-auto">
+      <div class="max-w-6xl mx-auto text-center text-text-faint text-sm">
         Built with Rust 🦀 and love
       </div>
     </footer>
+    <script is:inline>
+      document.getElementById('theme-toggle').addEventListener('click', function() {
+        const html = document.documentElement;
+        const isDark = html.classList.toggle('dark');
+        localStorage.setItem('theme', isDark ? 'dark' : 'light');
+      });
+    </script>
   </body>
 </html>

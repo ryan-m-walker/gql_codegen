@@ -30,14 +30,13 @@ mod utils;
 /// Main entry point for the TypeScript generator.
 /// Generates TypeScript types from the GraphQL schema.
 pub fn generate_typescript(ctx: &mut GeneratorContext) -> Result<()> {
-    // Collect referenced types if only_operation_types is enabled
     let referenced_types = if ctx.options.only_operation_types {
         Some(collect_operation_types(ctx))
     } else {
         None
     };
 
-    if ctx.options.use_utility_types {
+    if ctx.options.use_utility_types && !ctx.options.only_enums {
         generate_util_types(ctx)?;
         render_scalars(ctx)?;
     }
@@ -60,7 +59,6 @@ pub fn generate_typescript(ctx: &mut GeneratorContext) -> Result<()> {
         }
 
         let Some(ty) = &ctx.schema.types.get(name) else {
-            // TODO: warning?
             continue;
         };
 
@@ -76,4 +74,3 @@ pub fn generate_typescript(ctx: &mut GeneratorContext) -> Result<()> {
 
     Ok(())
 }
-

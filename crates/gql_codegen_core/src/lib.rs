@@ -31,6 +31,7 @@ mod extract;
 mod generators;
 mod schema;
 mod source_cache;
+pub mod test_utils;
 pub mod timing;
 pub mod types;
 pub mod writer;

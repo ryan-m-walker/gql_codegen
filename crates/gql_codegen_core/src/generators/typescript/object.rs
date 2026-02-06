@@ -34,6 +34,10 @@ use crate::generators::typescript::helpers::{
 /// };
 /// ```
 pub(crate) fn render_object(ctx: &mut GeneratorContext, object: &Node<ObjectType>) -> Result<()> {
+    if ctx.options.only_enums {
+        return Ok(());
+    }
+
     let raw_name = object.name.as_str();
     let type_name = ctx.transform_type_name(raw_name);
 

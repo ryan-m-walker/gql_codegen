@@ -29,6 +29,7 @@ impl Preset {
                 // SGC defaults: optimized for TS performance and safety
                 declaration_kind: Some(DeclarationKind::Interface),
                 use_utility_types: false,
+                enums_as_types: Some(true),
                 future_proof_enums: true,
                 future_proof_unions: true,
                 immutable_types: true,
@@ -40,6 +41,7 @@ impl Preset {
             Preset::GraphqlCodegen => PluginOptions {
                 // graphql-codegen compat: use wrappers, matches their defaults
                 use_utility_types: true,
+                enums_as_types: Some(false), // graphql-codegen defaults to TS enums
                 future_proof_enums: false,
                 future_proof_unions: false,
                 default_scalar_type: Some("any".to_string()),
@@ -276,6 +278,10 @@ pub struct PluginOptions {
     #[serde(default)]
     pub scalars: BTreeMap<String, ScalarConfig>,
 
+    /// Skip rendering of built-in scalars
+    #[serde(default)]
+    pub disable_descriptions: bool,
+
     /// Error if a custom scalar is found without a mapping in `scalars`
     /// Helps catch missing scalar configurations early
     #[serde(default)]
@@ -290,9 +296,10 @@ pub struct PluginOptions {
     #[serde(default)]
     pub immutable_types: bool,
 
-    /// Generate enums as TypeScript string union types (default: true)
-    #[serde(default = "default_true")]
-    pub enums_as_types: bool,
+    /// Generate enums as TypeScript string union types
+    /// None = not set (use preset default), Some(val) = explicitly set by user
+    #[serde(default)]
+    pub enums_as_types: Option<bool>,
 
     /// Generate enums as `as const` objects (better tree-shaking)
     #[serde(default)]
@@ -313,6 +320,14 @@ pub struct PluginOptions {
     /// Use `const enum` instead of `enum` for better tree-shaking
     #[serde(default)]
     pub const_enums: bool,
+
+    /// Use numeric enum values instead of string literals
+    #[serde(default)]
+    pub numeric_enums: bool,
+
+    /// Only generate enums, no other types
+    #[serde(default)]
+    pub only_enums: bool,
 
     /// Skip `export` keyword on generated types
     #[serde(default)]
@@ -398,10 +413,8 @@ impl PluginOptions {
     /// Note: If you add a new field with a non-false/None serde default,
     /// update this method and `merge_options()` in codegen.rs.
     pub fn serde_default() -> Self {
-        Self {
-            enums_as_types: true, // #[serde(default = "default_true")]
-            ..Default::default()
-        }
+        // All fields use #[serde(default)] which matches Default::default()
+        Self::default()
     }
 }
 

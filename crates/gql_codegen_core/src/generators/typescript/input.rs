@@ -30,6 +30,10 @@ pub(crate) fn render_input(
     ctx: &mut GeneratorContext,
     input: &Node<InputObjectType>,
 ) -> Result<()> {
+    if ctx.options.only_enums {
+        return Ok(());
+    }
+
     let type_name = ctx.transform_type_name(input.name.as_str());
 
     render_description(ctx, &input.description, 0)?;

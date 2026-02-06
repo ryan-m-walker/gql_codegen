@@ -8,6 +8,8 @@ use crate::config::{NamingCase, NamingConvention, PluginOptions};
 use crate::generators::GeneratorContext;
 use crate::generators::typescript::helpers::{get_export_kw, render_description};
 
+/// TODO: js lib is not persisting enum key for ts enums
+
 /// Render a GraphQL enum type as TypeScript type to the current writer.
 ///
 /// **Example Input:**
@@ -27,7 +29,7 @@ pub(crate) fn render_enum(ctx: &mut GeneratorContext, enum_type: &Node<EnumType>
     let cased_name = ctx.transform_type_name(enum_type.name.as_str());
     let enum_name = apply_enum_affixes(&cased_name, ctx.options);
 
-    if ctx.options.enums_as_types {
+    if ctx.options.enums_as_types.unwrap_or(true) {
         render_as_type_union(ctx, &enum_name, enum_type)?;
     } else {
         render_as_ts_enum(ctx, &enum_name, enum_type)?;
@@ -50,23 +52,25 @@ fn render_as_type_union(
 ) -> Result<()> {
     let export = get_export_kw(ctx);
 
-    write!(ctx.writer, "{export}type {enum_name} =")?;
+    writeln!(ctx.writer, "{export}type {enum_name} =")?;
 
     let values: Vec<_> = enum_type.values.keys().collect();
     for (i, value) in values.iter().enumerate() {
         let transformed = transform_enum_value(value.as_str(), ctx.options);
-        if i == 0 {
-            write!(ctx.writer, " '{transformed}'")?;
+
+        let semi = if i == values.len() - 1 && !ctx.options.future_proof_enums {
+            ";"
         } else {
-            write!(ctx.writer, " | '{transformed}'")?;
-        }
+            ""
+        };
+
+        writeln!(ctx.writer, "  | '{transformed}'{semi}")?;
     }
 
     if ctx.options.future_proof_enums {
-        write!(ctx.writer, " | '%future added value'")?;
+        writeln!(ctx.writer, "  | '%future added value';")?;
     }
 
-    writeln!(ctx.writer, ";")?;
     Ok(())
 }
 
@@ -86,7 +90,8 @@ fn render_as_ts_enum(
 ) -> Result<()> {
     let export = get_export_kw(ctx);
 
-    let const_kw = if ctx.options.const_enums {
+    // TODO: warn of config conflict
+    let const_kw = if ctx.options.const_enums && !ctx.options.numeric_enums {
         "const "
     } else {
         ""
@@ -94,10 +99,17 @@ fn render_as_ts_enum(
 
     writeln!(ctx.writer, "{export}{const_kw}enum {enum_name} {{")?;
 
-    for value in enum_type.values.keys() {
-        let transformed = transform_enum_value(value.as_str(), ctx.options);
+    for (i, key) in enum_type.values.keys().enumerate() {
+        let transformed = transform_enum_value(key.as_str(), ctx.options);
+
+        let value = if ctx.options.numeric_enums {
+            i.to_string()
+        } else {
+            format!("'{key}'")
+        };
+
         // Enum member name is transformed, value stays original
-        writeln!(ctx.writer, "  {transformed} = '{value}',")?;
+        writeln!(ctx.writer, "  {transformed} = {value},")?;
     }
 
     writeln!(ctx.writer, "}}")?;

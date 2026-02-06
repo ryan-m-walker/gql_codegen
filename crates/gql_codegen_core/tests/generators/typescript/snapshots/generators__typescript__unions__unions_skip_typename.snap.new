@@ -1,0 +1,21 @@
+---
+source: crates/gql_codegen_core/tests/generators/typescript/unions.rs
+assertion_line: 22
+expression: output
+---
+export interface Book {
+  readonly isbn: string;
+  readonly title: string;
+}
+
+export interface Movie {
+  readonly imdbId: string;
+  readonly title: string;
+}
+
+export interface Query {
+  readonly _empty?: string | null;
+  readonly search: ReadonlyArray<SearchResult>;
+}
+
+export type SearchResult = Book | Movie | { __typename?: '%other' };

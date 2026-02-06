@@ -1,0 +1,33 @@
+---
+source: crates/gql_codegen_core/tests/generators/typescript/naming.rs
+assertion_line: 90
+expression: output
+---
+export interface CreateUserInput {
+  readonly user_name: string;
+  readonly email_address: string;
+}
+
+export interface HttpStatus {
+  readonly __typename?: 'HTTP_STATUS';
+  readonly statusCode: number;
+}
+
+export interface Query {
+  readonly __typename?: 'Query';
+  readonly _empty?: string | null;
+  readonly userProfile?: UserProfile | null;
+  readonly httpStatus?: HttpStatus | null;
+}
+
+export interface UserProfile {
+  readonly __typename?: 'UserProfile';
+  readonly firstName: string;
+  readonly lastName: string;
+}
+
+export type UserRole =
+  | 'adminUser'
+  | 'regularUser'
+  | 'guestUser'
+  | '%future added value';

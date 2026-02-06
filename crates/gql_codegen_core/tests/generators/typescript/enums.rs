@@ -15,7 +15,7 @@ fn test_enums_as_types() {
     let output = generate_with_options(
         &["schemas/enum.graphql"],
         PluginOptions {
-            enums_as_types: true,
+            enums_as_types: Some(true),
             ..PluginOptions::serde_default()
         },
     );
@@ -27,7 +27,7 @@ fn test_enums_future_proof() {
     let output = generate_with_options(
         &["schemas/enum.graphql"],
         PluginOptions {
-            enums_as_types: true,
+            enums_as_types: Some(true),
             future_proof_enums: true,
             ..PluginOptions::serde_default()
         },
@@ -40,7 +40,7 @@ fn test_const_enums() {
     let output = generate_with_options(
         &["schemas/enum.graphql"],
         PluginOptions {
-            enums_as_types: false,
+            enums_as_types: Some(false),
             const_enums: true,
             ..PluginOptions::serde_default()
         },
