@@ -1,9 +1,83 @@
 import { dirname } from 'node:path'
 import { parseArgs } from 'node:util'
-import type { GenerateOptions } from '@sgc/core'
-import { extractSchema, loadConfig, resolveConfigPaths } from './config.js'
+import {
+    clearCache,
+    type GenerateOptions,
+    type GenerateResult,
+    generate,
+    isNativeAvailable,
+    writeFiles,
+} from '@sgc/core'
+import { configToJson, loadConfig, resolveConfigPaths } from './config.js'
 import { help } from './help.js'
 import { CLI_OPTIONS, type ParsedArgs, VERSION } from './options.js'
+import { resolveSchemas } from './schema.js'
+import type { CodegenConfig } from './types.js'
+
+/**
+ * Validate that an unknown config value has the fields Node needs to process.
+ * Only checks fields used by the Node wrapper (schema, generates).
+ * Rust core handles deep validation of plugin configs and documents.
+ */
+function validateConfig(value: unknown): CodegenConfig {
+    if (typeof value !== 'object' || value === null) {
+        throw new Error(
+            'Invalid config: expected an object.\n' +
+                'Make sure your config file exports a valid configuration.',
+        )
+    }
+
+    const config = value as Record<string, unknown>
+
+    if (!('schema' in config)) {
+        throw new Error(
+            'Invalid config: missing "schema" field.\n' +
+                'Add a schema path, e.g.: schema: "./schema.graphql"',
+        )
+    }
+
+    if (typeof config.schema !== 'string' && !Array.isArray(config.schema)) {
+        throw new Error(
+            'Invalid config: "schema" must be a string or array of strings.',
+        )
+    }
+
+    if (
+        Array.isArray(config.schema) &&
+        !config.schema.every((s): s is string => typeof s === 'string')
+    ) {
+        throw new Error(
+            'Invalid config: "schema" array must only contain strings.',
+        )
+    }
+
+    if (
+        !('generates' in config) ||
+        typeof config.generates !== 'object' ||
+        config.generates === null
+    ) {
+        throw new Error(
+            'Invalid config: missing "generates" field.\n' +
+                'Add output targets, e.g.:\n' +
+                '  generates: { "./src/types.ts": { plugins: ["typescript"] } }',
+        )
+    }
+
+    // Structural validation done — Rust core validates the rest
+    return value as CodegenConfig
+}
+
+function parseMaxDiagnostics(value: string | undefined): number | undefined {
+    if (value == null) return undefined
+    const parsed = Number.parseInt(value, 10)
+    if (Number.isNaN(parsed) || parsed < 0) {
+        throw new Error(
+            `Invalid --max-diagnostics value: '${value}'.\n` +
+                'Expected a non-negative integer.',
+        )
+    }
+    return parsed
+}
 
 function toGenerateOptions(
     args: ParsedArgs,
@@ -13,37 +87,181 @@ function toGenerateOptions(
         configJson,
         noCache: args['no-cache'],
         timing: args.timing,
+        maxDiagnostics: parseMaxDiagnostics(args['max-diagnostics']),
     }
 }
 
-export async function run() {
-    const args = parseArgs({
+/**
+ * Format an unknown error for stderr output.
+ * NAPI errors from Rust are already formatted through our diagnostic pipeline,
+ * so this mostly passes messages through as-is.
+ */
+function formatError(error: unknown): string {
+    const message = error instanceof Error ? error.message : String(error)
+    return message.endsWith('\n') ? message : `${message}\n`
+}
+
+function plural(count: number, word: string): string {
+    return `${count} ${word}${count === 1 ? '' : 's'}`
+}
+
+/**
+ * Handle the result of code generation.
+ * Responsible for: warnings, --stdout, --check, file writing, and summary.
+ */
+function handleResult(result: GenerateResult, args: ParsedArgs): void {
+    // Warnings always go to stderr, even with --quiet
+    for (const warning of result.warnings) {
+        process.stderr.write(warning)
+    }
+
+    if (result.fresh) {
+        if (!args.quiet) {
+            console.log('Nothing changed')
+        }
+        return
+    }
+
+    if (args.stdout) {
+        for (const file of result.files) {
+            process.stdout.write(`// ${file.path}\n`)
+            process.stdout.write(file.content)
+            process.stdout.write('\n')
+        }
+        return
+    }
+
+    if (args.check) {
+        if (!args.quiet) {
+            console.log(`Would generate ${plural(result.files.length, 'file')}`)
+            for (const file of result.files) {
+                console.log(`  ${file.path}`)
+            }
+        }
+        // Non-zero exit signals to CI that files are out of date
+        if (result.files.length > 0) {
+            process.exitCode = 1
+        }
+        return
+    }
+
+    // Write files via Rust (parallel I/O + skip optimization)
+    const writeResult = writeFiles(result.files)
+
+    for (const { path, message } of writeResult.errors) {
+        process.stderr.write(`Failed to write ${path}: ${message}\n`)
+    }
+
+    if (!args.quiet) {
+        for (const path of writeResult.written) {
+            console.log(`  ${path}`)
+        }
+
+        const total = writeResult.written.length + writeResult.skipped.length
+        const skipped =
+            writeResult.skipped.length > 0
+                ? `, ${plural(writeResult.skipped.length, 'file')} unchanged`
+                : ''
+        console.log(`Generated ${plural(total, 'file')}${skipped}`)
+    }
+
+    if (writeResult.errors.length > 0) {
+        process.exitCode = 1
+    }
+}
+
+export async function run(): Promise<void> {
+    console.log('START')
+    // parseArgs returns loosely-typed values — this narrowing is safe because
+    // parseArgs only populates values for the options we declared in CLI_OPTIONS
+    const { values } = parseArgs({
         options: CLI_OPTIONS,
         strict: false,
         allowPositionals: true,
     })
+    const args = values as ParsedArgs
 
-    const argValues = args.values as ParsedArgs
-
-    if (argValues.help) {
+    if (args.help) {
         help()
-        process.exit(0)
+        return
     }
 
-    if (argValues.version) {
+    if (args.version) {
         console.log(`sgc ${VERSION}`)
-        process.exit(0)
+        return
     }
 
-    const { config, configPath } = await loadConfig(argValues.config)
-    const resolvedConfig = resolveConfigPaths(config, dirname(configPath))
+    try {
+        console.log('1111111111111111111')
+        const { config, configPath } = await loadConfig(args.config)
+        const validConfig = validateConfig(config)
+        const resolvedConfig = resolveConfigPaths(
+            validConfig,
+            dirname(configPath),
+        )
+        console.log('22222222222222222222')
 
-    console.log(resolvedConfig)
-    const schemas = extractSchema(resolvedConfig)
-    console.log(schemas)
+        // Resolve programmatic schemas (.ts/.js) to SDL, keep static paths for Rust
+        const { schemaPaths, schemaContent, scalars } = await resolveSchemas(
+            resolvedConfig.schema,
+        )
+        resolvedConfig.schema = schemaPaths
 
-    // TODO: schema resolution step (programmatic .ts/.js schemas)
-    // TODO: native generate / binary fallback
-    // TODO: handle --check, --stdout, --clean-cache, --watch
-    // TODO: file writing, warnings, timing output
+        if (schemaContent.length > 0) {
+            resolvedConfig.schemaContent = schemaContent
+        }
+
+        console.log('333333333333333333333')
+
+        // Merge extracted scalars into output configs (user-defined take precedence)
+        if (Object.keys(scalars).length > 0) {
+            for (const outputConfig of Object.values(
+                resolvedConfig.generates,
+            )) {
+                const existing = outputConfig.config?.scalars ?? {}
+                outputConfig.config ??= {}
+                outputConfig.config.scalars = { ...scalars, ...existing }
+            }
+        }
+
+        console.log('44444444444444444444')
+
+        const configJson = configToJson(resolvedConfig)
+
+        console.log('55555555555555555555')
+
+        // Handle --clean-cache before generating
+        if (args['clean-cache']) {
+            if (!isNativeAvailable()) {
+                throw new Error(
+                    'Native module (@sgc/core) not available — cannot clear cache.\n' +
+                        'Ensure @sgc/core is installed correctly for your platform.',
+                )
+            }
+            const baseDir = resolvedConfig.baseDir ?? dirname(configPath)
+            const cleared = clearCache(baseDir)
+            if (!args.quiet) {
+                console.log(cleared ? 'Cache cleared' : 'Cache already clean')
+            }
+            return
+        }
+
+        console.log('666666666666666666666')
+
+        // Require native module for generation
+        if (!isNativeAvailable()) {
+            throw new Error(
+                'Native module (@sgc/core) not available.\n' +
+                    'Ensure @sgc/core is installed correctly for your platform.\n' +
+                    'Supported: darwin-arm64, darwin-x64, linux-x64, linux-arm64, win32-x64',
+            )
+        }
+
+        const options = toGenerateOptions(args, configJson)
+        const result = generate(options)
+        handleResult(result, args)
+    } catch (error) {
+        process.stderr.write(formatError(error))
+        process.exitCode = 1
+    }
 }

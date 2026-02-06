@@ -76,4 +76,3 @@ fn document_warning_duplicate_name() {
     };
     insta::assert_snapshot!(render_warn(&warn));
 }
-

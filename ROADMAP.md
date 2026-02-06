@@ -147,12 +147,22 @@ src/
 - [ ] React Query preset (hooks generation)
 
 #### 5.2 Schema Features
-- [ ] Remote schema introspection
+- [x] Programmatic schema support (.ts/.js exports → Node imports via esbuild, SDL passed to Rust)
+- [x] `codegenScalarType` extension extraction from programmatic schemas
+- [ ] Rust `schema_content` field — accept pre-resolved SDL alongside file paths
+- [ ] Remote schema introspection (URL → introspection query → SDL, Rust-native)
 - [ ] JSON introspection file as schema input
-- [ ] Programmatic schema support (requires embedding a JS runtime, e.g. `deno_core` / `boa_engine`)
+- [ ] Schema glob expansion in Rust (like documents)
+- [ ] Custom schema loaders (.ts/.js files exporting a loader function)
 - [ ] `ignoreEnumValuesFromSchema` config (only meaningful with programmatic schemas — no-op for SDL)
 - [ ] Multiple schema sources
 - [ ] Federation directive handling
+
+#### 5.2.1 Node-side Config Caching
+- [ ] Cache entire resolved config JSON in `.sgc/config-cache.json`
+- [ ] Invalidation via mtime+size of all input files (config, schema sources, loaders)
+- [ ] Use esbuild `metafile` to get full dependency graph of .ts/.js schema files
+- [ ] On cache hit: skip config loading, esbuild, schema resolution — pass cached JSON directly to core
 
 #### 5.3 Custom Plugin API
 ```typescript

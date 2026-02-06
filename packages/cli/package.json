@@ -21,19 +21,22 @@
   ],
   "scripts": {
     "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
     "@sgc/core": "workspace:*",
     "citty": "^0.2.0",
     "commander": "^14.0.3",
-    "esbuild": "^0.24.0",
     "graphql": "^16.12.0",
+    "jiti": "^2.6.1",
     "picocolors": "^1.1.1"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
-    "typescript": "^5.7.0"
+    "typescript": "^5.7.0",
+    "vitest": "^4.0.18"
   },
   "engines": {
     "node": ">=18"

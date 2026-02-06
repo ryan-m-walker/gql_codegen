@@ -1,13 +1,28 @@
-import { platform, arch } from 'node:process';
 import { createRequire } from 'node:module';
+import { arch, platform } from 'node:process';
 const require = createRequire(import.meta.url);
 // Platform-specific package mapping
 const PLATFORMS = {
-    'darwin-arm64': { pkg: '@sgc/core-darwin-arm64', file: 'sgc-core.darwin-arm64.node' },
-    'darwin-x64': { pkg: '@sgc/core-darwin-x64', file: 'sgc-core.darwin-x64.node' },
-    'linux-x64': { pkg: '@sgc/core-linux-x64-gnu', file: 'sgc-core.linux-x64-gnu.node' },
-    'linux-arm64': { pkg: '@sgc/core-linux-arm64-gnu', file: 'sgc-core.linux-arm64-gnu.node' },
-    'win32-x64': { pkg: '@sgc/core-win32-x64-msvc', file: 'sgc-core.win32-x64-msvc.node' },
+    'darwin-arm64': {
+        pkg: '@sgc/core-darwin-arm64',
+        file: 'sgc-core.darwin-arm64.node',
+    },
+    'darwin-x64': {
+        pkg: '@sgc/core-darwin-x64',
+        file: 'sgc-core.darwin-x64.node',
+    },
+    'linux-x64': {
+        pkg: '@sgc/core-linux-x64-gnu',
+        file: 'sgc-core.linux-x64-gnu.node',
+    },
+    'linux-arm64': {
+        pkg: '@sgc/core-linux-arm64-gnu',
+        file: 'sgc-core.linux-arm64-gnu.node',
+    },
+    'win32-x64': {
+        pkg: '@sgc/core-win32-x64-msvc',
+        file: 'sgc-core.win32-x64-msvc.node',
+    },
 };
 let nativeBinding = null;
 let loadError = null;
@@ -61,6 +76,17 @@ export function clearCache(baseDir) {
         throw loadError ?? new Error('Failed to load native binding');
     }
     return binding.clearCache(baseDir);
+}
+/**
+ * Write generated files to disk using parallel I/O.
+ * Skips files whose content already matches (avoids unnecessary fs events).
+ */
+export function writeFiles(files) {
+    const binding = loadNativeBinding();
+    if (!binding) {
+        throw loadError ?? new Error('Failed to load native binding');
+    }
+    return binding.writeFiles(files);
 }
 /**
  * Check if native binding is available

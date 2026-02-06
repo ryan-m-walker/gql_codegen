@@ -19,6 +19,14 @@ export interface CodegenConfig {
      * @internal Set automatically by the CLI - do not set manually.
      */
     baseDir?: string
+
+    /**
+     * Pre-resolved schema SDL strings from programmatic .ts/.js schemas.
+     * When set, these are passed directly to the Rust core alongside any
+     * remaining file paths in `schema`.
+     * @internal Set automatically by the CLI - do not set manually.
+     */
+    schemaContent?: string[]
 }
 
 export interface OutputConfig {
@@ -39,7 +47,7 @@ export type PluginConfig = string | Record<string, PluginOptions>
 
 export interface PluginOptions {
     /** Custom scalar type mappings */
-    scalars?: Record<string, string>
+    scalars?: Record<string, string | { input: string; output: string }>
 
     /** Add readonly modifier to generated types */
     immutableTypes?: boolean

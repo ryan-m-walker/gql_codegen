@@ -310,7 +310,8 @@ if (!nativeBinding) {
   throw new Error(`Failed to load native binding`)
 }
 
-const { generate, clearCache } = nativeBinding
+const { generate, writeFiles, clearCache } = nativeBinding
 
 module.exports.generate = generate
+module.exports.writeFiles = writeFiles
 module.exports.clearCache = clearCache

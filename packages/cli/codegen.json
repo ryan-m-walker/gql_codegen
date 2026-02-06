@@ -1,6 +1,6 @@
 {
   "schema": "../../../../../lindy/apps/web/src/schema.graphql",
-  "documents": ["../../../../../../ryan/lindy/apps/web/src/**/*.tsx"]
+  "documents": ["../../../../../../ryan/lindy/apps/web/src/**/*.tsx"],
   "generates": {
     "./__generated__/types.ts": {
       "config": {

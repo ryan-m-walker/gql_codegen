@@ -1,40 +1,38 @@
 /**
  * Config loading utilities
  *
- * Handles loading configuration from JSON or TypeScript files.
- * TypeScript configs are transpiled on-the-fly using esbuild.
+ * Handles loading configuration from JSON or TypeScript/JavaScript files.
+ * TS/JS configs are loaded at runtime using jiti, which handles
+ * TypeScript transpilation, ESM/CJS interop, and tsconfig paths.
  */
 
-import { randomBytes } from 'node:crypto'
-import { existsSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
-import { join, resolve } from 'node:path'
-import { pathToFileURL } from 'node:url'
-import { build } from 'esbuild'
+import fs from 'node:fs/promises'
+import path, { join, resolve } from 'node:path'
+import { createJiti } from 'jiti'
 
 import type { CodegenConfig } from './types.js'
+import { exists } from './utils.js'
 
 const CONFIG_FILES = [
-    'codegen.config.ts',
-    'codegen.config.js',
-    'codegen.config.mjs',
+    'codegen.ts',
+    'codegen.mts',
+    'codegen.cts',
+    'codegen.js',
+    'codegen.mjs',
+    'codegen.cjs',
     'codegen.json',
+    // 'codegen.yaml',
 ]
 
 export interface LoadConfigResult {
-    config: CodegenConfig
+    config: unknown
     configPath: string
 }
 
 /**
  * Find and load the codegen configuration file.
- *
- * Searches for config files in order of preference:
- * 1. codegen.config.ts
- * 2. codegen.config.js
- * 3. codegen.config.mjs
- * 4. codegen.json
- * 5. codegen.yaml // TODO: support
+ * Will use the config path if one is provided, otherwise will attempt to auto-detect.
+ * TODO: pretty error messages
  */
 export async function loadConfig(
     configPath?: string,
@@ -42,7 +40,7 @@ export async function loadConfig(
 ): Promise<LoadConfigResult> {
     const resolvedPath = configPath
         ? resolve(cwd, configPath)
-        : findConfigFile(cwd)
+        : await findConfigFile(cwd)
 
     if (!resolvedPath) {
         throw new Error(
@@ -50,95 +48,47 @@ export async function loadConfig(
         )
     }
 
-    if (!existsSync(resolvedPath)) {
+    const pathExists = await exists(resolvedPath)
+    if (!pathExists) {
         throw new Error(`Config file not found: ${resolvedPath}`)
     }
 
     const config = await loadConfigFile(resolvedPath)
-    return { config, configPath: resolvedPath }
+
+    return {
+        config,
+        configPath: resolvedPath,
+    }
 }
 
-function findConfigFile(cwd: string): string | null {
+async function findConfigFile(cwd: string): Promise<string | null> {
     for (const filename of CONFIG_FILES) {
         const fullPath = join(cwd, filename)
-        if (existsSync(fullPath)) {
+        if (await exists(fullPath)) {
             return fullPath
         }
     }
     return null
 }
 
-async function loadConfigFile(configPath: string): Promise<CodegenConfig> {
-    const ext = configPath.split('.').pop()?.toLowerCase()
+async function loadConfigFile(configPath: string): Promise<unknown> {
+    const ext = path.parse(configPath).ext
 
-    if (ext === 'json') {
+    if (ext === '.json') {
         return loadJsonConfig(configPath)
     }
 
-    if (ext === 'ts') {
-        return loadTypeScriptConfig(configPath)
-    }
-
-    if (ext === 'js' || ext === 'mjs') {
-        return loadJavaScriptConfig(configPath)
-    }
-
-    throw new Error(`Unsupported config file extension: .${ext}`)
+    // jiti handles .ts, .mts, .cts, .js, .mjs, .cjs, .jsx, .tsx
+    const jiti = createJiti(import.meta.url)
+    return jiti.import(configPath, { default: true })
 }
 
-function loadJsonConfig(configPath: string): CodegenConfig {
-    const content = readFileSync(configPath, 'utf-8')
+async function loadJsonConfig(configPath: string): Promise<unknown> {
+    const content = await fs.readFile(configPath, 'utf-8')
     try {
-        return JSON.parse(content) as CodegenConfig
+        return JSON.parse(content)
     } catch {
         throw new Error(`Failed to parse JSON config: ${configPath}`)
-    }
-}
-
-async function loadJavaScriptConfig(
-    configPath: string,
-): Promise<CodegenConfig> {
-    const url = pathToFileURL(configPath).href
-    const module = await import(url)
-    return module.default ?? module
-}
-
-async function loadTypeScriptConfig(
-    configPath: string,
-): Promise<CodegenConfig> {
-    // Transpile TypeScript to JavaScript using esbuild
-    const result = await build({
-        entryPoints: [configPath],
-        bundle: true,
-        platform: 'node',
-        format: 'esm',
-        write: false,
-        packages: 'external',
-    })
-
-    const code = result.outputFiles?.[0]?.text
-    if (!code) {
-        throw new Error(`Failed to transpile TypeScript config: ${configPath}`)
-    }
-
-    // Write to a temp file and import it
-    const tempFile = join(
-        tmpdir(),
-        `sgc-config-${randomBytes(8).toString('hex')}.mjs`,
-    )
-
-    try {
-        writeFileSync(tempFile, code)
-        const url = pathToFileURL(tempFile).href
-        const module = await import(url)
-        return module.default ?? module
-    } finally {
-        // Clean up temp file
-        try {
-            unlinkSync(tempFile)
-        } catch {
-            // Ignore cleanup errors
-        }
     }
 }
 

@@ -85,6 +85,12 @@ pub struct CodegenConfig {
     /// Base directory for resolving paths (set by CLI)
     #[serde(default)]
     pub base_dir: Option<String>,
+
+    /// Pre-resolved schema SDL strings (set by Node CLI for .ts/.js schemas).
+    /// These are parsed alongside `schema` file paths — both contribute to
+    /// the final merged schema.
+    #[serde(default)]
+    pub schema_content: Option<Vec<String>>,
 }
 
 /// Either a single string or array of strings

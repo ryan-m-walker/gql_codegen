@@ -20,7 +20,7 @@ use crate::documents::{
 };
 use crate::extract::ExtractConfig;
 use crate::generators::{GeneratorContext, run_generator};
-use crate::schema::{load_schema, load_schema_from_contents, resolve_schema_paths};
+use crate::schema::{load_schema_from_contents, resolve_schema_paths};
 use crate::source_cache::SourceCache;
 use crate::documents::DocumentWarning;
 use crate::{CodegenConfig, Result};
@@ -148,8 +148,23 @@ pub fn generate(config: &CodegenConfig) -> Result<GenerateResult> {
         .map(|s| PathBuf::from(s.as_str()))
         .unwrap_or_else(|| PathBuf::from("."));
 
+    // Build schema from both file paths and pre-resolved SDL content
     let schema_paths = resolve_schema_paths(&config.schema.as_vec(), Some(&base_dir));
-    let schema = load_schema(&schema_paths)?;
+    let mut schema_files: Vec<(PathBuf, String)> = Vec::new();
+
+    for path in &schema_paths {
+        let content = std::fs::read_to_string(path)
+            .map_err(|e| crate::Error::SchemaRead(path.clone(), e.to_string()))?;
+        schema_files.push((path.clone(), content));
+    }
+
+    if let Some(contents) = &config.schema_content {
+        for (i, sdl) in contents.iter().enumerate() {
+            schema_files.push((PathBuf::from(format!("<schema:{i}>")), sdl.clone()));
+        }
+    }
+
+    let schema = load_schema_from_contents(&schema_files)?;
 
     let document_paths = expand_document_globs(&config.documents, &base_dir)?;
     let mut source_cache = SourceCache::with_capacity(document_paths.len());
@@ -334,12 +349,21 @@ pub fn generate_cached(
     // Load schema and documents in parallel
     let t0 = web_time::Instant::now();
     let doc_paths_len = document_paths.len();
+    let inline_content = config.schema_content.clone();
     let (schema_result, docs_result) = rayon::join(
         || {
-            let schema_files: Vec<(PathBuf, String)> = schema_paths
+            let mut schema_files: Vec<(PathBuf, String)> = schema_paths
                 .into_iter()
                 .filter_map(|p| std::fs::read_to_string(&p).ok().map(|c| (p, c)))
                 .collect();
+
+            // Append pre-resolved SDL content from Node CLI (.ts/.js schemas)
+            if let Some(contents) = inline_content {
+                for (i, sdl) in contents.into_iter().enumerate() {
+                    schema_files.push((PathBuf::from(format!("<schema:{i}>")), sdl));
+                }
+            }
+
             load_schema_from_contents(&schema_files).map(|s| (s, schema_files))
         },
         || {

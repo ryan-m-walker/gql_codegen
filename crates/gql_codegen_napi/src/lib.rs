@@ -7,6 +7,7 @@ use napi_derive::napi;
 use std::path::PathBuf;
 
 use gql_codegen_core::cache::{Cache, FsCache, NoCache};
+use gql_codegen_core::writer::{write_outputs, FsWriter};
 use gql_codegen_core::{CodegenConfig, GenerateCachedResult};
 
 /// Result of code generation
@@ -105,6 +106,53 @@ pub fn generate(options: GenerateOptions) -> Result<GenerateResult> {
                 .map(|w| gql_codegen_core::diagnostic::render_warning_string(w, max_diag))
                 .collect(),
         }),
+    }
+}
+
+/// Result of writing files to disk
+#[napi(object)]
+pub struct WriteFilesResult {
+    /// Paths that were written
+    pub written: Vec<String>,
+    /// Paths skipped because content already matched
+    pub skipped: Vec<String>,
+    /// Paths that failed to write, with error messages
+    pub errors: Vec<WriteError>,
+}
+
+#[napi(object)]
+pub struct WriteError {
+    pub path: String,
+    pub message: String,
+}
+
+/// Write generated files to disk using parallel I/O.
+///
+/// Uses Rayon for parallel writes and skips files whose content already matches,
+/// avoiding unnecessary filesystem events (useful for watch mode).
+#[napi]
+pub fn write_files(files: Vec<GeneratedFile>) -> WriteFilesResult {
+    let core_files: Vec<gql_codegen_core::GeneratedFile> = files
+        .into_iter()
+        .map(|f| gql_codegen_core::GeneratedFile {
+            path: f.path,
+            content: f.content,
+        })
+        .collect();
+
+    let result = write_outputs(&core_files, &FsWriter::new());
+
+    WriteFilesResult {
+        written: result.written.into_iter().map(|p| p.display().to_string()).collect(),
+        skipped: result.skipped.into_iter().map(|p| p.display().to_string()).collect(),
+        errors: result
+            .errors
+            .into_iter()
+            .map(|(p, msg)| WriteError {
+                path: p.display().to_string(),
+                message: msg,
+            })
+            .collect(),
     }
 }
 

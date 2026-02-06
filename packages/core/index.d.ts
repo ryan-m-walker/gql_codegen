@@ -29,5 +29,25 @@ export interface GenerateOptions {
 }
 /** Generate TypeScript types from GraphQL schema and operations */
 export declare function generate(options: GenerateOptions): GenerateResult
+/** Result of writing files to disk */
+export interface WriteFilesResult {
+  /** Paths that were written */
+  written: Array<string>
+  /** Paths skipped because content already matched */
+  skipped: Array<string>
+  /** Paths that failed to write, with error messages */
+  errors: Array<WriteError>
+}
+export interface WriteError {
+  path: string
+  message: string
+}
+/**
+ * Write generated files to disk using parallel I/O.
+ *
+ * Uses Rayon for parallel writes and skips files whose content already matches,
+ * avoiding unnecessary filesystem events (useful for watch mode).
+ */
+export declare function writeFiles(files: Array<GeneratedFile>): WriteFilesResult
 /** Clear the cache directory */
 export declare function clearCache(baseDir: string): boolean

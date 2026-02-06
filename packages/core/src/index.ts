@@ -11,6 +11,8 @@ export interface GenerateOptions {
     noCache?: boolean
     /** Whether to enable timing output */
     timing?: boolean
+    /** Max diagnostics to show per error group (0 = unlimited, default 3) */
+    maxDiagnostics?: number
 }
 
 export interface GeneratedFile {
@@ -27,8 +29,23 @@ export interface GenerateResult {
     warnings: string[]
 }
 
+export interface WriteError {
+    path: string
+    message: string
+}
+
+export interface WriteFilesResult {
+    /** Paths that were written */
+    written: string[]
+    /** Paths skipped because content already matched */
+    skipped: string[]
+    /** Paths that failed to write */
+    errors: WriteError[]
+}
+
 interface NativeBinding {
     generate(options: GenerateOptions): GenerateResult
+    writeFiles(files: GeneratedFile[]): WriteFilesResult
     clearCache(baseDir: string): boolean
 }
 
@@ -112,6 +129,18 @@ export function clearCache(baseDir: string): boolean {
         throw loadError ?? new Error('Failed to load native binding')
     }
     return binding.clearCache(baseDir)
+}
+
+/**
+ * Write generated files to disk using parallel I/O.
+ * Skips files whose content already matches (avoids unnecessary fs events).
+ */
+export function writeFiles(files: GeneratedFile[]): WriteFilesResult {
+    const binding = loadNativeBinding()
+    if (!binding) {
+        throw loadError ?? new Error('Failed to load native binding')
+    }
+    return binding.writeFiles(files)
 }
 
 /**
