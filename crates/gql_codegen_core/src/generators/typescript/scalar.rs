@@ -33,26 +33,27 @@ pub(crate) fn render_scalar(ctx: &mut GeneratorContext, scalar: &Node<ScalarType
         return Ok(());
     }
 
-    let name = scalar.name.as_str();
+    let raw_name = scalar.name.as_str();
     let export = get_export_kw(ctx);
 
-    if is_builtin_scalar(name) {
+    if is_builtin_scalar(raw_name) {
         return Ok(());
     }
 
-    let custom_type = ctx.options.scalars.get(scalar.name.as_str());
+    let type_name = ctx.transform_type_name(raw_name);
+    let custom_type = ctx.options.scalars.get(raw_name);
 
     match custom_type {
         Some(ScalarConfig::Simple(ts_type)) => {
             render_description(ctx, &scalar.description, 0)?;
-            writeln!(ctx.writer, "{export}type {name} = {ts_type};")?;
+            writeln!(ctx.writer, "{export}type {type_name} = {ts_type};")?;
             writeln!(ctx.writer)?;
         }
         Some(ScalarConfig::Detailed { input, output }) => {
             render_description(ctx, &scalar.description, 0)?;
             writeln!(
                 ctx.writer,
-                "{export}type {name} = {{\n  input: {input};\n  output: {output};\n}};"
+                "{export}type {type_name} = {{\n  input: {input};\n  output: {output};\n}};"
             )?;
             writeln!(ctx.writer)?;
         }
@@ -64,7 +65,7 @@ pub(crate) fn render_scalar(ctx: &mut GeneratorContext, scalar: &Node<ScalarType
                 .unwrap_or("unknown");
 
             render_description(ctx, &scalar.description, 0)?;
-            writeln!(ctx.writer, "{export}type {name} = {default_type};")?;
+            writeln!(ctx.writer, "{export}type {type_name} = {default_type};")?;
             writeln!(ctx.writer)?;
         }
     }

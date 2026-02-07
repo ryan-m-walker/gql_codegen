@@ -229,13 +229,74 @@ impl TestGen {
 // TestCtx: Lightweight context for unit-testing renderers
 // ─────────────────────────────────────────────────────────────────────────────
 
+const DEFAULT_SCHEMA: &str = "type Query { _: Boolean }";
+
 /// Builder for [`TestCtx`].
+///
+/// # Examples
+///
+/// ```ignore
+/// // One-shot — build + run in one step
+/// let output = TestCtxBuilder::new()
+///     .schema_str("enum Role { ADMIN USER }")
+///     .run(|ctx| { generate_typescript(ctx) });
+///
+/// // With type helpers — build first
+/// let ctx = TestCtxBuilder::new()
+///     .schema_str("enum Role { ADMIN USER }")
+///     .build();
+/// let output = ctx.run(|gen_ctx| {
+///     render_enum(gen_ctx, ctx.get_enum("Role"))?;
+///     Ok(())
+/// });
+///
+/// // From fixture file (no default schema)
+/// let ctx = TestCtxBuilder::with_schema("schemas/enum.graphql").build();
+/// ```
 pub struct TestCtxBuilder {
     schemas: Vec<Source>,
     options: PluginOptions,
+    include_default_schema: bool,
+}
+
+impl Default for TestCtxBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl TestCtxBuilder {
+    /// Start with a default minimal schema (`type Query { _: Boolean }`).
+    ///
+    /// Use `.schema_str()` to add your types on top.
+    pub fn new() -> Self {
+        Self {
+            schemas: Vec::new(),
+            options: PluginOptions::default(),
+            include_default_schema: true,
+        }
+    }
+
+    /// Start with a schema file (relative to fixtures directory).
+    /// Does NOT include the default schema.
+    pub fn with_schema(path: &str) -> Self {
+        Self {
+            schemas: vec![Source::File(path.to_string())],
+            options: PluginOptions::default(),
+            include_default_schema: false,
+        }
+    }
+
+    /// Start with inline schema SDL.
+    /// Does NOT include the default schema — you provide the full schema.
+    pub fn with_schema_str(sdl: &str) -> Self {
+        Self {
+            schemas: vec![Source::Inline(sdl.to_string())],
+            options: PluginOptions::default(),
+            include_default_schema: false,
+        }
+    }
+
     /// Set plugin options.
     pub fn options(mut self, options: PluginOptions) -> Self {
         self.options = options;
@@ -248,17 +309,32 @@ impl TestCtxBuilder {
         self
     }
 
-    /// Add additional inline schema SDL.
+    /// Add additional inline schema SDL (merged with existing schemas).
     pub fn schema_str(mut self, sdl: &str) -> Self {
         self.schemas.push(Source::Inline(sdl.to_string()));
         self
     }
 
-    /// Build the test context. Panics if the schema fails to parse/validate.
+    /// Build and immediately run a closure. Shortcut for `build().run(f)`.
+    pub fn run<F>(self, f: F) -> String
+    where
+        F: FnOnce(&mut GeneratorContext) -> Result<()>,
+    {
+        self.build().run(f)
+    }
+
+    /// Build the test context. Use this when you need [`TestCtx::get_enum`] etc.
     pub fn build(self) -> TestCtx {
         let fixtures = fixtures_dir();
         let mut schema_files: Vec<(PathBuf, String)> = Vec::new();
         let mut inline_count = 0;
+
+        if self.include_default_schema {
+            schema_files.push((
+                PathBuf::from("<default-schema>"),
+                DEFAULT_SCHEMA.to_string(),
+            ));
+        }
 
         for source in &self.schemas {
             match source {
@@ -288,47 +364,16 @@ impl TestCtxBuilder {
     }
 }
 
-/// Lightweight test context for unit-testing individual renderers.
+/// Built test context with a validated schema.
 ///
-/// Owns a validated schema and plugin options. Use [`TestCtx::run`] to get
-/// a temporary [`GeneratorContext`] for calling renderers.
-///
-/// # Examples
-///
-/// ```ignore
-/// let ctx = TestCtx::with_schema("schemas/enum.graphql")
-///     .options(PluginOptions { enums_as_types: Some(true), ..Default::default() })
-///     .build();
-///
-/// let output = ctx.run(|gen_ctx| {
-///     render_enum(gen_ctx, ctx.get_enum("Role"))?;
-///     Ok(())
-/// });
-///
-/// assert!(output.contains("type Role ="));
-/// ```
+/// Use [`TestCtx::run`] to execute a renderer, and the `get_*` helpers
+/// to extract specific types from the schema.
 pub struct TestCtx {
     pub schema: Valid<Schema>,
     pub options: PluginOptions,
 }
 
 impl TestCtx {
-    /// Start building with a schema file (relative to fixtures directory).
-    pub fn with_schema(path: &str) -> TestCtxBuilder {
-        TestCtxBuilder {
-            schemas: vec![Source::File(path.to_string())],
-            options: PluginOptions::default(),
-        }
-    }
-
-    /// Start building with inline schema SDL.
-    pub fn with_schema_str(sdl: &str) -> TestCtxBuilder {
-        TestCtxBuilder {
-            schemas: vec![Source::Inline(sdl.to_string())],
-            options: PluginOptions::default(),
-        }
-    }
-
     /// Run a closure with a [`GeneratorContext`] and return the generated output.
     ///
     /// Creates empty operations/fragments — use [`TestGen`] if you need operations.

@@ -33,10 +33,20 @@ pub struct GeneratorContext<'a> {
 }
 
 impl GeneratorContext<'_> {
-    /// Apply the configured `typeNames` naming convention to a type name.
+    /// Apply the configured `typeNames` naming convention to a type name,
+    /// then apply `types_prefix` / `types_suffix` if configured.
     pub fn transform_type_name<'a>(&self, name: &'a str) -> Cow<'a, str> {
         let (case, transform_underscore) = get_type_name_case(self.options);
-        case.apply(name, transform_underscore)
+        let cased = case.apply(name, transform_underscore);
+
+        match (&self.options.types_prefix, &self.options.types_suffix) {
+            (None, None) => cased,
+            (prefix, suffix) => {
+                let prefix = prefix.as_deref().unwrap_or("");
+                let suffix = suffix.as_deref().unwrap_or("");
+                Cow::Owned(format!("{prefix}{cased}{suffix}"))
+            }
+        }
     }
 }
 

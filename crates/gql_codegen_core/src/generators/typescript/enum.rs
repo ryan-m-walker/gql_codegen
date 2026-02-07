@@ -29,7 +29,13 @@ pub(crate) fn render_enum(ctx: &mut GeneratorContext, enum_type: &Node<EnumType>
     let cased_name = ctx.transform_type_name(enum_type.name.as_str());
     let enum_name = apply_enum_affixes(&cased_name, ctx.options);
 
-    if ctx.options.enums_as_types.unwrap_or(true) {
+    // Priority: numeric_enums > enums_as_const > enums_as_types > ts enum
+    // (matches JS lib: numeric forces TS enum path regardless of other options)
+    if ctx.options.numeric_enums {
+        render_as_ts_enum(ctx, &enum_name, enum_type)?;
+    } else if ctx.options.enums_as_const {
+        render_as_const_object(ctx, &enum_name, enum_type)?;
+    } else if ctx.options.enums_as_types.unwrap_or(true) {
         render_as_type_union(ctx, &enum_name, enum_type)?;
     } else {
         render_as_ts_enum(ctx, &enum_name, enum_type)?;
@@ -113,6 +119,41 @@ fn render_as_ts_enum(
     }
 
     writeln!(ctx.writer, "}}")?;
+    Ok(())
+}
+
+/// Render enum as a `const` object with a derived type.
+///
+/// **Example:**
+/// ``` typescript
+/// export const Status = {
+///   ACTIVE: 'ACTIVE',
+///   INACTIVE: 'INACTIVE'
+/// } as const;
+///
+/// export type Status = typeof Status[keyof typeof Status];
+/// ```
+fn render_as_const_object(
+    ctx: &mut GeneratorContext,
+    enum_name: &str,
+    enum_type: &Node<EnumType>,
+) -> Result<()> {
+    let export = get_export_kw(ctx);
+
+    writeln!(ctx.writer, "{export}const {enum_name} = {{")?;
+
+    for key in enum_type.values.keys() {
+        let transformed = transform_enum_value(key.as_str(), ctx.options);
+        writeln!(ctx.writer, "  {transformed}: '{key}',")?;
+    }
+
+    writeln!(ctx.writer, "}} as const;")?;
+    writeln!(ctx.writer)?;
+    writeln!(
+        ctx.writer,
+        "{export}type {enum_name} = typeof {enum_name}[keyof typeof {enum_name}];"
+    )?;
+
     Ok(())
 }
 

@@ -25,6 +25,7 @@ use crate::generators::typescript::helpers::{
 /// }
 ///
 /// interface User implements Node {
+///   id: string;
 ///   name: string;
 /// }
 /// ```
