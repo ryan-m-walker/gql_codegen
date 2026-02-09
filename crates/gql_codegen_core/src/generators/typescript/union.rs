@@ -3,7 +3,7 @@ use apollo_compiler::{Name, Node};
 
 use crate::Result;
 use crate::generators::GeneratorContext;
-use crate::generators::typescript::helpers::get_export_kw;
+use crate::generators::common::helpers::get_export_kw;
 
 pub(crate) fn render_union(
     ctx: &mut GeneratorContext,

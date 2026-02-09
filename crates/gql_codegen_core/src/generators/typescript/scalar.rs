@@ -5,8 +5,9 @@ use apollo_compiler::schema::{ExtendedType, ScalarType};
 
 use crate::config::ScalarConfig;
 use crate::generators::GeneratorContext;
+use crate::generators::common::helpers::get_export_kw;
 use crate::generators::typescript::helpers::{
-    get_export_kw, render_decl_closing, render_decl_opening, render_description,
+    render_decl_closing, render_decl_opening, render_description,
 };
 use crate::{Error, Result};
 

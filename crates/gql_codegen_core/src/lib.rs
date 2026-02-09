@@ -42,9 +42,9 @@ pub use codegen::{
     generate_from_input,
 };
 pub use config::{
-    AvoidOptionals, CodegenConfig, DeclarationKind, FormattingOptions, GraphqlTag, NamingCase,
+    AvoidOptionals, CodegenConfig, DeclarationKind, GraphqlTag, HooksConfig, NamingCase,
     NamingConvention, NamingConventionConfig, OutputConfig, PluginConfig, PluginOptions, Preset,
-    ScalarConfig, StringOrArray,
+    ScalarConfig, StringOrArray, TypenamePolicy,
 };
 pub use documents::DocumentWarning;
 pub use error::{ConfigError, Error, Result};

@@ -26,6 +26,7 @@ use apollo_compiler::validation::Valid;
 use apollo_compiler::{Name, Schema};
 
 use super::GeneratorContext;
+use crate::generators::common::helpers::unwrap_type_name;
 
 /// Collect all types referenced in operations and fragments.
 ///
@@ -218,10 +219,3 @@ fn collect_type_name(ty: &Type, out: &mut HashSet<String>) {
     }
 }
 
-/// Unwrap a Type to get its base type name.
-fn unwrap_type_name(ty: &Type) -> Name {
-    match ty {
-        Type::Named(name) | Type::NonNullNamed(name) => name.clone(),
-        Type::List(inner) | Type::NonNullList(inner) => unwrap_type_name(inner),
-    }
-}

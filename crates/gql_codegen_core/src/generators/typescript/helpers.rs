@@ -3,32 +3,8 @@ use apollo_compiler::collections::IndexSet;
 use apollo_compiler::schema::ComponentName;
 
 use crate::generators::GeneratorContext;
+use crate::generators::common::helpers::{get_export_kw, get_readonly_kw};
 use crate::{DeclarationKind, Result};
-
-/// Returns the export keyword based if exports are enabled.
-pub(crate) fn get_export_kw(ctx: &GeneratorContext) -> &'static str {
-    if ctx.options.no_export { "" } else { "export " }
-}
-
-/// Returns the readonly keyword based on immutability configuration.
-pub(crate) fn get_readonly_kw(ctx: &GeneratorContext) -> &'static str {
-    if ctx.options.immutable_types {
-        "readonly "
-    } else {
-        ""
-    }
-}
-
-/// Map built-in GraphQL scalar types to TypeScript types.
-/// Returns None for custom scalars that need separate handling.
-pub(crate) fn gql_scalar_to_ts(name: &str) -> Option<&'static str> {
-    match name {
-        "String" | "ID" => Some("string"),
-        "Int" | "Float" => Some("number"),
-        "Boolean" => Some("boolean"),
-        _ => None,
-    }
-}
 
 /// TODO: make this less strict, allowing strings which we parse or fallback to default
 pub(crate) fn get_decl_kind_kw(ctx: &GeneratorContext) -> &'static str {

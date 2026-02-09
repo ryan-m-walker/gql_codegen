@@ -1,5 +1,7 @@
 //! Tests for typescript-operations plugin (operation type generation)
 
+mod config;
+
 use std::collections::HashMap;
 use std::path::PathBuf;
 
@@ -37,6 +39,7 @@ fn generate_operations(
             config: Some(options),
             prelude: None,
             documents_only: false,
+            hooks: None,
         },
     );
 

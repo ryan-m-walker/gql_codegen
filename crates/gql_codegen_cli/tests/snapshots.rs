@@ -93,6 +93,7 @@ fn test_schema_types_only() {
             prelude: None,
             config: None,
             documents_only: false,
+            hooks: None,
         },
     );
 

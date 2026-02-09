@@ -31,6 +31,7 @@ fn generate_docs(schema_files: &[&str], document_files: &[&str], options: Plugin
             config: Some(options),
             prelude: None,
             documents_only: false,
+            hooks: None,
         },
     );
 

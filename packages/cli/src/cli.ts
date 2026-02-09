@@ -10,6 +10,7 @@ import {
 } from '@sgc/core'
 import { configToJson, loadConfig, resolveConfigPaths } from './config.js'
 import { help } from './help.js'
+import { runHooks } from './hooks.js'
 import { CLI_OPTIONS, type ParsedArgs, VERSION } from './options.js'
 import { resolveSchemas } from './schema.js'
 import type { CodegenConfig } from './types.js'
@@ -101,6 +102,15 @@ function formatError(error: unknown): string {
     return message.endsWith('\n') ? message : `${message}\n`
 }
 
+function getOutputHooks(config: CodegenConfig, filePath: string) {
+    for (const [outputPath, outputConfig] of Object.entries(config.generates)) {
+        if (filePath.endsWith(outputPath) || outputPath.endsWith(filePath)) {
+            return outputConfig.hooks
+        }
+    }
+    return undefined
+}
+
 function plural(count: number, word: string): string {
     return `${count} ${word}${count === 1 ? '' : 's'}`
 }
@@ -109,7 +119,11 @@ function plural(count: number, word: string): string {
  * Handle the result of code generation.
  * Responsible for: warnings, --stdout, --check, file writing, and summary.
  */
-function handleResult(result: GenerateResult, args: ParsedArgs): void {
+function handleResult(
+    result: GenerateResult,
+    args: ParsedArgs,
+    config: CodegenConfig,
+): void {
     // Warnings always go to stderr, even with --quiet
     for (const warning of result.warnings) {
         process.stderr.write(warning)
@@ -165,13 +179,39 @@ function handleResult(result: GenerateResult, args: ParsedArgs): void {
         console.log(`Generated ${plural(total, 'file')}${skipped}`)
     }
 
+    // Run lifecycle hooks on written files
+    if (writeResult.written.length > 0) {
+        const rootHooks = config.hooks
+
+        // afterOneFileWrite — per file, output-level hooks first
+        for (const filePath of writeResult.written) {
+            const outputHooks = getOutputHooks(config, filePath)
+            if (outputHooks?.afterOneFileWrite?.length) {
+                runHooks(outputHooks.afterOneFileWrite, [filePath])
+            }
+            if (rootHooks?.afterOneFileWrite?.length) {
+                runHooks(rootHooks.afterOneFileWrite, [filePath])
+            }
+        }
+
+        // afterAllFileWrite — output-level first (per output), then root-level (all files)
+        for (const filePath of writeResult.written) {
+            const outputHooks = getOutputHooks(config, filePath)
+            if (outputHooks?.afterAllFileWrite?.length) {
+                runHooks(outputHooks.afterAllFileWrite, [filePath])
+            }
+        }
+        if (rootHooks?.afterAllFileWrite?.length) {
+            runHooks(rootHooks.afterAllFileWrite, writeResult.written)
+        }
+    }
+
     if (writeResult.errors.length > 0) {
         process.exitCode = 1
     }
 }
 
 export async function run(): Promise<void> {
-    console.log('START')
     // parseArgs returns loosely-typed values — this narrowing is safe because
     // parseArgs only populates values for the options we declared in CLI_OPTIONS
     const { values } = parseArgs({
@@ -192,14 +232,12 @@ export async function run(): Promise<void> {
     }
 
     try {
-        console.log('1111111111111111111')
         const { config, configPath } = await loadConfig(args.config)
         const validConfig = validateConfig(config)
         const resolvedConfig = resolveConfigPaths(
             validConfig,
             dirname(configPath),
         )
-        console.log('22222222222222222222')
 
         // Resolve programmatic schemas (.ts/.js) to SDL, keep static paths for Rust
         const { schemaPaths, schemaContent, scalars } = await resolveSchemas(
@@ -210,8 +248,6 @@ export async function run(): Promise<void> {
         if (schemaContent.length > 0) {
             resolvedConfig.schemaContent = schemaContent
         }
-
-        console.log('333333333333333333333')
 
         // Merge extracted scalars into output configs (user-defined take precedence)
         if (Object.keys(scalars).length > 0) {
@@ -224,11 +260,7 @@ export async function run(): Promise<void> {
             }
         }
 
-        console.log('44444444444444444444')
-
         const configJson = configToJson(resolvedConfig)
-
-        console.log('55555555555555555555')
 
         // Handle --clean-cache before generating
         if (args['clean-cache']) {
@@ -246,8 +278,6 @@ export async function run(): Promise<void> {
             return
         }
 
-        console.log('666666666666666666666')
-
         // Require native module for generation
         if (!isNativeAvailable()) {
             throw new Error(
@@ -259,7 +289,7 @@ export async function run(): Promise<void> {
 
         const options = toGenerateOptions(args, configJson)
         const result = generate(options)
-        handleResult(result, args)
+        handleResult(result, args, resolvedConfig)
     } catch (error) {
         process.stderr.write(formatError(error))
         process.exitCode = 1

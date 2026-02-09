@@ -6,9 +6,10 @@ use apollo_compiler::schema::EnumType;
 use crate::Result;
 use crate::config::{NamingCase, NamingConvention, PluginOptions};
 use crate::generators::GeneratorContext;
-use crate::generators::typescript::helpers::{get_export_kw, render_description};
+use crate::generators::common::helpers::get_export_kw;
+use crate::generators::typescript::helpers::render_description;
 
-/// TODO: js lib is not persisting enum key for ts enums
+// TODO: js lib is not persisting enum key for ts enums
 
 /// Render a GraphQL enum type as TypeScript type to the current writer.
 ///
@@ -106,6 +107,7 @@ fn render_as_ts_enum(
     writeln!(ctx.writer, "{export}{const_kw}enum {enum_name} {{")?;
 
     for (i, key) in enum_type.values.keys().enumerate() {
+        // TODO: this doesn't work right?
         let transformed = transform_enum_value(key.as_str(), ctx.options);
 
         let value = if ctx.options.numeric_enums {
@@ -128,7 +130,7 @@ fn render_as_ts_enum(
 /// ``` typescript
 /// export const Status = {
 ///   ACTIVE: 'ACTIVE',
-///   INACTIVE: 'INACTIVE'
+///   INACTIVE: 'INACTIVE',
 /// } as const;
 ///
 /// export type Status = typeof Status[keyof typeof Status];

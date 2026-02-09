@@ -211,6 +211,7 @@ impl TestGen {
                 config: Some(self.options.clone()),
                 prelude: None,
                 documents_only: false,
+                hooks: None,
             },
         );
 

@@ -156,6 +156,7 @@ fn generate_internal(
                         prelude: None,
                         config: out.config,
                         documents_only: false,
+                        hooks: None,
                     };
                     (path, output_config)
                 })
@@ -175,6 +176,7 @@ fn generate_internal(
                     prelude: None,
                     config: None,
                     documents_only: false,
+                    hooks: None,
                 },
             );
             (Preset::default(), map)

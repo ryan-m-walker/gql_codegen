@@ -34,6 +34,7 @@ impl Preset {
                 future_proof_unions: true,
                 immutable_types: true,
                 default_scalar_type: Some("unknown".to_string()),
+                typename_policy: Some(TypenamePolicy::AsSelected),
                 // SGC style (internal)
                 pretty_documents: true,
                 ..Default::default()
@@ -93,6 +94,10 @@ pub struct CodegenConfig {
     /// the final merged schema.
     #[serde(default)]
     pub schema_content: Option<Vec<String>>,
+
+    /// Lifecycle hooks — shell commands run after generation
+    #[serde(default)]
+    pub hooks: Option<HooksConfig>,
 }
 
 /// Either a single string or array of strings
@@ -137,6 +142,10 @@ pub struct OutputConfig {
     /// Only generate for documents, skip schema types
     #[serde(default)]
     pub documents_only: bool,
+
+    /// Lifecycle hooks — shell commands run after this output is written
+    #[serde(default)]
+    pub hooks: Option<HooksConfig>,
 }
 
 /// Plugin configuration - either just name or name with config
@@ -342,11 +351,15 @@ pub struct PluginOptions {
     #[serde(default)]
     pub future_proof_unions: bool,
 
-    /// Skip __typename field in generated types
+    /// Controls how `__typename` is emitted. Replaces skip_typename/non_optional_typename.
+    #[serde(default)]
+    pub typename_policy: Option<TypenamePolicy>,
+
+    /// Skip __typename field in generated types (deprecated — use typename_policy: "skip")
     #[serde(default)]
     pub skip_typename: bool,
 
-    /// Make __typename non-optional (always required)
+    /// Make __typename non-optional (deprecated — use typename_policy: "as-selected")
     #[serde(default)]
     pub non_optional_typename: bool,
 
@@ -385,10 +398,6 @@ pub struct PluginOptions {
     #[serde(default)]
     pub graphql_tag: Option<GraphqlTag>,
 
-    /// Formatting options
-    #[serde(default)]
-    pub formatting: Option<FormattingOptions>,
-
     /// Naming convention for generated types
     /// Can be a string ("keep", "pascalCase", etc.) or object with typeNames/enumValues
     #[serde(default)]
@@ -416,6 +425,31 @@ impl PluginOptions {
         // All fields use #[serde(default)] which matches Default::default()
         Self::default()
     }
+
+    /// Resolve the effective typename policy from the new enum field
+    /// or the legacy boolean flags.
+    pub fn resolved_typename_policy(&self) -> TypenamePolicy {
+        // Legacy flag takes precedence for backwards compat
+        if self.skip_typename {
+            return TypenamePolicy::Skip;
+        }
+        self.typename_policy.unwrap_or(TypenamePolicy::Always)
+    }
+}
+
+/// Controls how `__typename` is emitted in generated types
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "kebab-case")]
+pub enum TypenamePolicy {
+    /// Always inject `__typename?: 'Type'` on every selection set, even if not
+    /// explicitly queried. Matches graphql-codegen behavior.
+    #[default]
+    Always,
+    /// Only emit `__typename` when explicitly selected in the query.
+    /// When selected, it's non-optional.
+    AsSelected,
+    /// Never emit `__typename`.
+    Skip,
 }
 
 /// Declaration kind for generated types
@@ -443,34 +477,87 @@ pub enum GraphqlTag {
     None,
 }
 
-/// Formatting options for generated code
-#[derive(Debug, Clone, Hash, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+/// Lifecycle hooks — shell commands run at various pipeline stages.
+/// Commands receive file path(s) as trailing arguments.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct FormattingOptions {
-    #[serde(default = "default_indent_width")]
-    pub indent_width: usize,
-
+pub struct HooksConfig {
+    /// Commands to run after each file is written (receives single file path)
     #[serde(default)]
-    pub use_tabs: bool,
+    pub after_one_file_write: Vec<String>,
 
-    #[serde(default = "default_true")]
-    pub single_quote: bool,
-
-    #[serde(default = "default_true")]
-    pub semicolons: bool,
+    /// Commands to run after all files are written (receives all file paths)
+    #[serde(default)]
+    pub after_all_file_write: Vec<String>,
 }
 
-impl Default for FormattingOptions {
-    fn default() -> Self {
-        Self {
-            indent_width: default_indent_width(),
-            use_tabs: false,
-            single_quote: true,
-            semicolons: true,
-        }
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn hooks_config_empty_json() {
+        let hooks: HooksConfig = serde_json::from_str("{}").unwrap();
+        assert!(hooks.after_one_file_write.is_empty());
+        assert!(hooks.after_all_file_write.is_empty());
     }
-}
 
-fn default_indent_width() -> usize {
-    2
+    #[test]
+    fn hooks_config_partial() {
+        let hooks: HooksConfig =
+            serde_json::from_str(r#"{"afterOneFileWrite": ["biome format --write"]}"#).unwrap();
+        assert_eq!(hooks.after_one_file_write, vec!["biome format --write"]);
+        assert!(hooks.after_all_file_write.is_empty());
+    }
+
+    #[test]
+    fn hooks_config_full() {
+        let hooks: HooksConfig = serde_json::from_str(
+            r#"{"afterOneFileWrite": ["prettier --write"], "afterAllFileWrite": ["eslint --fix"]}"#,
+        )
+        .unwrap();
+        assert_eq!(hooks.after_one_file_write, vec!["prettier --write"]);
+        assert_eq!(hooks.after_all_file_write, vec!["eslint --fix"]);
+    }
+
+    #[test]
+    fn codegen_config_with_hooks() {
+        let json = r#"{
+            "schema": "schema.graphql",
+            "documents": "src/**/*.graphql",
+            "generates": {},
+            "hooks": {
+                "afterOneFileWrite": ["biome format --write"]
+            }
+        }"#;
+        let config: CodegenConfig = serde_json::from_str(json).unwrap();
+        let hooks = config.hooks.unwrap();
+        assert_eq!(hooks.after_one_file_write, vec!["biome format --write"]);
+    }
+
+    #[test]
+    fn codegen_config_without_hooks() {
+        let json = r#"{
+            "schema": "schema.graphql",
+            "documents": "src/**/*.graphql",
+            "generates": {}
+        }"#;
+        let config: CodegenConfig = serde_json::from_str(json).unwrap();
+        assert!(config.hooks.is_none());
+    }
+
+    #[test]
+    fn output_config_with_hooks() {
+        let json = r#"{
+            "plugins": ["typescript"],
+            "hooks": {
+                "afterOneFileWrite": ["biome format --write"],
+                "afterAllFileWrite": ["echo done"]
+            }
+        }"#;
+        let config: OutputConfig = serde_json::from_str(json).unwrap();
+        let hooks = config.hooks.unwrap();
+        assert_eq!(hooks.after_one_file_write, vec!["biome format --write"]);
+        assert_eq!(hooks.after_all_file_write, vec!["echo done"]);
+    }
 }

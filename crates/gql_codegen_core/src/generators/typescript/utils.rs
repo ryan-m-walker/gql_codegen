@@ -1,6 +1,6 @@
 use crate::Result;
 use crate::generators::GeneratorContext;
-use crate::generators::typescript::helpers::get_export_kw;
+use crate::generators::common::helpers::get_export_kw;
 
 const DEFAULT_MAYBE_VALUE: &str = "T | null";
 const DEFAULT_INPUT_MAYBE_VALUE: &str = "Maybe<T>";

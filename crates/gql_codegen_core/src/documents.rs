@@ -4,7 +4,7 @@ use std::fmt;
 use std::path::{Path, PathBuf};
 
 use apollo_compiler::Name;
-use apollo_compiler::ast::Definition;
+use apollo_compiler::ast::{Definition, FragmentDefinition};
 use apollo_compiler::validation::DiagnosticList;
 use globset::{Glob, GlobSetBuilder};
 use indexmap::IndexMap;
@@ -20,9 +20,14 @@ use crate::source_cache::SourceCache;
 pub enum DocumentWarning {
     /// Parse errors with full diagnostic info (rendered through our pipeline)
     ParseErrors(DiagnosticList),
-    DuplicateName { kind: &'static str, name: String },
+    DuplicateName {
+        kind: &'static str,
+        name: String,
+    },
     /// Conflicting or redundant config options
-    ConfigConflict { message: String },
+    ConfigConflict {
+        message: String,
+    },
 }
 
 impl fmt::Display for DocumentWarning {
@@ -70,7 +75,7 @@ impl<'a> ParsedOperation<'a> {
 #[derive(Debug, Clone)]
 pub struct ParsedFragment<'a> {
     /// The fragment AST
-    pub definition: apollo_compiler::ast::FragmentDefinition,
+    pub definition: FragmentDefinition,
     /// Index into SourceCache
     pub source_idx: usize,
     /// Slice into the source file's GraphQL text

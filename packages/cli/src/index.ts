@@ -26,7 +26,6 @@ export type {
     OutputConfig,
     PluginConfig,
     PluginOptions,
-    FormattingOptions,
 } from './types.js'
 
 // Config helper

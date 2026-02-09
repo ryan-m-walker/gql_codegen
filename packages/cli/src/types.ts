@@ -14,6 +14,9 @@ export interface CodegenConfig {
     /** Output configurations keyed by output path */
     generates: Record<string, OutputConfig>
 
+    /** Lifecycle hooks — shell commands run after generation */
+    hooks?: HooksConfig
+
     /**
      * Base directory for resolving paths.
      * @internal Set automatically by the CLI - do not set manually.
@@ -41,6 +44,9 @@ export interface OutputConfig {
 
     /** Only generate for documents, skip schema types */
     documentsOnly?: boolean
+
+    /** Lifecycle hooks — shell commands run after this output is written */
+    hooks?: HooksConfig
 }
 
 export type PluginConfig = string | Record<string, PluginOptions>
@@ -58,7 +64,10 @@ export interface PluginOptions {
     /** Add future-proof unknown value to enums */
     futureProofEnums?: boolean
 
-    /** Skip __typename field in generated types */
+    /** Controls how __typename is emitted in generated types */
+    typenamePolicy?: 'always' | 'as-selected' | 'skip'
+
+    /** @deprecated Use typenamePolicy: 'skip' instead */
     skipTypename?: boolean
 
     // TODO:
@@ -66,23 +75,14 @@ export interface PluginOptions {
 
     /** GraphQL tag style for documents */
     graphqlTag?: 'gql' | 'graphql' | 'none'
-
-    /** Formatting options */
-    formatting?: FormattingOptions
 }
 
-export interface FormattingOptions {
-    /** Number of spaces per indent level (default: 2) */
-    indentWidth?: number
+export interface HooksConfig {
+    /** Commands to run after each file is written (receives single file path) */
+    afterOneFileWrite?: string[]
 
-    /** Use tabs instead of spaces */
-    useTabs?: boolean
-
-    /** Use single quotes (default: true) */
-    singleQuote?: boolean
-
-    /** Add semicolons (default: true) */
-    semicolons?: boolean
+    /** Commands to run after all files are written (receives all file paths) */
+    afterAllFileWrite?: string[]
 }
 
 /**

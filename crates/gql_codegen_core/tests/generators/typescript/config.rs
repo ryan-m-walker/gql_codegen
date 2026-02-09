@@ -7,7 +7,10 @@
 use std::collections::BTreeMap;
 
 use gql_codegen_core::test_utils::TestGen;
-use gql_codegen_core::{DeclarationKind, PluginOptions, Preset, ScalarConfig};
+use gql_codegen_core::{
+    DeclarationKind, NamingCase, NamingConvention, NamingConventionConfig, PluginOptions, Preset,
+    ScalarConfig,
+};
 
 // ── numeric_enums ──────────────────────────────────────────────────
 
@@ -518,4 +521,357 @@ fn graphql_codegen_preset_uses_type_aliases() {
     assert!(output.contains("export type Query = {"));
     assert!(output.contains("type Maybe<T>"));
     assert!(output.contains("Scalars"));
+}
+
+// ── naming_convention: simple ─────────────────────────────────────
+
+/// Schema with multiple type kinds for casing tests
+const CASING_SCHEMA: &str = "\
+type Query { user: User, role: UserRole }
+type User { firstName: String!, lastName: String! }
+enum UserRole { ADMIN_USER, REGULAR_USER }
+input CreateUserInput { userName: String! }
+interface Node { id: ID! }
+union SearchResult = User
+scalar DateTime
+";
+
+#[test]
+fn naming_simple_camel_case_transforms_type_names() {
+    let output = TestGen::new()
+        .no_base_schema()
+        .schema_str(CASING_SCHEMA)
+        .options(PluginOptions {
+            naming_convention: Some(NamingConvention::Simple(NamingCase::CamelCase)),
+            ..PluginOptions::serde_default()
+        })
+        .generate();
+
+    // Type names get camelCase
+    assert!(output.contains("export interface query {"));
+    assert!(output.contains("export interface user {"));
+    assert!(output.contains("export interface node {"));
+    assert!(output.contains("export interface createUserInput {"));
+    // Enum type name gets camelCase
+    assert!(output.contains("userRole"));
+    // Scalar type name gets camelCase
+    assert!(output.contains("type dateTime"));
+    // Union type name gets camelCase
+    assert!(output.contains("searchResult"));
+}
+
+#[test]
+fn naming_simple_camel_case_also_transforms_enum_values() {
+    let output = TestGen::new()
+        .no_base_schema()
+        .schema_str("type Query { ok: Boolean }\nenum Status { ACTIVE_USER INACTIVE_USER }")
+        .options(PluginOptions {
+            naming_convention: Some(NamingConvention::Simple(NamingCase::CamelCase)),
+            ..PluginOptions::serde_default()
+        })
+        .generate();
+
+    // Simple convention applies to both type names AND enum values
+    assert!(output.contains("'active_User'"));
+    assert!(output.contains("'inactive_User'"));
+}
+
+#[test]
+fn naming_simple_constant_case() {
+    let output = TestGen::new()
+        .no_base_schema()
+        .schema_str("type Query { ok: Boolean }\nenum UserRole { AdminUser RegularUser }")
+        .options(PluginOptions {
+            naming_convention: Some(NamingConvention::Simple(NamingCase::ConstantCase)),
+            ..PluginOptions::serde_default()
+        })
+        .generate();
+
+    // Type name: QUERY
+    assert!(output.contains("export interface QUERY {"));
+    // Enum values: ADMIN_USER, REGULAR_USER
+    assert!(output.contains("'ADMIN_USER'"));
+    assert!(output.contains("'REGULAR_USER'"));
+}
+
+#[test]
+fn naming_simple_snake_case() {
+    let output = TestGen::new()
+        .no_base_schema()
+        .schema_str("type Query { ok: Boolean }\ntype UserProfile { firstName: String! }")
+        .options(PluginOptions {
+            naming_convention: Some(NamingConvention::Simple(NamingCase::SnakeCase)),
+            ..PluginOptions::serde_default()
+        })
+        .generate();
+
+    assert!(output.contains("export interface query {"));
+    assert!(output.contains("export interface user_profile {"));
+}
+
+// ── naming_convention: detailed ───────────────────────────────────
+
+#[test]
+fn naming_detailed_separate_type_and_enum() {
+    let output = TestGen::new()
+        .no_base_schema()
+        .schema_str("type Query { role: Role }\nenum Role { ADMIN_USER GUEST_USER }")
+        .options(PluginOptions {
+            naming_convention: Some(NamingConvention::Detailed(NamingConventionConfig {
+                type_names: Some(NamingCase::PascalCase),
+                enum_values: Some(NamingCase::CamelCase),
+                transform_underscore: false,
+            })),
+            ..PluginOptions::serde_default()
+        })
+        .generate();
+
+    // Type names: PascalCase (Query, Role already PascalCase — no change)
+    assert!(output.contains("export interface Query {"));
+    // Enum values: camelCase with underscores preserved (transform_underscore: false)
+    assert!(output.contains("'admin_User'"));
+    assert!(output.contains("'guest_User'"));
+}
+
+#[test]
+fn naming_detailed_transform_underscore_removes_underscores() {
+    let output = TestGen::new()
+        .no_base_schema()
+        .schema_str("type Query { ok: Boolean }\nenum Status { ACTIVE_USER INACTIVE_USER }")
+        .options(PluginOptions {
+            naming_convention: Some(NamingConvention::Detailed(NamingConventionConfig {
+                type_names: Some(NamingCase::PascalCase),
+                enum_values: Some(NamingCase::CamelCase),
+                transform_underscore: true,
+            })),
+            ..PluginOptions::serde_default()
+        })
+        .generate();
+
+    // With transform_underscore: true, underscores become word boundaries and are removed
+    assert!(output.contains("'activeUser'"));
+    assert!(output.contains("'inactiveUser'"));
+}
+
+#[test]
+fn naming_detailed_constant_case_enum_values() {
+    let output = TestGen::new()
+        .no_base_schema()
+        .schema_str("type Query { ok: Boolean }\nenum Role { adminUser guestUser }")
+        .options(PluginOptions {
+            naming_convention: Some(NamingConvention::Detailed(NamingConventionConfig {
+                type_names: Some(NamingCase::Keep),
+                enum_values: Some(NamingCase::ConstantCase),
+                transform_underscore: false,
+            })),
+            ..PluginOptions::serde_default()
+        })
+        .generate();
+
+    // Type names kept as-is
+    assert!(output.contains("export interface Query {"));
+    // Enum values → CONSTANT_CASE
+    assert!(output.contains("'ADMIN_USER'"));
+    assert!(output.contains("'GUEST_USER'"));
+}
+
+#[test]
+fn naming_detailed_type_names_only() {
+    // enum_values defaults to Keep when not specified
+    let output = TestGen::new()
+        .no_base_schema()
+        .schema_str("type Query { ok: Boolean }\nenum UserRole { ADMIN GUEST }")
+        .options(PluginOptions {
+            naming_convention: Some(NamingConvention::Detailed(NamingConventionConfig {
+                type_names: Some(NamingCase::SnakeCase),
+                enum_values: None, // defaults to Keep
+                transform_underscore: false,
+            })),
+            ..PluginOptions::serde_default()
+        })
+        .generate();
+
+    // Type name: snake_case
+    assert!(output.contains("export interface query {"));
+    assert!(output.contains("user_role"));
+    // Enum values: kept as-is
+    assert!(output.contains("'ADMIN'"));
+    assert!(output.contains("'GUEST'"));
+}
+
+// ── casing + field type references ────────────────────────────────
+
+#[test]
+fn naming_transforms_field_type_references() {
+    let output = TestGen::new()
+        .no_base_schema()
+        .schema_str("type Query { user: UserProfile }\ntype UserProfile { name: String! }")
+        .options(PluginOptions {
+            naming_convention: Some(NamingConvention::Simple(NamingCase::SnakeCase)),
+            ..PluginOptions::serde_default()
+        })
+        .generate();
+
+    // Field type references should also be transformed
+    assert!(output.contains("readonly user?: user_profile | null"));
+}
+
+#[test]
+fn naming_transforms_union_member_references() {
+    let output = TestGen::new()
+        .no_base_schema()
+        .schema_str("type Query { ok: Boolean }\ntype Dog { name: String! }\ntype Cat { name: String! }\nunion Pet = Dog | Cat")
+        .options(PluginOptions {
+            naming_convention: Some(NamingConvention::Simple(NamingCase::ConstantCase)),
+            ..PluginOptions::serde_default()
+        })
+        .generate();
+
+    // Union name and members should be transformed
+    assert!(output.contains("PET"));
+    assert!(output.contains("DOG"));
+    assert!(output.contains("CAT"));
+}
+
+// ── casing does NOT transform field names or __typename values ───
+
+#[test]
+fn naming_does_not_transform_field_names() {
+    let output = TestGen::new()
+        .no_base_schema()
+        .schema_str("type Query { ok: Boolean! }\ntype UserProfile { firstName: String! }")
+        .options(PluginOptions {
+            naming_convention: Some(NamingConvention::Simple(NamingCase::ConstantCase)),
+            ..PluginOptions::serde_default()
+        })
+        .generate();
+
+    // Field names stay as-is from schema (not FIRST_NAME)
+    assert!(output.contains("firstName"));
+    // But type names are transformed
+    assert!(output.contains("USER_PROFILE"));
+}
+
+#[test]
+fn naming_does_not_transform_typename_value() {
+    let output = TestGen::new()
+        .no_base_schema()
+        .schema_str("type Query { ok: Boolean! }")
+        .options(PluginOptions {
+            naming_convention: Some(NamingConvention::Simple(NamingCase::SnakeCase)),
+            ..PluginOptions::serde_default()
+        })
+        .generate();
+
+    // Type declaration uses transformed name
+    assert!(output.contains("export interface query {"));
+    // But __typename value preserves the original GraphQL name
+    assert!(output.contains("__typename?: 'Query'"));
+}
+
+// ── casing + enum rendering modes ─────────────────────────────────
+
+#[test]
+fn naming_with_ts_enums() {
+    let output = TestGen::new()
+        .no_base_schema()
+        .schema_str("type Query { ok: Boolean }\nenum UserRole { ADMIN_USER GUEST_USER }")
+        .options(PluginOptions {
+            enums_as_types: Some(false),
+            naming_convention: Some(NamingConvention::Detailed(NamingConventionConfig {
+                type_names: Some(NamingCase::PascalCase),
+                enum_values: Some(NamingCase::CamelCase),
+                transform_underscore: true,
+            })),
+            ..PluginOptions::serde_default()
+        })
+        .generate();
+
+    // TS enum: member names are transformed, string values are original
+    assert!(output.contains("enum UserRole {"));
+    assert!(output.contains("adminUser = 'ADMIN_USER',"));
+    assert!(output.contains("guestUser = 'GUEST_USER',"));
+}
+
+#[test]
+fn naming_with_const_objects() {
+    let output = TestGen::new()
+        .no_base_schema()
+        .schema_str("type Query { ok: Boolean }\nenum UserRole { ADMIN_USER GUEST_USER }")
+        .options(PluginOptions {
+            enums_as_const: true,
+            naming_convention: Some(NamingConvention::Detailed(NamingConventionConfig {
+                type_names: Some(NamingCase::PascalCase),
+                enum_values: Some(NamingCase::CamelCase),
+                transform_underscore: true,
+            })),
+            ..PluginOptions::serde_default()
+        })
+        .generate();
+
+    // const object: keys are transformed, values are original
+    assert!(output.contains("adminUser: 'ADMIN_USER',"));
+    assert!(output.contains("guestUser: 'GUEST_USER',"));
+    assert!(output.contains("as const;"));
+}
+
+#[test]
+fn naming_with_numeric_enums() {
+    let output = TestGen::new()
+        .no_base_schema()
+        .schema_str("type Query { ok: Boolean }\nenum UserRole { ADMIN_USER GUEST_USER }")
+        .options(PluginOptions {
+            enums_as_types: Some(false),
+            numeric_enums: true,
+            naming_convention: Some(NamingConvention::Detailed(NamingConventionConfig {
+                type_names: Some(NamingCase::PascalCase),
+                enum_values: Some(NamingCase::CamelCase),
+                transform_underscore: true,
+            })),
+            ..PluginOptions::serde_default()
+        })
+        .generate();
+
+    // numeric enum: member names are transformed, values are numeric
+    assert!(output.contains("adminUser = 0,"));
+    assert!(output.contains("guestUser = 1,"));
+}
+
+// ── casing + prefix/suffix interaction ────────────────────────────
+
+#[test]
+fn naming_with_types_prefix_applies_after_casing() {
+    let output = TestGen::new()
+        .no_base_schema()
+        .schema_str("type Query { ok: Boolean! }\ntype user_profile { name: String! }")
+        .options(PluginOptions {
+            types_prefix: Some("I".to_string()),
+            naming_convention: Some(NamingConvention::Simple(NamingCase::PascalCase)),
+            ..PluginOptions::serde_default()
+        })
+        .generate();
+
+    // Casing applied first (user_profile → User_Profile), then prefix
+    assert!(output.contains("IQuery"));
+    assert!(output.contains("IUser_Profile"));
+}
+
+#[test]
+fn naming_with_enum_prefix_and_casing() {
+    let output = TestGen::new()
+        .no_base_schema()
+        .schema_str("type Query { ok: Boolean }\nenum user_role { ADMIN GUEST }")
+        .options(PluginOptions {
+            enum_prefix: Some("E".to_string()),
+            naming_convention: Some(NamingConvention::Detailed(NamingConventionConfig {
+                type_names: Some(NamingCase::PascalCase),
+                enum_values: None,
+                transform_underscore: true,
+            })),
+            ..PluginOptions::serde_default()
+        })
+        .generate();
+
+    // Type casing applied to enum name, then enum prefix added
+    assert!(output.contains("EUserRole"));
 }

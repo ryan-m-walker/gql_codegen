@@ -78,6 +78,7 @@ fn run_test_case(path: &std::path::Path) {
             config: Some(options),
             prelude: None,
             documents_only: false,
+            hooks: None,
         },
     );
 

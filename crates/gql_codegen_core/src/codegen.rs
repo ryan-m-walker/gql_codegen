@@ -258,6 +258,7 @@ fn merge_options(base: &PluginOptions, plugin: Option<&PluginOptions>) -> Plugin
         future_proof_unions: merge_field!(future_proof_unions),
 
         // Typename
+        typename_policy: merge_field!(typename_policy),
         skip_typename: merge_field!(skip_typename),
         non_optional_typename: merge_field!(non_optional_typename),
 
@@ -273,7 +274,6 @@ fn merge_options(base: &PluginOptions, plugin: Option<&PluginOptions>) -> Plugin
         graphql_tag: merge_field!(graphql_tag),
 
         // Formatting
-        formatting: merge_field!(formatting),
         naming_convention: merge_field!(naming_convention),
 
         // Internal preset-only flags (always from base, user can't override)
