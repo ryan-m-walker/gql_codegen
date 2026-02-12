@@ -32,6 +32,12 @@ wasm:
 wasm-debug:
     wasm-pack build crates/gql_codegen_wasm --target web --out-dir ../../website/src/lib/wasm --dev
 
+# Watch Rust sources and rebuild WASM on changes
+wasm-watch:
+    watchman-make \
+        -p 'crates/gql_codegen_core/src/**/*.rs' 'crates/gql_codegen_wasm/src/**/*.rs' \
+        -r 'just wasm-debug'
+
 # Start website dev server
 dev:
     cd website && pnpm dev
@@ -69,3 +75,4 @@ clean:
     cargo clean
     rm -rf website/src/lib/wasm
     rm -rf crates/gql_codegen_napi/*.node
+

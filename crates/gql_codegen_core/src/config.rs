@@ -464,10 +464,6 @@ pub enum DeclarationKind {
     AbstractClass,
 }
 
-fn default_true() -> bool {
-    true
-}
-
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum GraphqlTag {

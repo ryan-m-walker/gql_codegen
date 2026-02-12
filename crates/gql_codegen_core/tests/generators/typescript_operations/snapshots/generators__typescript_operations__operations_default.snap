@@ -2,32 +2,32 @@
 source: crates/gql_codegen_core/tests/generators/typescript_operations/mod.rs
 expression: output
 ---
-export interface CreateUser {
-  readonly createUser:  {
+export interface CreateUserMutation {
+  readonly createUser: {
     readonly id: string;
     readonly name: string;
   };
 }
 
-export interface CreateUserVariables {
+export interface CreateUserMutationVariables {
   readonly input: CreateUserInput;
 }
 
-export interface GetUser {
-  readonly user?:  {
+export interface GetUserQuery {
+  readonly user?: {
     readonly id: string;
     readonly name: string;
     readonly email?: string | null;
   };
 }
 
-export interface GetUserVariables {
+export interface GetUserQueryVariables {
   readonly id: string;
 }
 
-export interface GetUsers {
-  readonly users: Array< {
+export interface GetUsersQuery {
+  readonly users: {
     readonly id: string;
     readonly name: string;
-  }>;
+  };
 }

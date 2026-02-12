@@ -3,7 +3,7 @@ use apollo_compiler::ast::OperationDefinition;
 use crate::Result;
 use crate::generators::GeneratorContext;
 use crate::generators::common::helpers::{
-    ScalarDirection, get_export_kw, get_readonly_kw, indent, render_type,
+    ScalarDirection, get_readonly_kw, indent, render_decl_closing, render_decl_opening, render_type,
 };
 
 pub(crate) fn render_variables(
@@ -15,13 +15,11 @@ pub(crate) fn render_variables(
         return Ok(());
     }
 
-    let export = get_export_kw(ctx);
     let readonly = get_readonly_kw(ctx);
     let raw_name = format!("{op_name}Variables");
     let name = ctx.transform_type_name(&raw_name);
 
-    // TODO: declaration type
-    writeln!(ctx.writer, "{export}type {name} = {{")?;
+    render_decl_opening(ctx, &name, None)?;
 
     for var in &operation.variables {
         indent(ctx, 1)?;
@@ -30,8 +28,7 @@ pub(crate) fn render_variables(
         writeln!(ctx.writer, "{readonly}{name}: {var_type};")?;
     }
 
-    // TODO: semi colon not for interface?
-    writeln!(ctx.writer, "}};")?;
+    render_decl_closing(ctx)?;
     writeln!(ctx.writer)?;
 
     Ok(())

@@ -30,6 +30,10 @@ export type Query = {
   search: Array<Scalars['String']['output']>;
 };
 
+export type QuerySearchArgs = {
+  filter: SearchFilter;
+};
+
 export type SearchFilter = {
   query: Scalars['String']['input'];
   limit?: InputMaybe<Scalars['Int']['input']>;

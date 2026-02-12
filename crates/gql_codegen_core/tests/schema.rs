@@ -2,7 +2,7 @@
 
 use std::path::PathBuf;
 
-use gql_codegen_core::{Error, load_schema, resolve_schema_paths};
+use gql_codegen_core::{DiagnosticCategory, load_schema, resolve_schema_paths};
 
 fn fixtures_dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures")
@@ -44,7 +44,9 @@ fn test_load_schema_file_not_found() {
     let result = load_schema(&paths);
 
     assert!(result.is_err());
-    assert!(matches!(result.unwrap_err(), Error::SchemaRead(_, _)));
+    let err = result.unwrap_err();
+    assert!(err.errors().any(|d| d.category == DiagnosticCategory::Schema));
+    assert!(err.errors().any(|d| d.message.contains("Failed to read")));
 }
 
 #[test]

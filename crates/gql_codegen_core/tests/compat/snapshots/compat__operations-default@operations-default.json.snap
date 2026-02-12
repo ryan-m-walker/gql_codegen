@@ -3,32 +3,38 @@ source: crates/gql_codegen_core/tests/compat/main.rs
 expression: output
 input_file: crates/gql_codegen_core/tests/compat/cases/typescript-operations/operations-default.json
 ---
-export interface CreateUser {
-  createUser:  {
-    id: string;
-    name: string;
+export type CreateUserMutation = {
+  __typename?: 'Mutation';
+  createUser: {
+    __typename?: 'User';
+    id: Scalars['ID']['output'];
+    name: Scalars['String']['output'];
   };
-}
+};
 
-export interface CreateUserVariables {
+export type CreateUserMutationVariables = {
   input: CreateUserInput;
-}
+};
 
-export interface GetUser {
-  user?:  {
-    id: string;
-    name: string;
-    email?: string | null;
+export type GetUserQuery = {
+  __typename?: 'Query';
+  user?: {
+    __typename?: 'User';
+    id: Scalars['ID']['output'];
+    name: Scalars['String']['output'];
+    email?: Maybe<Scalars['String']['output']>;
   };
-}
+};
 
-export interface GetUserVariables {
-  id: string;
-}
+export type GetUserQueryVariables = {
+  id: Scalars['ID']['input'];
+};
 
-export interface GetUsers {
-  users: Array< {
-    id: string;
-    name: string;
-  }>;
-}
+export type GetUsersQuery = {
+  __typename?: 'Query';
+  users: {
+    __typename?: 'User';
+    id: Scalars['ID']['output'];
+    name: Scalars['String']['output'];
+  };
+};

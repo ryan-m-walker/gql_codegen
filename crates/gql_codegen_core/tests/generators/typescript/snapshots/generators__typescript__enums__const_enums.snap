@@ -9,7 +9,6 @@ export const enum Color {
 }
 
 export interface Query {
-  readonly __typename?: 'Query';
   readonly _empty?: string | null;
   readonly status?: Status | null;
   readonly color?: Color | null;

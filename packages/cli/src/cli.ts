@@ -1,3 +1,4 @@
+import pc from 'picocolors'
 import { dirname } from 'node:path'
 import { parseArgs } from 'node:util'
 import {
@@ -212,6 +213,7 @@ function handleResult(
 }
 
 export async function run(): Promise<void> {
+    console.log('STARTIN!!!!!!!!!!!')
     // parseArgs returns loosely-typed values — this narrowing is safe because
     // parseArgs only populates values for the options we declared in CLI_OPTIONS
     const { values } = parseArgs({
@@ -223,12 +225,12 @@ export async function run(): Promise<void> {
 
     if (args.help) {
         help()
-        return
+        process.exit(0)
     }
 
     if (args.version) {
         console.log(`sgc ${VERSION}`)
-        return
+        process.exit(0)
     }
 
     try {
@@ -291,7 +293,9 @@ export async function run(): Promise<void> {
         const result = generate(options)
         handleResult(result, args, resolvedConfig)
     } catch (error) {
-        process.stderr.write(formatError(error))
+        const formatted = formatError(error)
+        process.stderr.write(pc.red('error'))
+        process.stderr.write(': ' + formatted)
         process.exitCode = 1
     }
 }

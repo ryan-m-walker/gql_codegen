@@ -31,3 +31,7 @@ export type Query = {
   _empty?: Maybe<Scalars['String']['output']>;
   test?: Maybe<Scalars['String']['output']>;
 };
+
+export type QueryTestArgs = {
+  input: MyInput;
+};

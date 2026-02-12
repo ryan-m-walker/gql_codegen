@@ -1,0 +1,20 @@
+---
+source: crates/gql_codegen_core/tests/generators/typescript_operations/mod.rs
+assertion_line: 85
+expression: output
+---
+export interface SearchQuery {
+  readonly search: ReadonlyArray<
+      | {
+        readonly __typename: 'Book';
+        readonly isbn: string;
+        readonly title: string;
+      }
+      | {
+        readonly __typename: 'Movie';
+        readonly imdbId: string;
+        readonly title: string;
+      }
+      | { __typename?: '%other' }
+  >;
+}

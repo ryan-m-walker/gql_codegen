@@ -1,50 +1,18 @@
 //! Zero-copy document discovery and parsing with parallel processing
 
-use std::fmt;
 use std::path::{Path, PathBuf};
 
 use apollo_compiler::Name;
 use apollo_compiler::ast::{Definition, FragmentDefinition};
-use apollo_compiler::validation::DiagnosticList;
 use globset::{Glob, GlobSetBuilder};
 use indexmap::IndexMap;
 use rayon::prelude::*;
 
 use crate::config::StringOrArray;
-use crate::error::{Error, Result};
+use crate::diagnostic::{Diagnostic, DiagnosticCategory, Diagnostics, Severity};
+use crate::error::Result;
 use crate::extract::{self, ExtractConfig, Extracted};
 use crate::source_cache::SourceCache;
-
-/// Structured warning from document collection (non-fatal)
-#[derive(Debug, Clone)]
-pub enum DocumentWarning {
-    /// Parse errors with full diagnostic info (rendered through our pipeline)
-    ParseErrors(DiagnosticList),
-    DuplicateName {
-        kind: &'static str,
-        name: String,
-    },
-    /// Conflicting or redundant config options
-    ConfigConflict {
-        message: String,
-    },
-}
-
-impl fmt::Display for DocumentWarning {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            DocumentWarning::ParseErrors(diagnostics) => {
-                write!(f, "{} parse error(s)", diagnostics.len())
-            }
-            DocumentWarning::DuplicateName { kind, name } => {
-                write!(f, "Duplicate {kind} '{name}' (skipped)")
-            }
-            DocumentWarning::ConfigConflict { message } => {
-                write!(f, "{message}")
-            }
-        }
-    }
-}
 
 /// A parsed GraphQL operation with metadata (zero-copy text)
 #[derive(Debug, Clone)]
@@ -100,8 +68,8 @@ impl<'a> ParsedFragment<'a> {
 pub struct CollectedDocuments<'a> {
     pub operations: IndexMap<Name, ParsedOperation<'a>>,
     pub fragments: IndexMap<Name, ParsedFragment<'a>>,
-    /// Warnings encountered during collection (non-fatal)
-    pub warnings: Vec<DocumentWarning>,
+    /// Non-fatal diagnostics encountered during collection
+    pub diagnostics: Diagnostics,
 }
 
 /// Load all matching files into the source cache (parallel file reading)
@@ -134,7 +102,11 @@ pub fn load_sources_from_paths(paths: &[PathBuf], cache: &mut SourceCache) -> Re
                 cache.push(path, content);
             }
             Err(e) => {
-                return Err(Error::FileRead(path, e.to_string()));
+                return Err(Diagnostic::error(
+                    DiagnosticCategory::Document,
+                    format!("Failed to read '{}': {}", path.display(), e),
+                )
+                .into());
             }
         }
     }
@@ -160,10 +132,11 @@ pub fn expand_document_globs(patterns: &StringOrArray, base_dir: &Path) -> Resul
 
     for pattern in &pattern_strs {
         if let Some(negated) = pattern.strip_prefix('!') {
-            // Build exclude set for filtering later
-            let glob = Glob::new(negated).map_err(|e| Error::InvalidGlob {
-                pattern: pattern.to_string(),
-                message: e.to_string(),
+            let glob = Glob::new(negated).map_err(|e| {
+                Diagnostics::from(Diagnostic::error(
+                    DiagnosticCategory::Document,
+                    format!("Invalid glob pattern '{}': {}", pattern, e),
+                ))
             })?;
             exclude_builder.add(glob);
             has_excludes = true;
@@ -177,9 +150,11 @@ pub fn expand_document_globs(patterns: &StringOrArray, base_dir: &Path) -> Resul
     }
 
     let exclude_set = if has_excludes {
-        Some(exclude_builder.build().map_err(|e| Error::InvalidGlob {
-            pattern: pattern_strs.join(", "),
-            message: e.to_string(),
+        Some(exclude_builder.build().map_err(|e| {
+            Diagnostics::from(Diagnostic::error(
+                DiagnosticCategory::Document,
+                format!("Invalid glob pattern '{}': {}", pattern_strs.join(", "), e),
+            ))
         })?)
     } else {
         None
@@ -196,9 +171,11 @@ pub fn expand_document_globs(patterns: &StringOrArray, base_dir: &Path) -> Resul
             base_dir.join(pattern).to_string_lossy().to_string()
         };
 
-        let glob_paths = glob::glob(&full_pattern).map_err(|e| Error::InvalidGlob {
-            pattern: pattern.to_string(),
-            message: e.to_string(),
+        let glob_paths = glob::glob(&full_pattern).map_err(|e| {
+            Diagnostics::from(Diagnostic::error(
+                DiagnosticCategory::Document,
+                format!("Invalid glob pattern '{}': {}", pattern, e),
+            ))
         })?;
 
         for entry in glob_paths {
@@ -296,27 +273,27 @@ pub fn collect_documents<'a>(
             } => {
                 for (name, op) in operations {
                     if result.operations.contains_key(&name) {
-                        result.warnings.push(DocumentWarning::DuplicateName {
-                            kind: "operation",
-                            name: name.to_string(),
-                        });
+                        result.diagnostics.push(Diagnostic::warning(
+                            DiagnosticCategory::Document,
+                            format!("Duplicate operation '{}' (skipped)", name),
+                        ));
                     } else {
                         result.operations.insert(name, op);
                     }
                 }
                 for (name, frag) in fragments {
                     if result.fragments.contains_key(&name) {
-                        result.warnings.push(DocumentWarning::DuplicateName {
-                            kind: "fragment",
-                            name: name.to_string(),
-                        });
+                        result.diagnostics.push(Diagnostic::warning(
+                            DiagnosticCategory::Document,
+                            format!("Duplicate fragment '{}' (skipped)", name),
+                        ));
                     } else {
                         result.fragments.insert(name, frag);
                     }
                 }
             }
-            ParseResult::Error(warning) => {
-                result.warnings.push(warning);
+            ParseResult::Warning(diagnostics) => {
+                result.diagnostics.extend(diagnostics);
             }
         }
     }
@@ -329,14 +306,18 @@ enum ParseResult<'a> {
         operations: Vec<(Name, ParsedOperation<'a>)>,
         fragments: Vec<(Name, ParsedFragment<'a>)>,
     },
-    Error(DocumentWarning),
+    Warning(Diagnostics),
 }
 
 fn parse_document<'a>(doc: &ExtractedDoc<'a>) -> ParseResult<'a> {
     let document = match apollo_compiler::ast::Document::parse(doc.text, doc.path) {
         Ok(d) => d,
         Err(e) => {
-            return ParseResult::Error(DocumentWarning::ParseErrors(e.errors));
+            return ParseResult::Warning(Diagnostics::from_apollo(
+                &e.errors,
+                Severity::Warning,
+                DiagnosticCategory::Document,
+            ));
         }
     };
 
@@ -351,7 +332,7 @@ fn parse_document<'a>(doc: &ExtractedDoc<'a>) -> ParseResult<'a> {
                     Some(n) => n.clone(),
                     None => {
                         anon_count += 1;
-                        Name::new(&format!("Anonymous_{anon_count}")).expect("valid name")
+                        Name::new(&format!("Unknown_{anon_count}_")).expect("valid name")
                     }
                 };
 

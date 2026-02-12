@@ -9,7 +9,7 @@ mod scalars;
 mod unions;
 
 use gql_codegen_core::test_utils::TestGen;
-use gql_codegen_core::{Error, GenerateResult, PluginOptions};
+use gql_codegen_core::{Diagnostics, GenerateResult, PluginOptions};
 
 /// Helper to generate TypeScript output from schema files with given options.
 ///
@@ -26,7 +26,7 @@ pub fn generate_with_options(schema_files: &[&str], options: PluginOptions) -> S
 pub fn try_generate_with_options(
     schema_files: &[&str],
     options: PluginOptions,
-) -> Result<GenerateResult, Error> {
+) -> Result<GenerateResult, Diagnostics> {
     let mut builder = TestGen::new();
     for file in schema_files {
         builder = builder.schema(file);

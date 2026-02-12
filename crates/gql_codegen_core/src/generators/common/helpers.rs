@@ -2,11 +2,12 @@ use std::borrow::Cow;
 
 use apollo_compiler::Name;
 use apollo_compiler::ast::{FieldDefinition, InputValueDefinition, Type};
-use apollo_compiler::schema::Component;
+use apollo_compiler::collections::IndexSet;
+use apollo_compiler::schema::{Component, ComponentName};
 
-use crate::Result;
 use crate::config::ScalarConfig;
 use crate::generators::GeneratorContext;
+use crate::{DeclarationKind, Result};
 
 pub(crate) fn indent(ctx: &mut GeneratorContext, depth: usize) -> Result<()> {
     let indent = "  ".repeat(depth);
@@ -171,4 +172,82 @@ pub(crate) fn render_field_type(
     }
 
     Cow::Owned(ctx.transform_type_name(name_str).into_owned())
+}
+
+/// TODO: make this less strict, allowing strings which we parse or fallback to default
+pub(crate) fn get_decl_kind_kw(ctx: &GeneratorContext) -> &'static str {
+    match ctx.options.declaration_kind {
+        Some(DeclarationKind::Type) | None => "type",
+        Some(DeclarationKind::Interface) => "interface",
+        Some(DeclarationKind::Class) => "class",
+        Some(DeclarationKind::AbstractClass) => "abstract class",
+    }
+}
+
+/// Renders the declaration prefix: `{export}{decl_kind} {name}{separator}`
+/// without the opening brace. This allows callers to compose differently:
+/// - Schema types: prefix + `{` (via render_decl_opening)
+/// - Operations: prefix + inline object from render_normalized
+pub(crate) fn render_decl_prefix(
+    ctx: &mut GeneratorContext,
+    name: &str,
+    implements_interfaces: Option<&IndexSet<ComponentName>>,
+) -> Result<()> {
+    let export = get_export_kw(ctx);
+    let decl_kind = get_decl_kind_kw(ctx);
+
+    let separator = match ctx.options.declaration_kind {
+        Some(DeclarationKind::Type) | None => " = ",
+        _ => " ",
+    };
+
+    write!(ctx.writer, "{export}{decl_kind} {name}{separator}")?;
+
+    if let Some(interfaces) = implements_interfaces {
+        if !interfaces.is_empty() {
+            match ctx.options.declaration_kind {
+                Some(DeclarationKind::Type) | None => {
+                    for interface in interfaces {
+                        write!(ctx.writer, "{interface}")?;
+                        write!(ctx.writer, " & ")?;
+                    }
+                }
+                _ => {
+                    write!(ctx.writer, "implements ")?;
+
+                    // TODO: transform interface name
+                    for (i, interface) in interfaces.iter().enumerate() {
+                        write!(ctx.writer, "{interface}")?;
+                        if i < interfaces.len() - 1 {
+                            write!(ctx.writer, ", ")?;
+                        }
+                    }
+
+                    write!(ctx.writer, " ")?;
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
+pub(crate) fn render_decl_opening(
+    ctx: &mut GeneratorContext,
+    name: &str,
+    implements_interfaces: Option<&IndexSet<ComponentName>>,
+) -> Result<()> {
+    render_decl_prefix(ctx, name, implements_interfaces)?;
+    writeln!(ctx.writer, "{{")?;
+    Ok(())
+}
+
+pub(crate) fn render_decl_closing(ctx: &mut GeneratorContext) -> Result<()> {
+    let semi = match ctx.options.declaration_kind {
+        Some(DeclarationKind::Type) | None => ";",
+        _ => "",
+    };
+
+    writeln!(ctx.writer, "}}{semi}")?;
+    Ok(())
 }

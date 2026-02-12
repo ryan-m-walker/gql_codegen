@@ -19,6 +19,5 @@ export interface Scalars {
 }
 
 export interface Query {
-  readonly __typename?: 'Query';
   readonly _empty?: Maybe<Scalars['String']['output']>;
 }

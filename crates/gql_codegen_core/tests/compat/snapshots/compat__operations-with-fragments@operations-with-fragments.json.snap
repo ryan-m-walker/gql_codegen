@@ -3,31 +3,36 @@ source: crates/gql_codegen_core/tests/compat/main.rs
 expression: output
 input_file: crates/gql_codegen_core/tests/compat/cases/typescript-operations/operations-with-fragments.json
 ---
-export interface GetUserWithFragments {
-  user?:  {
-    id: string;
-    name: string;
-    email?: string | null;
-    posts: Array< {
-      id: string;
-      title: string;
-      body: string;
-    }>;
+export type GetUserWithFragmentsQuery = {
+  __typename?: 'Query';
+  user?: {
+    __typename?: 'User';
+    id: Scalars['ID']['output'];
+    name: Scalars['String']['output'];
+    email?: Maybe<Scalars['String']['output']>;
+    posts: {
+      __typename?: 'Post';
+      id: Scalars['ID']['output'];
+      title: Scalars['String']['output'];
+      body: Scalars['String']['output'];
+    };
   };
-}
+};
 
-export interface GetUserWithFragmentsVariables {
-  id: string;
-}
+export type GetUserWithFragmentsQueryVariables = {
+  id: Scalars['ID']['input'];
+};
 
-export interface PostFields {
-  id: string;
-  title: string;
-  body: string;
-}
+export type PostFieldsFragment = {
+  __typename?: 'Post';
+  id: Scalars['ID']['output'];
+  title: Scalars['String']['output'];
+  body: Scalars['String']['output'];
+};
 
-export interface UserFields {
-  id: string;
-  name: string;
-  email?: string | null;
-}
+export type UserFieldsFragment = {
+  __typename?: 'User';
+  id: Scalars['ID']['output'];
+  name: Scalars['String']['output'];
+  email?: Maybe<Scalars['String']['output']>;
+};

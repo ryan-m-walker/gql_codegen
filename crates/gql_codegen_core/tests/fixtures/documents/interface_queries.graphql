@@ -1,0 +1,11 @@
+query GetNode {
+  node {
+    id
+    ... on Article {
+      title
+    }
+    ... on Comment {
+      text
+    }
+  }
+}

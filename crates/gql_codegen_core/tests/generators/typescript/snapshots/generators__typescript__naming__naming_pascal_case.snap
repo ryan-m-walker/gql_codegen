@@ -8,25 +8,22 @@ export interface CreateUserInput {
 }
 
 export interface Http_Status {
-  readonly __typename?: 'HTTP_STATUS';
   readonly statusCode: number;
 }
 
 export interface Query {
-  readonly __typename?: 'Query';
   readonly _empty?: string | null;
   readonly userProfile?: UserProfile | null;
   readonly httpStatus?: Http_Status | null;
 }
 
 export interface UserProfile {
-  readonly __typename?: 'UserProfile';
   readonly firstName: string;
   readonly lastName: string;
 }
 
-export enum User_Role {
-  Admin_User = 'ADMIN_USER',
-  Regular_User = 'regular_user',
-  GuestUser = 'GuestUser',
-}
+export type User_Role =
+  | 'Admin_User'
+  | 'Regular_User'
+  | 'GuestUser'
+  | '%future added value';

@@ -1,11 +1,14 @@
 use apollo_compiler::Name;
 use apollo_compiler::ast::{Selection, Type};
+use apollo_compiler::schema::ExtendedType;
 use indexmap::IndexMap;
 
 use crate::Result;
 use crate::config::TypenamePolicy;
 use crate::generators::GeneratorContext;
-use crate::generators::common::helpers::{ScalarDirection, get_readonly_kw, indent, render_type};
+use crate::generators::common::helpers::{
+    ScalarDirection, get_array_type, get_readonly_kw, indent, render_decl_closing, render_type,
+};
 use crate::generators::typescript_operations::typename::render_op_typename;
 
 #[derive(Debug, Clone)]
@@ -18,28 +21,40 @@ pub(crate) struct NormalizedSelection {
     pub parent_type: Name,
     /// Whether @include or @skip directives are present (makes field optional)
     pub has_conditional: bool,
-    /// Whether this __typename was explicitly selected in the query
-    pub explicitly_selected: bool,
     /// Merged sub-selections for nested object types
     pub children: NormalizedSelectionSet,
 }
 
 /// Accumulates and deduplicates fields within a single selection set level.
 /// Uses IndexMap to preserve insertion order (deterministic output).
+///
+/// When a field returns a union or interface type, inline fragments with
+/// type conditions populate `variants` instead of merging into `fields`.
+/// Shared fields (selected outside any inline fragment) stay in `fields`.
 #[derive(Debug, Clone)]
 pub(crate) struct NormalizedSelectionSet {
     pub fields: IndexMap<String, NormalizedSelection>,
+    /// Discriminated union variants keyed by concrete type name.
+    /// Populated when parent is a union/interface with inline fragments.
+    pub variants: IndexMap<Name, NormalizedSelectionSet>,
 }
 
 impl NormalizedSelectionSet {
     pub fn new() -> Self {
         Self {
             fields: IndexMap::new(),
+            variants: IndexMap::new(),
         }
     }
 }
 
-// TODO: null after selection set
+/// Check if a type name corresponds to a union or interface in the schema.
+fn is_abstract_type(ctx: &GeneratorContext, type_name: &Name) -> bool {
+    matches!(
+        ctx.schema.types.get(type_name.as_str()),
+        Some(ExtendedType::Union(_) | ExtendedType::Interface(_))
+    )
+}
 
 /// Pass 1: Walk the AST selection set and build a normalized, deduplicated tree.
 ///
@@ -72,7 +87,6 @@ pub(crate) fn collect_selection_set(
                             field_type: Type::NonNullNamed(field.name.clone()),
                             parent_type: parent_type.clone(),
                             has_conditional: false,
-                            explicitly_selected: true,
                             children: NormalizedSelectionSet::new(),
                         });
 
@@ -95,7 +109,6 @@ pub(crate) fn collect_selection_set(
                         field_type: type_field.ty.clone(),
                         parent_type: parent_type.clone(),
                         has_conditional,
-                        explicitly_selected: false,
                         children: NormalizedSelectionSet::new(),
                     });
 
@@ -117,18 +130,48 @@ pub(crate) fn collect_selection_set(
 
             Selection::FragmentSpread(spread) => {
                 if let Some(fragment) = ctx.fragments.get(&spread.fragment_name) {
-                    collect_selection_set(
-                        ctx,
-                        &fragment.definition.selection_set,
-                        &fragment.definition.type_condition,
-                        normalized,
-                    )?;
+                    let frag_type = &fragment.definition.type_condition;
+
+                    if frag_type != parent_type && is_abstract_type(ctx, parent_type) {
+                        let variant = normalized
+                            .variants
+                            .entry(frag_type.clone())
+                            .or_insert_with(NormalizedSelectionSet::new);
+
+                        collect_selection_set(
+                            ctx,
+                            &fragment.definition.selection_set,
+                            frag_type,
+                            variant,
+                        )?;
+                    } else {
+                        collect_selection_set(
+                            ctx,
+                            &fragment.definition.selection_set,
+                            &fragment.definition.type_condition,
+                            normalized,
+                        )?;
+                    }
                 }
             }
 
             Selection::InlineFragment(inline) => {
                 let type_name = inline.type_condition.as_ref().unwrap_or(parent_type);
-                collect_selection_set(ctx, &inline.selection_set, type_name, normalized)?;
+
+                // No type condition or same as parent → merge flat (e.g. directive grouping)
+                if inline.type_condition.is_none() || type_name == parent_type {
+                    collect_selection_set(ctx, &inline.selection_set, type_name, normalized)?;
+                } else if is_abstract_type(ctx, parent_type) {
+                    let variant = normalized
+                        .variants
+                        .entry(type_name.clone())
+                        .or_insert_with(NormalizedSelectionSet::new);
+
+                    collect_selection_set(ctx, &inline.selection_set, type_name, variant)?;
+                } else {
+                    // Not abstract — merge directly (current behavior)
+                    collect_selection_set(ctx, &inline.selection_set, type_name, normalized)?;
+                }
             }
         }
     }
@@ -144,10 +187,29 @@ pub(crate) fn collect_selection_set(
                 field_type: Type::NonNullNamed(typename_name),
                 parent_type: parent_type.clone(),
                 has_conditional: false,
-                explicitly_selected: false,
                 children: NormalizedSelectionSet::new(),
             },
         );
+    }
+
+    // Inject __typename into each variant too (Always mode)
+    if typename_policy == TypenamePolicy::Always {
+        for (variant_type, variant_fields) in &mut normalized.variants {
+            if !variant_fields.fields.contains_key("__typename") {
+                let typename_name = Name::new("__typename").unwrap();
+                variant_fields.fields.shift_insert(
+                    0,
+                    "__typename".to_string(),
+                    NormalizedSelection {
+                        field_name: typename_name.clone(),
+                        field_type: Type::NonNullNamed(typename_name),
+                        parent_type: variant_type.clone(),
+                        has_conditional: false,
+                        children: NormalizedSelectionSet::new(),
+                    },
+                );
+            }
+        }
     }
 
     Ok(())
@@ -161,10 +223,6 @@ pub(crate) fn render_normalized(
 ) -> Result<()> {
     writeln!(ctx.writer, "{{")?;
 
-    let readonly = get_readonly_kw(ctx);
-    let dir = ScalarDirection::Output;
-    let avoid_optionals = ctx.options.avoid_optionals.normalize();
-
     for (response_name, field) in &normalized.fields {
         // __typename: emit string literal type based on policy
         if field.field_name == "__typename" {
@@ -172,30 +230,179 @@ pub(crate) fn render_normalized(
             continue;
         }
 
-        indent(ctx, depth + 1)?;
-
-        // Respect avoid_optionals.field — when true, output fields never get `?`
-        let is_nullable = !field.field_type.is_non_null() || field.has_conditional;
-        let optional = if is_nullable && !avoid_optionals.field {
-            "?"
-        } else {
-            ""
-        };
-
-        write!(ctx.writer, "{readonly}{response_name}{optional}: ")?;
-
-        if field.children.fields.is_empty() {
-            // Leaf field — render the TypeScript type directly
-            let ts_type = render_type(ctx, &field.field_type, dir);
-            writeln!(ctx.writer, "{ts_type};")?;
-        } else {
-            // Nested object — recurse into children
-            render_normalized(ctx, &field.children, depth + 1)?;
-        }
+        render_field(ctx, response_name, field, depth + 1)?;
     }
 
     indent(ctx, depth)?;
-    writeln!(ctx.writer, "}};")?;
+
+    if depth == 0 {
+        render_decl_closing(ctx)?;
+    } else {
+        writeln!(ctx.writer, "}};")?;
+    }
+
+    Ok(())
+}
+
+/// Render a single field entry: indentation, name, optionality, and value.
+/// Shared between `render_normalized` and `render_variants`.
+fn render_field(
+    ctx: &mut GeneratorContext,
+    response_name: &str,
+    field: &NormalizedSelection,
+    depth: usize,
+) -> Result<()> {
+    let readonly = get_readonly_kw(ctx);
+    let avoid_optionals = ctx.options.avoid_optionals.normalize();
+
+    indent(ctx, depth)?;
+
+    let is_nullable = !field.field_type.is_non_null() || field.has_conditional;
+
+    let optional = if is_nullable && !avoid_optionals.field {
+        "?"
+    } else {
+        ""
+    };
+
+    write!(ctx.writer, "{readonly}{response_name}{optional}: ")?;
+
+    if !field.children.variants.is_empty() {
+        return render_variant_field(ctx, &field.children, &field.field_type, depth);
+    }
+
+    if field.children.fields.is_empty() {
+        let ts_type = render_type(ctx, &field.field_type, ScalarDirection::Output);
+        writeln!(ctx.writer, "{ts_type};")?;
+        return Ok(());
+    }
+
+    render_normalized(ctx, &field.children, depth)
+}
+
+/// Render a field whose children contain union/interface variants.
+/// Handles Array/null wrapping around the inline discriminated union.
+fn render_variant_field(
+    ctx: &mut GeneratorContext,
+    children: &NormalizedSelectionSet,
+    field_type: &Type,
+    depth: usize,
+) -> Result<()> {
+    let nullable = !field_type.is_non_null();
+
+    // Unwrap list layers inline (e.g. `ReadonlyArray<\n`)
+    let list_depth = write_list_open(ctx, field_type)?;
+    let variant_depth = depth + list_depth + 1;
+
+    if list_depth == 0 {
+        writeln!(ctx.writer)?;
+    }
+
+    // Render the union variants
+    render_variants(ctx, children, variant_depth)?;
+
+    if list_depth > 0 {
+        // Nullable inner type gets | null before closing >
+        if nullable {
+            indent(ctx, variant_depth)?;
+            writeln!(ctx.writer, "| null")?;
+        }
+
+        // Close list layers: >; or > | null
+        for i in (0..list_depth).rev() {
+            indent(ctx, depth + i)?;
+            write!(ctx.writer, ">")?;
+            if !is_non_null_at_depth(field_type, i) {
+                write!(ctx.writer, " | null")?;
+            }
+            if i == 0 {
+                writeln!(ctx.writer, ";")?;
+            } else {
+                writeln!(ctx.writer)?;
+            }
+        }
+    } else if nullable {
+        indent(ctx, variant_depth)?;
+        writeln!(ctx.writer, "| null;")?;
+    } else {
+        indent(ctx, depth)?;
+        writeln!(ctx.writer, ";")?;
+    }
+
+    Ok(())
+}
+
+/// Write `Array<` or `ReadonlyArray<` for each list layer, inline after `: `.
+/// Returns the number of list layers written.
+fn write_list_open(ctx: &mut GeneratorContext, ty: &Type) -> Result<usize> {
+    match ty {
+        Type::NonNullList(inner) | Type::List(inner) => {
+            let array_type = get_array_type(ctx);
+            writeln!(ctx.writer, "{array_type}<")?;
+            let layers = write_list_open(ctx, inner)?;
+            Ok(layers + 1)
+        }
+        _ => Ok(0),
+    }
+}
+
+/// Check if the type at a given list nesting depth is non-null.
+fn is_non_null_at_depth(ty: &Type, target_depth: usize) -> bool {
+    if target_depth == 0 {
+        return ty.is_non_null();
+    }
+    match ty {
+        Type::NonNullList(inner) | Type::List(inner) => {
+            is_non_null_at_depth(inner, target_depth - 1)
+        }
+        _ => ty.is_non_null(),
+    }
+}
+
+/// Render the discriminated union variants.
+///
+/// Output format (for each variant):
+/// ```text
+///   | { __typename?: 'Book'; shared_field: T; book_field: U }
+///   | { __typename?: 'Movie'; shared_field: T; movie_field: V }
+/// ```
+fn render_variants(
+    ctx: &mut GeneratorContext,
+    selection_set: &NormalizedSelectionSet,
+    depth: usize,
+) -> Result<()> {
+    for (type_name, variant) in &selection_set.variants {
+        indent(ctx, depth)?;
+        writeln!(ctx.writer, "| {{")?;
+
+        // __typename for this variant
+        render_op_typename(ctx, "__typename", type_name, depth + 1)?;
+
+        // Shared fields (from parent's fields, skip __typename — already rendered above)
+        for (name, field) in &selection_set.fields {
+            if field.field_name == "__typename" {
+                continue;
+            }
+            render_field(ctx, name, field, depth + 1)?;
+        }
+
+        // Variant-specific fields
+        for (name, field) in &variant.fields {
+            if field.field_name == "__typename" {
+                continue;
+            }
+            render_field(ctx, name, field, depth + 1)?;
+        }
+
+        indent(ctx, depth)?;
+        writeln!(ctx.writer, "}}")?;
+    }
+
+    if ctx.options.future_proof_unions {
+        indent(ctx, depth)?;
+        writeln!(ctx.writer, "| {{ __typename?: '%other' }}")?;
+        // TODO: semicolon here if non-nullable
+    }
 
     Ok(())
 }

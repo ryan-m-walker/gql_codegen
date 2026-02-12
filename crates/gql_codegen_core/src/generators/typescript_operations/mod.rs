@@ -6,10 +6,7 @@ use crate::generators::typescript_operations::fragment::render_fragment;
 use crate::generators::typescript_operations::operation::render_operation;
 use crate::{ParsedFragment, Result};
 
-mod field;
 mod fragment;
-mod fragment_spread;
-mod inline_fragment;
 mod operation;
 mod selection;
 mod typename;
@@ -21,6 +18,27 @@ enum GenerateItem<'a> {
     Operation(&'a Name, &'a OperationDefinition),
 }
 
+/// Generate TypeScript types for GraphQL operations
+///
+/// **Example**
+/// ``` graphql
+/// query Users {
+///   users {
+///     id
+///     name
+///   }
+/// }
+/// ```
+///
+/// ```ts
+/// type UsersQuery = {
+///   users: Array<{
+///     __typename: 'User';
+///     id: string;
+///     name: string;
+///   }>;
+/// }
+/// ```
 pub fn generate_typescript_operations(ctx: &mut GeneratorContext) -> Result<()> {
     let mut items: Vec<GenerateItem> =
         Vec::with_capacity(ctx.fragments.len() + ctx.operations.len());
@@ -28,10 +46,12 @@ pub fn generate_typescript_operations(ctx: &mut GeneratorContext) -> Result<()> 
     for (name, fragment) in ctx.fragments.iter() {
         items.push(GenerateItem::Fragment(name, fragment));
     }
+
     for (name, operation) in ctx.operations.iter() {
         items.push(GenerateItem::Operation(name, &operation.definition));
     }
 
+    // Sort for deterministic output
     items.sort_by_key(|item| match item {
         GenerateItem::Fragment(name, _) => name.as_str(),
         GenerateItem::Operation(name, _) => name.as_str(),

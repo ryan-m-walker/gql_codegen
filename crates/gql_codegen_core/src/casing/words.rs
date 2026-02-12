@@ -23,6 +23,7 @@ pub(crate) fn split_into_words(s: &str) -> Vec<Word> {
                     text: current,
                     preceded_by_underscore,
                 });
+
                 current = String::new();
             }
             preceded_by_underscore = true;
@@ -33,6 +34,7 @@ pub(crate) fn split_into_words(s: &str) -> Vec<Word> {
                     text: current,
                     preceded_by_underscore,
                 });
+
                 current = String::new();
                 preceded_by_underscore = false;
             }

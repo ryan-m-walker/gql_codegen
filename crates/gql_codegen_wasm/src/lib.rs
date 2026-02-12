@@ -5,7 +5,7 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-use gql_codegen_core::diagnostic::{render_error_string, render_warning_string};
+use gql_codegen_core::diagnostic::{render_diagnostic_string, render_diagnostics_string};
 use gql_codegen_core::{
     CollectedDocuments, ExtractConfig, GenerateInput, OutputConfig, PluginConfig, PluginOptions,
     Preset, SourceCache, StringOrArray, collect_documents, config_json_schema, generate_from_input,
@@ -118,7 +118,7 @@ fn generate_internal(
         Err(e) => {
             return GenerateResult {
                 output: String::new(),
-                error: Some(render_error_string(&e, MAX_DIAG)),
+                error: Some(render_diagnostics_string(&e, MAX_DIAG)),
                 warnings: vec![],
             };
         }
@@ -136,11 +136,11 @@ fn generate_internal(
     let extract_config = ExtractConfig::default();
     let documents: CollectedDocuments = collect_documents(&source_cache, &extract_config);
 
-    // Collect warnings from document parsing (rendered through our diagnostic pipeline)
-    let warnings: Vec<String> = documents
-        .warnings
-        .iter()
-        .map(|w| render_warning_string(w, MAX_DIAG))
+    // Collect warnings from document parsing
+    let doc_warnings: Vec<String> = documents
+        .diagnostics
+        .warnings()
+        .map(|d| render_diagnostic_string(d))
         .collect();
 
     // Extract preset and build generates config from wasm_config or use defaults
@@ -194,12 +194,12 @@ fn generate_internal(
     match generate_from_input(&input) {
         Ok(result) => {
             // Combine document warnings with generation warnings
-            let mut all_warnings = warnings;
+            let mut all_warnings = doc_warnings;
             all_warnings.extend(
                 result
-                    .warnings
-                    .iter()
-                    .map(|w| render_warning_string(w, MAX_DIAG)),
+                    .diagnostics
+                    .warnings()
+                    .map(|d| render_diagnostic_string(d)),
             );
 
             // Return the first (and only) generated file's content
@@ -218,8 +218,8 @@ fn generate_internal(
         }
         Err(e) => GenerateResult {
             output: String::new(),
-            error: Some(render_error_string(&e, MAX_DIAG)),
-            warnings,
+            error: Some(render_diagnostics_string(&e, MAX_DIAG)),
+            warnings: doc_warnings,
         },
     }
 }
@@ -261,8 +261,8 @@ mod tests {
             "Expected interface GetUser in output"
         );
         assert!(
-            result.output.contains("GetUserVariables"),
-            "Expected GetUserVariables in output"
+            result.output.contains("GetUserQueryVariables"),
+            "Expected GetUserQueryVariables in output"
         );
     }
 

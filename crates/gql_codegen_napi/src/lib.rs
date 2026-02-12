@@ -7,6 +7,9 @@ use napi_derive::napi;
 use std::path::PathBuf;
 
 use gql_codegen_core::cache::{Cache, FsCache, NoCache};
+use gql_codegen_core::diagnostic::{
+    self, Diagnostic, DiagnosticCategory, DiagnosticLocation, Diagnostics,
+};
 use gql_codegen_core::writer::{write_outputs, FsWriter};
 use gql_codegen_core::{CodegenConfig, GenerateCachedResult};
 
@@ -48,21 +51,22 @@ pub fn generate(options: GenerateOptions) -> Result<GenerateResult> {
         gql_codegen_core::timing::enable_timing();
     }
 
-    let max_diag = options.max_diagnostics.unwrap_or(
-        gql_codegen_core::diagnostic::DEFAULT_MAX_DIAGNOSTICS as u32,
-    ) as usize;
+    let max_diag = options
+        .max_diagnostics
+        .unwrap_or(diagnostic::DEFAULT_MAX_DIAGNOSTICS as u32) as usize;
 
     // Parse config from JSON — render structured error for parse failures
     let config: CodegenConfig = serde_json::from_str(&options.config_json).map_err(|e| {
-        let config_err = gql_codegen_core::ConfigError {
-            message: e.to_string(),
-            file: std::path::PathBuf::from("<config>"),
-            line: e.line(),
-            column: e.column(),
-            source_text: options.config_json.clone(),
-        };
-        let core_err = gql_codegen_core::Error::Config(config_err);
-        Error::from_reason(gql_codegen_core::diagnostic::render_error_string(&core_err, max_diag))
+        let d = Diagnostic::error(DiagnosticCategory::Config, e.to_string())
+            .with_location(DiagnosticLocation {
+                file: PathBuf::from("<config>"),
+                line: e.line(),
+                column: e.column(),
+                length: None,
+            })
+            .with_inline_source(options.config_json.clone());
+        let ds = Diagnostics::from(d);
+        Error::from_reason(diagnostic::render_diagnostics_string(&ds, max_diag))
     })?;
 
     // Set up cache
@@ -80,7 +84,7 @@ pub fn generate(options: GenerateOptions) -> Result<GenerateResult> {
 
     // Run generation — render structured diagnostics on error
     let result = gql_codegen_core::generate_cached(&config, cache.as_mut()).map_err(|e| {
-        Error::from_reason(gql_codegen_core::diagnostic::render_error_string(&e, max_diag))
+        Error::from_reason(diagnostic::render_diagnostics_string(&e, max_diag))
     })?;
 
     // Convert to NAPI result
@@ -101,9 +105,9 @@ pub fn generate(options: GenerateOptions) -> Result<GenerateResult> {
                 })
                 .collect(),
             warnings: gen_result
-                .warnings
-                .iter()
-                .map(|w| gql_codegen_core::diagnostic::render_warning_string(w, max_diag))
+                .diagnostics
+                .warnings()
+                .map(|d| diagnostic::render_diagnostic_string(d))
                 .collect(),
         }),
     }
@@ -143,8 +147,16 @@ pub fn write_files(files: Vec<GeneratedFile>) -> WriteFilesResult {
     let result = write_outputs(&core_files, &FsWriter::new());
 
     WriteFilesResult {
-        written: result.written.into_iter().map(|p| p.display().to_string()).collect(),
-        skipped: result.skipped.into_iter().map(|p| p.display().to_string()).collect(),
+        written: result
+            .written
+            .into_iter()
+            .map(|p| p.display().to_string())
+            .collect(),
+        skipped: result
+            .skipped
+            .into_iter()
+            .map(|p| p.display().to_string())
+            .collect(),
         errors: result
             .errors
             .into_iter()

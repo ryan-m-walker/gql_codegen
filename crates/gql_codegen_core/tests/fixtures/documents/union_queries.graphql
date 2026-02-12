@@ -1,0 +1,12 @@
+query Search {
+  search {
+    ... on Book {
+      isbn
+      title
+    }
+    ... on Movie {
+      imdbId
+      title
+    }
+  }
+}

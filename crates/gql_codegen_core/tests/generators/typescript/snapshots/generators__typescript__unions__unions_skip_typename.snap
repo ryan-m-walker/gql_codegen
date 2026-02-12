@@ -17,4 +17,4 @@ export interface Query {
   readonly search: ReadonlyArray<SearchResult>;
 }
 
-export type SearchResult = Book | Movie;
+export type SearchResult = Book | Movie | { __typename?: '%other' };

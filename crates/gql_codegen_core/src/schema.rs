@@ -5,26 +5,33 @@ use std::path::{Path, PathBuf};
 use apollo_compiler::Schema;
 use apollo_compiler::validation::Valid;
 
-use crate::{Error, Result};
+use crate::diagnostic::{Diagnostic, DiagnosticCategory, Diagnostics, Severity};
+use crate::error::Result;
 
 /// Load and validate a GraphQL schema from one or more file paths.
 pub fn load_schema(paths: &[PathBuf]) -> Result<Valid<Schema>> {
     let mut builder = Schema::builder();
 
     for path in paths {
-        let content = std::fs::read_to_string(path)
-            .map_err(|e| Error::SchemaRead(path.clone(), e.to_string()))?;
+        let content = std::fs::read_to_string(path).map_err(|e| {
+            Diagnostics::from(
+                Diagnostic::error(
+                    DiagnosticCategory::Schema,
+                    format!("Failed to read schema '{}': {}", path.display(), e),
+                ),
+            )
+        })?;
 
         builder = builder.parse(content, path);
     }
 
     let schema = builder
         .build()
-        .map_err(|e| Error::SchemaParse(e.errors))?;
+        .map_err(|e| Diagnostics::from_apollo(&e.errors, Severity::Error, DiagnosticCategory::Schema))?;
 
     schema
         .validate()
-        .map_err(|e| Error::SchemaValidation(e.errors))
+        .map_err(|e| Diagnostics::from_apollo(&e.errors, Severity::Error, DiagnosticCategory::Schema))
 }
 
 /// Load and validate a GraphQL schema from pre-loaded content.
@@ -40,11 +47,11 @@ pub fn load_schema_from_contents(files: &[(PathBuf, String)]) -> Result<Valid<Sc
 
     let schema = builder
         .build()
-        .map_err(|e| Error::SchemaParse(e.errors))?;
+        .map_err(|e| Diagnostics::from_apollo(&e.errors, Severity::Error, DiagnosticCategory::Schema))?;
 
     schema
         .validate()
-        .map_err(|e| Error::SchemaValidation(e.errors))
+        .map_err(|e| Diagnostics::from_apollo(&e.errors, Severity::Error, DiagnosticCategory::Schema))
 }
 
 /// Helper to resolve schema paths from config (convenience for simple cases)

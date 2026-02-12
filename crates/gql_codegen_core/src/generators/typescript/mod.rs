@@ -59,6 +59,7 @@ pub fn generate_typescript(ctx: &mut GeneratorContext) -> Result<()> {
         }
 
         let Some(ty) = &ctx.schema.types.get(name) else {
+            // TODO: warn?
             continue;
         };
 

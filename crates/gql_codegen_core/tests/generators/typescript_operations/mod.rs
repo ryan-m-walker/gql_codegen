@@ -76,6 +76,26 @@ fn test_operations_with_fragments() {
 }
 
 #[test]
+fn test_operations_union() {
+    let output = generate_operations(
+        &["schemas/basic.graphql", "schemas/union.graphql"],
+        &["documents/union_queries.graphql"],
+        PluginOptions::default(),
+    );
+    insta::assert_snapshot!(output);
+}
+
+#[test]
+fn test_operations_interface() {
+    let output = generate_operations(
+        &["schemas/basic.graphql", "schemas/interface.graphql"],
+        &["documents/interface_queries.graphql"],
+        PluginOptions::default(),
+    );
+    insta::assert_snapshot!(output);
+}
+
+#[test]
 fn test_operations_immutable() {
     let output = generate_operations(
         &["schemas/basic.graphql"],

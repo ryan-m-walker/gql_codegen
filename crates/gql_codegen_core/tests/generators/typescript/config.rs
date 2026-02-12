@@ -9,7 +9,7 @@ use std::collections::BTreeMap;
 use gql_codegen_core::test_utils::TestGen;
 use gql_codegen_core::{
     DeclarationKind, NamingCase, NamingConvention, NamingConventionConfig, PluginOptions, Preset,
-    ScalarConfig,
+    ScalarConfig, TypenamePolicy,
 };
 
 // ── numeric_enums ──────────────────────────────────────────────────
@@ -26,13 +26,12 @@ fn numeric_enums() {
         })
         .generate();
 
-    // SGC preset: interface decl + readonly + immutable
+    // SGC preset: interface decl + readonly + immutable + AsSelected typename
     // User overrides: TS enums with numeric values
     assert_eq!(
         output,
         "\
 export interface Query {
-  readonly __typename?: 'Query';
   readonly ok?: boolean | null;
 }
 
@@ -84,7 +83,6 @@ fn declaration_kind_type_alias() {
         output,
         "\
 export type Query = {
-  readonly __typename?: 'Query';
   readonly ok: boolean;
 };
 
@@ -108,7 +106,6 @@ fn declaration_kind_class() {
         output,
         "\
 export class Query {
-  readonly __typename?: 'Query';
   readonly ok: boolean;
 }
 
@@ -281,6 +278,7 @@ fn non_optional_typename() {
         .schema_str("type Query { ok: Boolean! }")
         .options(PluginOptions {
             non_optional_typename: true,
+            typename_policy: Some(TypenamePolicy::Always),
             ..PluginOptions::serde_default()
         })
         .generate();
@@ -295,9 +293,13 @@ fn non_optional_typename_default_is_optional() {
     let output = TestGen::new()
         .no_base_schema()
         .schema_str("type Query { ok: Boolean! }")
-        .options(PluginOptions::default())
+        .options(PluginOptions {
+            typename_policy: Some(TypenamePolicy::Always),
+            ..PluginOptions::serde_default()
+        })
         .generate();
 
+    // With Always policy, __typename is emitted and optional by default
     assert!(output.contains("__typename?: 'Query';"));
 }
 
@@ -348,6 +350,7 @@ fn types_prefix_does_not_affect_typename_value() {
         .schema_str("type Query { ok: Boolean! }")
         .options(PluginOptions {
             types_prefix: Some("I".to_string()),
+            typename_policy: Some(TypenamePolicy::Always),
             ..PluginOptions::serde_default()
         })
         .generate();
@@ -759,6 +762,7 @@ fn naming_does_not_transform_typename_value() {
         .schema_str("type Query { ok: Boolean! }")
         .options(PluginOptions {
             naming_convention: Some(NamingConvention::Simple(NamingCase::SnakeCase)),
+            typename_policy: Some(TypenamePolicy::Always),
             ..PluginOptions::serde_default()
         })
         .generate();

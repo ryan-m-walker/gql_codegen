@@ -9,7 +9,6 @@ export type JSON = any;
 export type Money = any;
 
 export interface Query {
-  readonly __typename?: 'Query';
   readonly _empty?: string | null;
   readonly createdAt?: any | null;
   readonly amount?: any | null;

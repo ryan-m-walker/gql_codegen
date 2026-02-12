@@ -25,9 +25,6 @@ rayon.workspace = true
 # Data structures
 indexmap.workspace = true
 
-# Error handling
-thiserror.workspace = true
-
 # Cross-platform time (works on WASM)
 web-time = "1.1"
 

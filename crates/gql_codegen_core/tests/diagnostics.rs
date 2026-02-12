@@ -5,29 +5,21 @@
 
 use std::path::PathBuf;
 
-use gql_codegen_core::diagnostic::{Color, render_error, render_warning};
-use gql_codegen_core::{ConfigError, DocumentWarning, Error};
+use gql_codegen_core::diagnostic::{Color, render_diagnostic, render_diagnostics};
+use gql_codegen_core::{Diagnostic, DiagnosticCategory, DiagnosticLocation, Diagnostics};
 
-/// Strip ANSI escape codes from rendered output.
-///
-/// Stripping here keeps snapshots deterministic regardless of the renderer.
-fn strip_ansi(bytes: Vec<u8>) -> String {
-    let stripped = strip_ansi_escapes::strip(&bytes);
-    String::from_utf8(stripped).expect("output should be valid UTF-8")
+/// Helper: render diagnostics to a String (no color).
+fn render_ds(ds: &Diagnostics) -> String {
+    let mut buf = Vec::new();
+    render_diagnostics(ds, None, Color::Never, 0, &mut buf).expect("render should not fail");
+    String::from_utf8(buf).expect("output should be valid UTF-8")
 }
 
-/// Helper: render an error to a String (no color).
-fn render_err(err: &Error) -> String {
+/// Helper: render a single diagnostic to a String (no color).
+fn render_d(d: &Diagnostic) -> String {
     let mut buf = Vec::new();
-    render_error(err, Color::Never, 0, &mut buf).expect("render should not fail");
-    strip_ansi(buf)
-}
-
-/// Helper: render a warning to a String (no color).
-fn render_warn(warn: &DocumentWarning) -> String {
-    let mut buf = Vec::new();
-    render_warning(warn, Color::Never, 0, &mut buf).expect("render should not fail");
-    strip_ansi(buf)
+    render_diagnostic(d, None, Color::Never, &mut buf).expect("render should not fail");
+    String::from_utf8(buf).expect("output should be valid UTF-8")
 }
 
 #[test]
@@ -39,8 +31,9 @@ fn schema_parse_error() {
     )])
     .unwrap_err();
 
-    assert!(matches!(err, Error::SchemaParse(_)));
-    insta::assert_snapshot!(render_err(&err));
+    assert!(err.has_errors());
+    assert!(err.errors().any(|d| d.category == DiagnosticCategory::Schema));
+    insta::assert_snapshot!(render_ds(&err));
 }
 
 #[test]
@@ -51,28 +44,30 @@ fn schema_validation_error() {
         gql_codegen_core::load_schema_from_contents(&[(PathBuf::from("schema.graphql"), sdl)])
             .unwrap_err();
 
-    assert!(matches!(err, Error::SchemaValidation(_)));
-    insta::assert_snapshot!(render_err(&err));
+    assert!(err.has_errors());
+    assert!(err.errors().any(|d| d.category == DiagnosticCategory::Schema));
+    insta::assert_snapshot!(render_ds(&err));
 }
 
 #[test]
 fn config_parse_error() {
-    let err = ConfigError {
-        file: PathBuf::from("config.json"),
-        line: 1,
-        column: 10,
-        message: "expected a string".to_string(),
-        source_text: "{ \"key\": value }".to_string(),
-    };
+    let d = Diagnostic::error(DiagnosticCategory::Config, "expected a string")
+        .with_location(DiagnosticLocation {
+            file: PathBuf::from("config.json"),
+            line: 1,
+            column: 10,
+            length: None,
+        })
+        .with_inline_source("{ \"key\": value }".to_string());
 
-    insta::assert_snapshot!(render_err(&Error::Config(err)));
+    insta::assert_snapshot!(render_d(&d));
 }
 
 #[test]
 fn document_warning_duplicate_name() {
-    let warn = DocumentWarning::DuplicateName {
-        kind: "operation",
-        name: "GetUser".to_string(),
-    };
-    insta::assert_snapshot!(render_warn(&warn));
+    let d = Diagnostic::warning(
+        DiagnosticCategory::Document,
+        "Duplicate operation 'GetUser' (skipped)",
+    );
+    insta::assert_snapshot!(render_d(&d));
 }

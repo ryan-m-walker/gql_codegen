@@ -27,7 +27,6 @@ pub(crate) fn render_op_typename(
     let readonly = get_readonly_kw(ctx);
 
     indent(ctx, depth)?;
-
     writeln!(
         ctx.writer,
         "{readonly}{response_name}{optional}: '{parent_type}';",
@@ -35,3 +34,4 @@ pub(crate) fn render_op_typename(
 
     Ok(true)
 }
+

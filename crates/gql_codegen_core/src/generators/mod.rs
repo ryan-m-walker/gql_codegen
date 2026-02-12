@@ -21,6 +21,7 @@ use indexmap::IndexMap;
 
 use crate::Result;
 use crate::config::{NamingCase, NamingConvention, PluginOptions};
+use crate::diagnostic::{Diagnostic, DiagnosticCategory, Diagnostics};
 use crate::documents::{ParsedFragment, ParsedOperation};
 
 /// Context passed to all generators
@@ -30,6 +31,15 @@ pub struct GeneratorContext<'a> {
     pub fragments: &'a IndexMap<Name, ParsedFragment<'a>>,
     pub options: &'a PluginOptions,
     pub writer: &'a mut dyn Write,
+    pub diagnostics: &'a mut Diagnostics,
+}
+
+impl GeneratorContext<'_> {
+    /// Convenience: push a warning diagnostic.
+    pub fn warn(&mut self, category: DiagnosticCategory, message: impl Into<String>) {
+        self.diagnostics
+            .push(Diagnostic::warning(category, message));
+    }
 }
 
 impl GeneratorContext<'_> {
@@ -68,6 +78,11 @@ pub fn run_generator(name: &str, ctx: &mut GeneratorContext) -> Result<()> {
         "typescript" => generate_typescript(ctx),
         "typescript-operations" => generate_typescript_operations(ctx),
         "typescript-documents" | "documents" => generate_documents(ctx),
-        _ => Err(crate::Error::UnknownPlugin(name.to_string())),
+        // TODO: maybe warn and ignore?
+        _ => Err(Diagnostic::error(
+            DiagnosticCategory::Generation,
+            format!("Unknown plugin: '{name}'"),
+        )
+        .into()),
     }
 }

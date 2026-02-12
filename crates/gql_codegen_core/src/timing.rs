@@ -3,7 +3,9 @@
 //! Enable timing output by setting `SGC_TIMING=1` environment variable
 //! or calling `enable_timing()`.
 
+use std::env;
 use std::sync::atomic::{AtomicBool, Ordering};
+
 use web_time::Instant;
 
 static TIMING_ENABLED: AtomicBool = AtomicBool::new(false);
@@ -15,12 +17,11 @@ pub fn enable_timing() {
 
 /// Check if timing is enabled (also checks SGC_TIMING env var on first call)
 pub fn is_timing_enabled() -> bool {
-    // Check atomic first (fast path)
     if TIMING_ENABLED.load(Ordering::Relaxed) {
         return true;
     }
-    // Fall back to env var check
-    std::env::var("SGC_TIMING").is_ok()
+
+    env::var("SGC_TIMING").is_ok()
 }
 
 /// Log timing information if timing is enabled

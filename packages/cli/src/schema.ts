@@ -1,4 +1,6 @@
+import { createRequire } from 'node:module'
 import path from 'node:path'
+import { pathToFileURL } from 'node:url'
 
 import type { DocumentNode, GraphQLSchema } from 'graphql'
 import { createJiti } from 'jiti'
@@ -110,16 +112,46 @@ export async function loadSchema(
         return null
     }
 
-    const jiti = createJiti(import.meta.url)
-
-    // Load the module and graphql from the same jiti context.
-    // This ensures printSchema/print operate in the same realm as the schema.
-    const [mod, graphql] = await Promise.all([
-        jiti.import(resolved),
-        jiti.import('graphql') as Promise<typeof import('graphql')>,
-    ])
+    // Try native import() first — inherits tsx/ts-node loader hooks and
+    // the user's registered resolvers. Falls back to jiti for standalone use
+    // (no TS runtime registered).
+    const [mod, graphql] = await importModule(resolved)
 
     return resolveSchemaFromModule(mod, schemaPath, graphql)
+}
+
+type ImportResult = [mod: unknown, graphql: GraphQLRuntime]
+
+/**
+ * Resolve `graphql` from the schema file's node_modules — not from the CLI's.
+ * This ensures printSchema/isSchema use the same graphql instance as the schema.
+ */
+function resolveGraphqlFrom(schemaPath: string): string {
+    const req = createRequire(schemaPath)
+    return pathToFileURL(req.resolve('graphql')).href
+}
+
+async function importModule(resolved: string): Promise<ImportResult> {
+    const fileUrl = pathToFileURL(resolved).href
+    const graphqlUrl = resolveGraphqlFrom(resolved)
+
+    try {
+        // Native import() inherits registered loaders (tsx, ts-node, etc.)
+        // and the user's registered resolvers.
+        const [mod, graphql] = await Promise.all([
+            import(fileUrl),
+            import(graphqlUrl) as Promise<typeof import('graphql')>,
+        ])
+        return [mod, graphql]
+    } catch {
+        // No TS runtime available — fall back to jiti for transpilation.
+        const jiti = createJiti(resolved, { jsx: true })
+        const [mod, graphql] = await Promise.all([
+            jiti.import(resolved),
+            jiti.import('graphql') as Promise<typeof import('graphql')>,
+        ])
+        return [mod, graphql as GraphQLRuntime]
+    }
 }
 
 /**

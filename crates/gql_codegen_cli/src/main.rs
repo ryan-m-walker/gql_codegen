@@ -9,10 +9,12 @@ use std::process::ExitCode;
 use anyhow::{Context, Result};
 use clap::Parser;
 use gql_codegen_core::cache::{Cache, FsCache, NoCache};
-use gql_codegen_core::diagnostic::{Color, DEFAULT_MAX_DIAGNOSTICS, render_warning};
+use gql_codegen_core::diagnostic::{
+    self, Color, DEFAULT_MAX_DIAGNOSTICS, Diagnostic, DiagnosticCategory, DiagnosticLocation,
+    Diagnostics,
+};
 use gql_codegen_core::{
-    CodegenConfig, ConfigError, FsWriter, GenerateCachedResult, StdoutWriter, generate_cached,
-    write_outputs,
+    CodegenConfig, FsWriter, GenerateCachedResult, StdoutWriter, generate_cached, write_outputs,
 };
 
 mod args;
@@ -44,10 +46,11 @@ fn main() -> ExitCode {
         Ok(()) => ExitCode::SUCCESS,
         Err(e) => {
             // Try to render structured diagnostics for core errors
-            if let Some(core_err) = e.downcast_ref::<gql_codegen_core::Error>() {
+            if let Some(diagnostics) = e.downcast_ref::<Diagnostics>() {
                 let color = Color::StderrIsTerminal;
-                let _ = gql_codegen_core::diagnostic::render_error(
-                    core_err,
+                let _ = diagnostic::render_diagnostics(
+                    diagnostics,
+                    None,
                     color,
                     max_diag,
                     &mut std::io::stderr(),
@@ -70,14 +73,15 @@ fn run(args: &CliArgs, logger: &Logger) -> Result<()> {
         .with_context(|| format!("Failed to read config: {}", args.config.display()))?;
 
     let mut config: CodegenConfig = serde_json::from_str(&config_content).map_err(|e| {
-        let core_err = gql_codegen_core::Error::Config(ConfigError {
-            message: e.to_string(),
-            file: args.config.clone(),
-            line: e.line(),
-            column: e.column(),
-            source_text: config_content.clone(),
-        });
-        anyhow::Error::new(core_err)
+        let d = Diagnostic::error(DiagnosticCategory::Config, e.to_string())
+            .with_location(DiagnosticLocation {
+                file: args.config.clone(),
+                line: e.line(),
+                column: e.column(),
+                length: None,
+            })
+            .with_inline_source(config_content.clone());
+        anyhow::Error::new(Diagnostics::from(d))
     })?;
 
     // CLI preset overrides config file preset
@@ -125,9 +129,25 @@ fn run(args: &CliArgs, logger: &Logger) -> Result<()> {
         }
         GenerateCachedResult::Generated(gen_result) => {
             let color = Color::StderrIsTerminal;
-            let max = args.max_diagnostics.unwrap_or(DEFAULT_MAX_DIAGNOSTICS);
-            for warning in &gen_result.warnings {
-                let _ = render_warning(warning, color, max, &mut std::io::stderr());
+            // Render warnings (respecting max-diagnostics cap)
+            let warnings: Vec<_> = gen_result.diagnostics.warnings().collect();
+            if !warnings.is_empty() {
+                let max = args.max_diagnostics.unwrap_or(DEFAULT_MAX_DIAGNOSTICS);
+                let show = if max > 0 {
+                    max.min(warnings.len())
+                } else {
+                    warnings.len()
+                };
+                for w in &warnings[..show] {
+                    let _ = diagnostic::render_diagnostic(w, None, color, &mut std::io::stderr());
+                }
+                if max > 0 && warnings.len() > max {
+                    eprintln!(
+                        "... and {} more warning{} (Hint: run with --max-diagnostics=0 to show all)",
+                        warnings.len() - max,
+                        if warnings.len() - max == 1 { "" } else { "s" }
+                    );
+                }
             }
 
             if !args.check {

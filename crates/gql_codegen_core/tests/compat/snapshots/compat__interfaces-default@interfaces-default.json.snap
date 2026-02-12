@@ -19,13 +19,13 @@ export type Scalars = {
   Float: { input: number; output: number; }
 };
 
-export type Article = {
+export type Article = Node & {
   __typename?: 'Article';
   id: Scalars['ID']['output'];
   title: Scalars['String']['output'];
 };
 
-export type Comment = {
+export type Comment = Node & {
   __typename?: 'Comment';
   id: Scalars['ID']['output'];
   text: Scalars['String']['output'];

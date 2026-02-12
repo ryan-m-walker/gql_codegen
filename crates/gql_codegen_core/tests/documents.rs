@@ -18,7 +18,7 @@ fn test_load_sources_graphql_files() {
 
     load_sources(&patterns, Some(&fixtures_dir()), &mut cache).unwrap();
 
-    assert_eq!(cache.len(), 2); // queries.graphql and fragments.graphql
+    assert_eq!(cache.len(), 4);
 }
 
 #[test]
@@ -39,7 +39,7 @@ fn test_load_sources_multiple_patterns() {
 
     load_sources(&patterns, Some(&fixtures_dir()), &mut cache).unwrap();
 
-    assert_eq!(cache.len(), 4);
+    assert_eq!(cache.len(), 6);
 }
 
 #[test]

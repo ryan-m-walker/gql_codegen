@@ -1,76 +1,7 @@
 use apollo_compiler::Node;
-use apollo_compiler::collections::IndexSet;
-use apollo_compiler::schema::ComponentName;
 
+use crate::Result;
 use crate::generators::GeneratorContext;
-use crate::generators::common::helpers::{get_export_kw, get_readonly_kw};
-use crate::{DeclarationKind, Result};
-
-/// TODO: make this less strict, allowing strings which we parse or fallback to default
-pub(crate) fn get_decl_kind_kw(ctx: &GeneratorContext) -> &'static str {
-    match ctx.options.declaration_kind {
-        Some(DeclarationKind::Type) | None => "type",
-        Some(DeclarationKind::Interface) => "interface",
-        Some(DeclarationKind::Class) => "class",
-        Some(DeclarationKind::AbstractClass) => "abstract class",
-    }
-}
-
-/// Renders the opening of a GraphQL object type declaration.
-pub(crate) fn render_decl_opening(
-    ctx: &mut GeneratorContext,
-    name: &str,
-    implements_interfaces: Option<&IndexSet<ComponentName>>,
-) -> Result<()> {
-    let export = get_export_kw(ctx);
-    let decl_kind = get_decl_kind_kw(ctx);
-
-    let separator = match ctx.options.declaration_kind {
-        Some(DeclarationKind::Type) | None => " = ",
-        _ => " ",
-    };
-
-    write!(ctx.writer, "{export}{decl_kind} {name}{separator}")?;
-
-    if let Some(interfaces) = implements_interfaces {
-        if !interfaces.is_empty() {
-            match ctx.options.declaration_kind {
-                Some(DeclarationKind::Type) | None => {
-                    for interface in interfaces {
-                        write!(ctx.writer, "{interface}")?;
-                        write!(ctx.writer, " & ")?;
-                    }
-                }
-                _ => {
-                    write!(ctx.writer, "implements ")?;
-
-                    for (i, interface) in interfaces.iter().enumerate() {
-                        write!(ctx.writer, "{interface}")?;
-                        if i < interfaces.len() - 1 {
-                            write!(ctx.writer, ", ")?;
-                        }
-                    }
-
-                    write!(ctx.writer, " ")?;
-                }
-            }
-        }
-    }
-
-    writeln!(ctx.writer, "{{")?;
-
-    Ok(())
-}
-
-pub(crate) fn render_decl_closing(ctx: &mut GeneratorContext) -> Result<()> {
-    let semi = match ctx.options.declaration_kind {
-        Some(DeclarationKind::Type) | None => ";",
-        _ => "",
-    };
-
-    writeln!(ctx.writer, "}}{semi}")?;
-    Ok(())
-}
 
 /// Convert a GraphQL description to a TypeScript doc comment.
 ///
@@ -125,7 +56,9 @@ pub(crate) fn render_description(
 
 #[cfg(test)]
 mod test {
+    use crate::DeclarationKind;
     use crate::PluginOptions;
+    use crate::generators::common::helpers::{render_decl_closing, render_decl_opening};
     use crate::test_utils::TestCtxBuilder;
 
     use super::*;

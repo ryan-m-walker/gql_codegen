@@ -6,6 +6,7 @@
 //! - `generate_cached`: Full caching support with two-phase optimization
 
 use std::collections::HashMap;
+use std::fs;
 use std::path::PathBuf;
 
 use apollo_compiler::Schema;
@@ -15,14 +16,15 @@ use crate::cache::{
     Cache, MetadataCheckResult, compute_hashes_from_cache, create_glob_cache, is_glob_cache_valid,
 };
 use crate::config::{OutputConfig, PluginOptions, Preset};
+use crate::diagnostic::{Diagnostic, DiagnosticCategory, Diagnostics};
 use crate::documents::{
-    CollectedDocuments, DocumentWarning, collect_documents, expand_document_globs,
-    load_sources_from_paths,
+    CollectedDocuments, collect_documents, expand_document_globs, load_sources_from_paths,
 };
 use crate::extract::ExtractConfig;
 use crate::generators::{GeneratorContext, run_generator};
 use crate::schema::{load_schema_from_contents, resolve_schema_paths};
 use crate::source_cache::SourceCache;
+use crate::validation::validate_options;
 use crate::{CodegenConfig, Result};
 
 /// Result of code generation
@@ -30,8 +32,8 @@ use crate::{CodegenConfig, Result};
 pub struct GenerateResult {
     /// Generated files (path -> content)
     pub files: Vec<GeneratedFile>,
-    /// Warnings encountered during generation
-    pub warnings: Vec<DocumentWarning>,
+    /// Diagnostics encountered during generation (warnings, info)
+    pub diagnostics: Diagnostics,
 }
 
 /// A single generated file
@@ -70,18 +72,12 @@ pub struct GenerateInput<'a> {
 ///
 /// Takes pre-loaded schema and documents, returns generated content.
 /// Use this for maximum control, testing, or embedding in other tools.
-///
-/// # Example
-/// ```ignore
-/// let schema = load_schema_from_str(&schema_content)?;
-/// let documents = parse_documents(&source_cache, &extract_config);
-/// let input = GenerateInput { schema: &schema, documents: &documents, generates: &config };
-/// let result = generate_from_input(&input)?;
-/// ```
 pub fn generate_from_input(input: &GenerateInput) -> Result<GenerateResult> {
+    let mut diagnostics = input.documents.diagnostics.clone();
+
     let mut result = GenerateResult {
         files: Vec::with_capacity(input.generates.len()),
-        warnings: input.documents.warnings.clone(),
+        diagnostics: Diagnostics::new(),
     };
 
     // Generate each output file
@@ -101,7 +97,7 @@ pub fn generate_from_input(input: &GenerateInput) -> Result<GenerateResult> {
         }
 
         // Validate resolved options and collect config warnings
-        validate_options(&base_options, &mut result.warnings);
+        validate_options(&base_options, &mut diagnostics);
 
         for plugin in &output_config.plugins {
             let plugin_name = plugin.name();
@@ -115,6 +111,7 @@ pub fn generate_from_input(input: &GenerateInput) -> Result<GenerateResult> {
                 fragments: &input.documents.fragments,
                 options: &options,
                 writer: &mut buffer,
+                diagnostics: &mut diagnostics,
             };
 
             let t0 = web_time::Instant::now();
@@ -133,6 +130,7 @@ pub fn generate_from_input(input: &GenerateInput) -> Result<GenerateResult> {
         });
     }
 
+    result.diagnostics = diagnostics;
     Ok(result)
 }
 
@@ -140,10 +138,6 @@ pub fn generate_from_input(input: &GenerateInput) -> Result<GenerateResult> {
 ///
 /// Reads schema and document files from disk based on config paths.
 /// For more control over I/O and caching, use [`generate_from_input`] instead.
-///
-/// # Filesystem Access
-/// This function reads files from disk. If you need a pure API without
-/// filesystem side effects, load files yourself and use [`generate_from_input`].
 pub fn generate(config: &CodegenConfig) -> Result<GenerateResult> {
     let base_dir = config
         .base_dir
@@ -156,8 +150,12 @@ pub fn generate(config: &CodegenConfig) -> Result<GenerateResult> {
     let mut schema_files: Vec<(PathBuf, String)> = Vec::new();
 
     for path in &schema_paths {
-        let content = std::fs::read_to_string(path)
-            .map_err(|e| crate::Error::SchemaRead(path.clone(), e.to_string()))?;
+        let content = fs::read_to_string(path).map_err(|e| {
+            Diagnostics::from(Diagnostic::error(
+                DiagnosticCategory::Schema,
+                format!("Failed to read schema '{}': {}", path.display(), e),
+            ))
+        })?;
         schema_files.push((path.clone(), content));
     }
 
@@ -281,11 +279,6 @@ fn merge_options(base: &PluginOptions, plugin: Option<&PluginOptions>) -> Plugin
     }
 }
 
-/// Validate resolved plugin options and emit warnings for conflicting settings.
-fn validate_options(_options: &PluginOptions, _warnings: &mut Vec<DocumentWarning>) {
-    // TODO(human): Add config conflict checks here
-}
-
 /// Generate with caching support (two-phase optimization)
 ///
 /// This handles the full caching flow:
@@ -295,20 +288,6 @@ fn validate_options(_options: &PluginOptions, _warnings: &mut Vec<DocumentWarnin
 /// 4. Cache update on success
 ///
 /// Returns `Fresh` if nothing changed, `Generated` with the output otherwise.
-///
-/// # Example
-/// ```ignore
-/// let mut cache = FsCache::new(base_dir.join(".sgc"));
-///
-/// match generate_cached(&config, &mut cache)? {
-///     GenerateCachedResult::Fresh => println!("Nothing changed"),
-///     GenerateCachedResult::Generated(result) => {
-///         for file in result.files {
-///             fs::write(&file.path, &file.content)?;
-///         }
-///     }
-/// }
-/// ```
 pub fn generate_cached(
     config: &CodegenConfig,
     cache: &mut dyn Cache,
@@ -326,8 +305,9 @@ pub fn generate_cached(
     // Try to use cached glob results
     let t0 = web_time::Instant::now();
     let patterns: Vec<&str> = config.documents.as_vec();
-    let (document_paths, glob_cache_hit) = match cache.stored().and_then(|c| c.glob_cache.as_ref())
-    {
+    let glob_cache = cache.stored().and_then(|c| c.glob_cache.as_ref());
+
+    let (document_paths, glob_cache_hit) = match glob_cache {
         Some(cached) if is_glob_cache_valid(cached, &patterns) => {
             crate::timing!(
                 "Glob cache hit",
@@ -347,6 +327,7 @@ pub fn generate_cached(
     let all_paths: Vec<PathBuf> = schema_paths
         .iter()
         .chain(document_paths.iter())
+        // TODO: can we avoid cloning here?
         .cloned()
         .collect();
 
@@ -363,27 +344,29 @@ pub fn generate_cached(
     let t0 = web_time::Instant::now();
     let doc_paths_len = document_paths.len();
     let inline_content = config.schema_content.clone();
-    let (schema_result, docs_result) = rayon::join(
-        || {
-            let mut schema_files: Vec<(PathBuf, String)> = schema_paths
-                .into_iter()
-                .filter_map(|p| std::fs::read_to_string(&p).ok().map(|c| (p, c)))
-                .collect();
 
-            // Append pre-resolved SDL content from Node CLI (.ts/.js schemas)
-            if let Some(contents) = inline_content {
-                for (i, sdl) in contents.into_iter().enumerate() {
-                    schema_files.push((PathBuf::from(format!("<schema:{i}>")), sdl));
-                }
+    let load_schema = || {
+        let mut schema_files: Vec<(PathBuf, String)> = schema_paths
+            .into_iter()
+            .filter_map(|p| fs::read_to_string(&p).ok().map(|c| (p, c)))
+            .collect();
+
+        // Append pre-resolved SDL content from Node CLI (.ts/.js schemas)
+        if let Some(contents) = inline_content {
+            for (i, sdl) in contents.into_iter().enumerate() {
+                schema_files.push((PathBuf::from(format!("<schema:{i}>")), sdl));
             }
+        }
 
-            load_schema_from_contents(&schema_files).map(|s| (s, schema_files))
-        },
-        || {
-            let mut source_cache = SourceCache::with_capacity(doc_paths_len);
-            load_sources_from_paths(&document_paths, &mut source_cache).map(|_| source_cache)
-        },
-    );
+        load_schema_from_contents(&schema_files).map(|s| (s, schema_files))
+    };
+
+    let load_sources = || {
+        let mut source_cache = SourceCache::with_capacity(doc_paths_len);
+        load_sources_from_paths(&document_paths, &mut source_cache).map(|_| source_cache)
+    };
+
+    let (schema_result, docs_result) = rayon::join(load_schema, load_sources);
     let (schema, schema_files) = schema_result?;
     let source_cache = docs_result?;
     crate::timing!("Schema + docs parallel load", t0.elapsed());

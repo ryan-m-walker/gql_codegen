@@ -3,11 +3,10 @@ use apollo_compiler::schema::InterfaceType;
 
 use crate::Result;
 use crate::generators::GeneratorContext;
-use crate::generators::common::helpers::FieldType;
+use crate::generators::common::helpers::{FieldType, render_decl_closing};
 use crate::generators::typescript::field::render_field;
-use crate::generators::typescript::helpers::{
-    render_decl_closing, render_decl_opening, render_description,
-};
+use crate::generators::common::helpers::render_decl_opening;
+use crate::generators::typescript::helpers::render_description;
 
 /// Render a GraphQL interface type as TypeScript type to the current writer.
 ///

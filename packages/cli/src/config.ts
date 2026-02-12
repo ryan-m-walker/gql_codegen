@@ -6,6 +6,7 @@
  * TypeScript transpilation, ESM/CJS interop, and tsconfig paths.
  */
 
+import pc from 'picocolors'
 import fs from 'node:fs/promises'
 import path, { join, resolve } from 'node:path'
 import { createJiti } from 'jiti'
@@ -44,13 +45,15 @@ export async function loadConfig(
 
     if (!resolvedPath) {
         throw new Error(
-            `No config file found. Create one of: ${CONFIG_FILES.join(', ')}`,
+            `No config file found. Create one of: ${CONFIG_FILES.join(', ')} or use the --config flag to specify a path.`,
         )
     }
 
     const pathExists = await exists(resolvedPath)
     if (!pathExists) {
-        throw new Error(`Config file not found: ${resolvedPath}`)
+        throw new Error(
+            `Config file not found: ${pc.underline(pc.dim(resolvedPath))}`,
+        )
     }
 
     const config = await loadConfigFile(resolvedPath)
@@ -79,7 +82,9 @@ async function loadConfigFile(configPath: string): Promise<unknown> {
     }
 
     // jiti handles .ts, .mts, .cts, .js, .mjs, .cjs, .jsx, .tsx
-    const jiti = createJiti(import.meta.url)
+    const jiti = createJiti(configPath, {
+        jsx: true,
+    })
     return jiti.import(configPath, { default: true })
 }
 

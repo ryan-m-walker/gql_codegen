@@ -5,11 +5,11 @@ use apollo_compiler::schema::{ExtendedType, ScalarType};
 
 use crate::config::ScalarConfig;
 use crate::generators::GeneratorContext;
-use crate::generators::common::helpers::get_export_kw;
-use crate::generators::typescript::helpers::{
-    render_decl_closing, render_decl_opening, render_description,
-};
-use crate::{Error, Result};
+use crate::generators::common::helpers::{get_export_kw, render_decl_closing};
+use crate::generators::common::helpers::render_decl_opening;
+use crate::generators::typescript::helpers::render_description;
+use crate::Result;
+use crate::diagnostic::{Diagnostic, DiagnosticCategory};
 
 const DEFAULT_SCALARS: [(&str, &str); 5] = [
     ("ID", "string"),
@@ -119,7 +119,10 @@ pub(crate) fn render_scalars(ctx: &mut GeneratorContext) -> Result<()> {
             let custom_type = ctx.options.scalars.get(name);
 
             if ctx.options.strict_scalars && custom_type.is_none() {
-                return Err(Error::UnknownScalar(name.to_string()));
+                return Err(Diagnostic::error(
+                    DiagnosticCategory::Generation,
+                    format!("Unknown scalar type '{name}'. Please override it using the \"scalars\" configuration field!"),
+                ).into());
             }
 
             let default_type = ctx

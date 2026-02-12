@@ -21,7 +21,8 @@ use crate::extract::ExtractConfig;
 use crate::generators::GeneratorContext;
 use crate::schema::load_schema_from_contents;
 use crate::source_cache::SourceCache;
-use crate::{Error, Result};
+use crate::Result;
+use crate::diagnostic::{Diagnostic, DiagnosticCategory, Diagnostics};
 
 /// Get the path to the test fixtures directory.
 pub fn fixtures_dir() -> PathBuf {
@@ -152,7 +153,10 @@ impl TestGen {
         if self.include_base_schema {
             let base = fixtures.join("schemas/base.graphql");
             let content = std::fs::read_to_string(&base)
-                .map_err(|e| Error::SchemaRead(base.clone(), e.to_string()))?;
+                .map_err(|e| Diagnostics::from(Diagnostic::error(
+                    DiagnosticCategory::Schema,
+                    format!("Failed to read schema '{}': {}", base.display(), e),
+                )))?;
             schema_files.push((base, content));
         }
 
@@ -162,7 +166,10 @@ impl TestGen {
                 Source::File(path) => {
                     let full = fixtures.join(path);
                     let content = std::fs::read_to_string(&full)
-                        .map_err(|e| Error::SchemaRead(full.clone(), e.to_string()))?;
+                        .map_err(|e| Diagnostics::from(Diagnostic::error(
+                            DiagnosticCategory::Schema,
+                            format!("Failed to read schema '{}': {}", full.display(), e),
+                        )))?;
                     schema_files.push((full, content));
                 }
                 Source::Inline(sdl) => {
@@ -186,7 +193,10 @@ impl TestGen {
                 Source::File(path) => {
                     let full = fixtures.join(path);
                     let content = std::fs::read_to_string(&full)
-                        .map_err(|e| Error::FileRead(full.clone(), e.to_string()))?;
+                        .map_err(|e| Diagnostics::from(Diagnostic::error(
+                            DiagnosticCategory::Document,
+                            format!("Failed to read '{}': {}", full.display(), e),
+                        )))?;
                     source_cache.push(full, content);
                 }
                 Source::Inline(ops) => {
@@ -385,6 +395,7 @@ impl TestCtx {
         let operations = IndexMap::new();
         let fragments = IndexMap::new();
         let mut buffer = Vec::new();
+        let mut diagnostics = Diagnostics::new();
 
         let mut ctx = GeneratorContext {
             schema: &self.schema,
@@ -392,6 +403,7 @@ impl TestCtx {
             fragments: &fragments,
             options: &self.options,
             writer: &mut buffer,
+            diagnostics: &mut diagnostics,
         };
 
         f(&mut ctx).expect("renderer should not error");

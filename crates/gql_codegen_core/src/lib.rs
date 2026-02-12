@@ -34,6 +34,7 @@ mod source_cache;
 pub mod test_utils;
 pub mod timing;
 pub mod types;
+mod validation;
 pub mod writer;
 
 // Public API - Main entry points
@@ -42,12 +43,14 @@ pub use codegen::{
     generate_from_input,
 };
 pub use config::{
-    AvoidOptionals, CodegenConfig, DeclarationKind, GraphqlTag, HooksConfig, NamingCase,
-    NamingConvention, NamingConventionConfig, OutputConfig, PluginConfig, PluginOptions, Preset,
-    ScalarConfig, StringOrArray, TypenamePolicy,
+    AvoidOptionals, CodegenConfig, DeclarationKind, GraphqlTag, NamingCase, NamingConvention,
+    NamingConventionConfig, OutputConfig, PluginConfig, PluginOptions, Preset, ScalarConfig,
+    StringOrArray, TypenamePolicy,
 };
-pub use documents::DocumentWarning;
-pub use error::{ConfigError, Error, Result};
+pub use diagnostic::{
+    Diagnostic, DiagnosticCategory, DiagnosticLocation, Diagnostics, Severity,
+};
+pub use error::Result;
 
 // Public API - Building blocks for custom I/O handling
 // Use these when you need control over file loading, caching, etc.

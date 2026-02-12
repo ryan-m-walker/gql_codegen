@@ -8,7 +8,6 @@ export interface PaginationInput {
 }
 
 export interface Query {
-  readonly __typename?: 'Query';
   readonly _empty?: string | null;
   readonly search: ReadonlyArray<string>;
 }
