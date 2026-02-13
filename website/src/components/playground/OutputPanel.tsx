@@ -4,57 +4,32 @@ import { defineCustomTheme, readonlyEditorOptions } from './monaco-themes'
 import DiagnosticsView from './DiagnosticsView'
 
 interface OutputPanelProps {
-    generatorView: 'codegen' | 'sgc'
-    onGeneratorViewChange: (view: 'codegen' | 'sgc') => void
     outputTab: OutputTab
     onOutputTabChange: (tab: OutputTab) => void
-    currentResult: GenerationResult | null
+    result: GenerationResult | null
     isMounted: boolean
     monacoTheme: string
 }
 
 export default function OutputPanel({
-    generatorView,
-    onGeneratorViewChange,
     outputTab,
     onOutputTabChange,
-    currentResult,
+    result,
     isMounted,
     monacoTheme,
 }: OutputPanelProps) {
-    const hasErrors = currentResult?.error
+    const hasErrors = result?.error
     const hasWarnings =
-        currentResult?.warnings && currentResult.warnings.length > 0
+        result?.warnings && result.warnings.length > 0
     const hasDiagnostics = hasErrors || hasWarnings
 
     return (
         <div className="w-1/2 flex flex-col">
             <div className="px-4 py-2 border-b border-border-default flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-2">
-                        <button
-                            type="button"
-                            onClick={() => onGeneratorViewChange('sgc')}
-                            className={`px-3 py-1 text-xs font-medium rounded transition-colors ${
-                                generatorView === 'sgc'
-                                    ? 'bg-green-600 text-white'
-                                    : 'bg-surface-inset text-text-muted hover:text-text-heading'
-                            }`}
-                        >
-                            SGC
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => onGeneratorViewChange('codegen')}
-                            className={`px-3 py-1 text-xs font-medium rounded transition-colors ${
-                                generatorView === 'codegen'
-                                    ? 'bg-blue-600 text-white'
-                                    : 'bg-surface-inset text-text-muted hover:text-text-heading'
-                            }`}
-                        >
-                            graphql-codegen
-                        </button>
-                    </div>
+                    <span className="px-3 py-1 text-xs font-medium rounded bg-green-600 text-white">
+                        Output
+                    </span>
 
                     <div className="flex items-center gap-1 ml-4 border-l border-border-muted pl-4">
                         <button
@@ -66,7 +41,7 @@ export default function OutputPanel({
                                     : 'text-text-faint hover:text-text-heading'
                             }`}
                         >
-                            Output
+                            TypeScript
                         </button>
                         <button
                             type="button"
@@ -89,8 +64,8 @@ export default function OutputPanel({
                 <button
                     type="button"
                     onClick={() =>
-                        currentResult &&
-                        navigator.clipboard.writeText(currentResult.output)
+                        result &&
+                        navigator.clipboard.writeText(result.output)
                     }
                     className="text-xs text-text-faint hover:text-text-heading transition-colors"
                 >
@@ -100,12 +75,12 @@ export default function OutputPanel({
 
             <div className="flex-1 overflow-hidden">
                 {outputTab === 'diagnostics' ? (
-                    <DiagnosticsView result={currentResult} />
-                ) : currentResult?.error ? (
+                    <DiagnosticsView result={result} />
+                ) : result?.error ? (
                     <div className="p-4 text-red-400 font-mono text-sm overflow-auto h-full">
                         <div className="font-semibold mb-2">Error:</div>
                         <pre className="whitespace-pre-wrap">
-                            {currentResult.error}
+                            {result.error}
                         </pre>
                     </div>
                 ) : !isMounted ? (
@@ -117,8 +92,8 @@ export default function OutputPanel({
                         height="100%"
                         defaultLanguage="typescript"
                         value={
-                            currentResult?.output ||
-                            '// Click Generate to see output...'
+                            result?.output ||
+                            '// Edit schema or operations to see generated output...'
                         }
                         theme={monacoTheme}
                         options={readonlyEditorOptions}

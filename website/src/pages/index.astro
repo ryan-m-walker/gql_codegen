@@ -1,95 +1,63 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import CodeTransform from '../components/CodeTransform';
 ---
 
 <Layout title="Home">
   <!-- Hero -->
-  <section class="px-6 py-24 text-center">
-    <div class="max-w-4xl mx-auto">
-      <h1 class="text-5xl md:text-6xl font-bold mb-6">
-        <span class="text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500">
-          Speedy
-        </span> GraphQL Codegen
-      </h1>
-      <p class="text-xl text-text-muted mb-8 max-w-2xl mx-auto">
-        A blazing fast GraphQL code generator written in Rust.
-        Drop-in replacement for graphql-codegen, up to <span class="text-text-heading font-semibold">10x faster</span>.
-      </p>
-      <div class="flex gap-4 justify-center">
-        <a href="/docs" class="bg-text-heading text-surface px-6 py-3 rounded-lg font-semibold hover:opacity-90 transition-opacity">
-          Get Started
-        </a>
-        <a href="/playground" class="border border-border-muted px-6 py-3 rounded-lg font-semibold hover:border-text-faint transition-colors">
-          Try Playground
-        </a>
+  <section class="px-6 py-16 md:py-24">
+    <div class="max-w-6xl mx-auto flex flex-col lg:flex-row gap-12 lg:gap-16 items-center">
+      <!-- Left: hero content -->
+      <div class="lg:w-5/12 text-center lg:text-left shrink-0">
+        <h1 class="text-4xl md:text-5xl lg:text-6xl font-bold mb-6">
+          <span class="text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500">
+            Speedy
+          </span> GraphQL Codegen
+        </h1>
+        <p class="text-lg md:text-xl text-text-muted mb-8">
+          An opinionated, fast GraphQL code generator built in Rust.
+          Smart defaults, minimal config, <span class="text-text-heading font-semibold">instant results</span>.
+        </p>
+        <div class="flex gap-4 justify-center lg:justify-start mb-8">
+          <a href="/docs" class="bg-text-heading text-surface px-6 py-3 rounded-lg font-semibold hover:opacity-90 transition-opacity">
+            Get Started
+          </a>
+          <a href="/playground" class="border border-border-muted px-6 py-3 rounded-lg font-semibold hover:border-text-faint transition-colors">
+            Try Playground
+          </a>
+        </div>
+        <div class="bg-surface-raised rounded-lg p-4 font-mono text-sm inline-block">
+          <span class="text-text-faint">$</span> <span class="text-code-command">pnpm add</span> -D @sgc/cli
+        </div>
+      </div>
+      <!-- Right: code animation -->
+      <div class="lg:w-7/12 w-full min-w-0">
+        <CodeTransform client:visible />
       </div>
     </div>
   </section>
 
-  <!-- Install -->
-  <section class="px-6 py-12">
-    <div class="max-w-2xl mx-auto">
-      <div class="bg-surface-raised rounded-lg p-4 font-mono text-sm">
-        <span class="text-text-faint">$</span> <span class="text-code-command">npm install</span> @sgc/cli
-      </div>
-    </div>
-  </section>
-
-  <!-- Benchmarks -->
+  <!-- Performance -->
   <section class="px-6 py-16">
     <div class="max-w-4xl mx-auto">
       <h2 class="text-3xl font-bold text-center mb-12">Performance</h2>
-      <div class="grid md:grid-cols-2 gap-8">
-        <div class="bg-surface-raised rounded-lg p-6">
-          <h3 class="text-lg font-semibold mb-4 text-text-muted">Cache Hit (Nothing Changed)</h3>
-          <div class="space-y-4">
-            <div>
-              <div class="flex justify-between text-sm mb-1">
-                <span>SGC</span>
-                <span class="text-green-500">~14ms</span>
-              </div>
-              <div class="h-3 bg-surface-inset rounded-full overflow-hidden">
-                <div class="h-full bg-green-500 rounded-full" style="width: 10%"></div>
-              </div>
-            </div>
-            <div>
-              <div class="flex justify-between text-sm mb-1">
-                <span>graphql-codegen</span>
-                <span class="text-text-muted">~1200ms</span>
-              </div>
-              <div class="h-3 bg-surface-inset rounded-full overflow-hidden">
-                <div class="h-full bg-gray-600 rounded-full" style="width: 100%"></div>
-              </div>
-            </div>
-          </div>
+      <div class="grid md:grid-cols-3 gap-6">
+        <div class="bg-surface-raised rounded-lg p-6 text-center">
+          <div class="text-4xl font-bold text-green-500 mb-2">~14ms</div>
+          <div class="text-text-muted text-sm">Cache hit</div>
+          <div class="text-text-faint text-xs mt-1">Nothing changed? Instant.</div>
         </div>
-        <div class="bg-surface-raised rounded-lg p-6">
-          <h3 class="text-lg font-semibold mb-4 text-text-muted">Full Generation</h3>
-          <div class="space-y-4">
-            <div>
-              <div class="flex justify-between text-sm mb-1">
-                <span>SGC</span>
-                <span class="text-green-500">~80ms</span>
-              </div>
-              <div class="h-3 bg-surface-inset rounded-full overflow-hidden">
-                <div class="h-full bg-green-500 rounded-full" style="width: 8%"></div>
-              </div>
-            </div>
-            <div>
-              <div class="flex justify-between text-sm mb-1">
-                <span>graphql-codegen</span>
-                <span class="text-text-muted">~3000ms</span>
-              </div>
-              <div class="h-3 bg-surface-inset rounded-full overflow-hidden">
-                <div class="h-full bg-gray-600 rounded-full" style="width: 100%"></div>
-              </div>
-            </div>
-          </div>
+        <div class="bg-surface-raised rounded-lg p-6 text-center">
+          <div class="text-4xl font-bold text-green-500 mb-2">~80ms</div>
+          <div class="text-text-muted text-sm">Full generation</div>
+          <div class="text-text-faint text-xs mt-1">275 operations, 875 fragments</div>
+        </div>
+        <div class="bg-surface-raised rounded-lg p-6 text-center">
+          <div class="text-4xl font-bold text-text-heading mb-2">1477</div>
+          <div class="text-text-muted text-sm">Source files scanned</div>
+          <div class="text-text-faint text-xs mt-1">Parallel parsing with Rayon</div>
         </div>
       </div>
-      <p class="text-center text-text-faint text-sm mt-6">
-        Benchmarked on 1477 files, 275 operations, 875 fragments
-      </p>
     </div>
   </section>
 
@@ -98,46 +66,41 @@ import Layout from '../layouts/Layout.astro';
     <div class="max-w-4xl mx-auto">
       <h2 class="text-3xl font-bold text-center mb-12">Features</h2>
       <div class="grid md:grid-cols-3 gap-6">
+        <!-- TODO(human): Write the feature card descriptions -->
         <div class="bg-surface-raised rounded-lg p-6">
-          <div class="text-3xl mb-4">🚀</div>
-          <h3 class="font-semibold mb-2">Blazing Fast</h3>
+          <h3 class="font-semibold mb-2">Native Speed</h3>
           <p class="text-text-muted text-sm">
-            Written in Rust with parallel processing. Smart caching means instant results when nothing changed.
+            Written in high performance Rust, leveraging all the cores of your computer. 
           </p>
         </div>
         <div class="bg-surface-raised rounded-lg p-6">
-          <div class="text-3xl mb-4">🔄</div>
-          <h3 class="font-semibold mb-2">Drop-in Compatible</h3>
+          <h3 class="font-semibold mb-2">No non-standard types</h3>
           <p class="text-text-muted text-sm">
-            Same config format as graphql-codegen. Migrate in minutes, not days.
+            Defaults to only emitting types that can be stripped so it works with `node --experimental-strip-types` out of the box.
           </p>
         </div>
         <div class="bg-surface-raised rounded-lg p-6">
-          <div class="text-3xl mb-4">📦</div>
-          <h3 class="font-semibold mb-2">Native Binaries</h3>
+          <h3 class="font-semibold mb-2">Optimized Caching</h3>
           <p class="text-text-muted text-sm">
-            Pre-built for macOS, Linux, and Windows. No compilation required.
+            TODO(human)
           </p>
         </div>
         <div class="bg-surface-raised rounded-lg p-6">
-          <div class="text-3xl mb-4">🧠</div>
-          <h3 class="font-semibold mb-2">Smart Caching</h3>
-          <p class="text-text-muted text-sm">
-            Two-phase caching with glob optimization. Only regenerate what changed.
-          </p>
-        </div>
-        <div class="bg-surface-raised rounded-lg p-6">
-          <div class="text-3xl mb-4">🎯</div>
           <h3 class="font-semibold mb-2">TypeScript First</h3>
           <p class="text-text-muted text-sm">
-            Generates clean, well-typed TypeScript. Supports all major patterns.
+            Optimized for more performant TypeScript code using modern best practices. Inline types, no fancy utility type, etc...
           </p>
         </div>
         <div class="bg-surface-raised rounded-lg p-6">
-          <div class="text-3xl mb-4">⚙️</div>
-          <h3 class="font-semibold mb-2">Configurable</h3>
+          <h3 class="font-semibold mb-2">Opinionated Defaults</h3>
           <p class="text-text-muted text-sm">
-            TypeScript configs with full autocomplete. Customize everything.
+            Safe defaults like future-proof enums and unions to help prevent breaking changes in your application.
+          </p>
+        </div>
+        <div class="bg-surface-raised rounded-lg p-6">
+          <h3 class="font-semibold mb-2">Optimized for type checking</h3>
+          <p class="text-text-muted text-sm">
+            Uses interfaces over expensive intersection types, inlines types to avoid type map lookups, and more.
           </p>
         </div>
       </div>
@@ -152,7 +115,7 @@ import Layout from '../layouts/Layout.astro';
         <div>
           <span class="text-code-comment"># Install</span>
           <br />
-          <span class="text-code-command">npm install</span> -D @sgc/cli
+          <span class="text-code-command">pnpm add</span> -D @sgc/cli
         </div>
         <div>
           <span class="text-code-comment"># Create config (codegen.config.ts)</span>

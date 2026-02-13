@@ -1,15 +1,13 @@
 export type InputTab = 'schema' | 'operations' | 'config'
 export type OutputTab = 'output' | 'diagnostics'
-export type Preset = 'sgc' | 'graphql-codegen'
 
-// Matches real SGC/graphql-codegen config structure
+// Matches SGC config structure
 export interface OutputConfig {
     plugins: string[]
     config?: Record<string, unknown>
 }
 
 export interface CodegenConfig {
-    preset?: Preset
     generates: {
         [outputPath: string]: OutputConfig
     }

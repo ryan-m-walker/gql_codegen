@@ -84,13 +84,6 @@ fn run(args: &CliArgs, logger: &Logger) -> Result<()> {
         anyhow::Error::new(Diagnostics::from(d))
     })?;
 
-    // CLI preset overrides config file preset
-    if let Some(preset) = args.preset {
-        config.preset = preset;
-    }
-
-    logger.debug(&format!("Preset: {:?}", config.preset));
-
     // Use baseDir from config if set (e.g., from Node CLI), otherwise derive from config path
     let base_dir = config
         .base_dir

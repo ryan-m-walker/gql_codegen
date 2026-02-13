@@ -178,3 +178,4 @@ pub fn clear_cache(base_dir: String) -> Result<bool> {
         .clear()
         .map_err(|e| Error::from_reason(format!("Failed to clear cache: {e}")))
 }
+

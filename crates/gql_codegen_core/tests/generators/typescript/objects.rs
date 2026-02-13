@@ -16,7 +16,7 @@ fn test_objects_immutable() {
         &["schemas/object.graphql"],
         PluginOptions {
             immutable_types: true,
-            ..PluginOptions::serde_default()
+            ..PluginOptions::default()
         },
     );
     insta::assert_snapshot!(output);
@@ -28,7 +28,7 @@ fn test_objects_skip_typename() {
         &["schemas/object.graphql"],
         PluginOptions {
             skip_typename: true,
-            ..PluginOptions::serde_default()
+            ..PluginOptions::default()
         },
     );
     insta::assert_snapshot!(output);
@@ -40,7 +40,7 @@ fn test_objects_avoid_optionals() {
         &["schemas/object.graphql"],
         PluginOptions {
             avoid_optionals: AvoidOptionals::Boolean(true),
-            ..PluginOptions::serde_default()
+            ..PluginOptions::default()
         },
     );
     insta::assert_snapshot!(output);
@@ -54,7 +54,7 @@ fn test_objects_all_options() {
             immutable_types: true,
             skip_typename: true,
             avoid_optionals: AvoidOptionals::Boolean(true),
-            ..PluginOptions::serde_default()
+            ..PluginOptions::default()
         },
     );
     insta::assert_snapshot!(output);
@@ -66,7 +66,7 @@ fn test_no_export() {
         &["schemas/object.graphql"],
         PluginOptions {
             no_export: true,
-            ..PluginOptions::serde_default()
+            ..PluginOptions::default()
         },
     );
     insta::assert_snapshot!(output);
@@ -79,7 +79,7 @@ fn test_only_operation_types_no_ops() {
         &["schemas/object.graphql"],
         PluginOptions {
             only_operation_types: true,
-            ..PluginOptions::serde_default()
+            ..PluginOptions::default()
         },
     );
     insta::assert_snapshot!(output);

@@ -54,27 +54,6 @@ export type PluginConfig = string | Record<string, PluginOptions>
 export interface PluginOptions {
     /** Custom scalar type mappings */
     scalars?: Record<string, string | { input: string; output: string }>
-
-    /** Add readonly modifier to generated types */
-    immutableTypes?: boolean
-
-    /** Generate enums as string union types */
-    enumsAsTypes?: boolean
-
-    /** Add future-proof unknown value to enums */
-    futureProofEnums?: boolean
-
-    /** Controls how __typename is emitted in generated types */
-    typenamePolicy?: 'always' | 'as-selected' | 'skip'
-
-    /** @deprecated Use typenamePolicy: 'skip' instead */
-    skipTypename?: boolean
-
-    // TODO:
-    avoidOptionals?: boolean
-
-    /** GraphQL tag style for documents */
-    graphqlTag?: 'gql' | 'graphql' | 'none'
 }
 
 export interface HooksConfig {

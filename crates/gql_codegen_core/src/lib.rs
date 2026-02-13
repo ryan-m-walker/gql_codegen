@@ -44,8 +44,8 @@ pub use codegen::{
 };
 pub use config::{
     AvoidOptionals, CodegenConfig, DeclarationKind, GraphqlTag, NamingCase, NamingConvention,
-    NamingConventionConfig, OutputConfig, PluginConfig, PluginOptions, Preset, ScalarConfig,
-    StringOrArray, TypenamePolicy,
+    NamingConventionConfig, OutputConfig, PluginConfig, PluginOptions, ScalarConfig, StringOrArray,
+    TypenamePolicy,
 };
 pub use diagnostic::{
     Diagnostic, DiagnosticCategory, DiagnosticLocation, Diagnostics, Severity,

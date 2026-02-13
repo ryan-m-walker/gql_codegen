@@ -1,9 +1,9 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { loader } from '@monaco-editor/react'
 
-import type { CodegenConfig, InputTab, OutputTab, Preset } from './types'
+import type { CodegenConfig, InputTab, OutputTab } from './types'
 import { DEFAULT_SCHEMA, DEFAULT_OPERATIONS, defaultConfig } from './defaults'
-import { runGraphQLCodegen, runSGC } from './generators'
+import { runSGC } from './generators'
 import { encodeStateToParams, getInitialState } from './url-state'
 import Toolbar from './Toolbar'
 import InputPanel from './InputPanel'
@@ -36,9 +36,7 @@ export default function Playground() {
     const [isGenerating, setIsGenerating] = useState(false)
     const [isMounted, setIsMounted] = useState(false)
     const [shareMessage, setShareMessage] = useState<string | null>(null)
-    const [codegenResult, setCodegenResult] = useState<import('./types').GenerationResult | null>(null)
-    const [sgcResult, setSgcResult] = useState<import('./types').GenerationResult | null>(null)
-    const [generatorView, setGeneratorView] = useState<'codegen' | 'sgc'>('sgc')
+    const [result, setResult] = useState<import('./types').GenerationResult | null>(null)
 
     // Theme-aware Monaco: track whether we're in dark mode
     const [monacoTheme, setMonacoTheme] = useState('sgc-dark')
@@ -114,54 +112,27 @@ export default function Playground() {
             setConfigJson(json)
             try {
                 const parsed = JSON.parse(json) as CodegenConfig
-                if (parsed.preset === undefined) {
-                    parsed.preset = config.preset
-                }
                 setConfig(parsed)
                 setConfigError(null)
             } catch (e) {
                 setConfigError(e instanceof Error ? e.message : 'Invalid JSON')
             }
         },
-        [config.preset],
+        [],
     )
 
     const handleGenerate = useCallback(async () => {
         setIsGenerating(true)
-
-        const [codegenRes, sgcRes] = await Promise.all([
-            runGraphQLCodegen(schema, operations, config),
-            runSGC(schema, operations, config),
-        ])
-
-        setCodegenResult(codegenRes)
-        setSgcResult(sgcRes)
+        const sgcResult = await runSGC(schema, operations, config)
+        setResult(sgcResult)
         setIsGenerating(false)
     }, [schema, operations, config])
-
-    const handlePresetChange = useCallback(
-        (newPreset: Preset) => {
-            const newConfig: CodegenConfig = {
-                ...config,
-                preset: newPreset,
-            }
-            setConfig(newConfig)
-            setConfigJson(JSON.stringify(newConfig, null, 2))
-        },
-        [config],
-    )
-
-    const currentResult =
-        generatorView === 'codegen' ? codegenResult : sgcResult
 
     return (
         <div className="flex flex-col h-full">
             <Toolbar
                 isGenerating={isGenerating}
-                codegenResult={codegenResult}
-                sgcResult={sgcResult}
-                config={config}
-                onPresetChange={handlePresetChange}
+                result={result}
                 onShare={handleShare}
                 shareMessage={shareMessage}
             />
@@ -182,11 +153,9 @@ export default function Playground() {
                 />
 
                 <OutputPanel
-                    generatorView={generatorView}
-                    onGeneratorViewChange={setGeneratorView}
                     outputTab={outputTab}
                     onOutputTabChange={setOutputTab}
-                    currentResult={currentResult}
+                    result={result}
                     isMounted={isMounted}
                     monacoTheme={monacoTheme}
                 />
@@ -194,10 +163,9 @@ export default function Playground() {
 
             <div className="px-4 py-2 border-t border-border-default text-xs text-text-faint flex items-center justify-between">
                 <span>
-                    Compare graphql-codegen (JS) and SGC (Rust/WASM) output
-                    side-by-side.
+                    Edit the schema and operations to see generated TypeScript types.
                 </span>
-                <span>Both generators run entirely in your browser.</span>
+                <span>Powered by SGC (Rust/WASM) — runs entirely in your browser.</span>
             </div>
         </div>
     )

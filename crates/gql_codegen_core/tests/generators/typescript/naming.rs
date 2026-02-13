@@ -11,7 +11,7 @@ fn test_naming_keep() {
         &["schemas/naming.graphql"],
         PluginOptions {
             naming_convention: Some(NamingConvention::Simple(NamingCase::Keep)),
-            ..PluginOptions::serde_default()
+            ..PluginOptions::default()
         },
     );
     insta::assert_snapshot!(output);
@@ -24,7 +24,7 @@ fn test_naming_pascal_case() {
         &["schemas/naming.graphql"],
         PluginOptions {
             naming_convention: Some(NamingConvention::Simple(NamingCase::PascalCase)),
-            ..PluginOptions::serde_default()
+            ..PluginOptions::default()
         },
     );
     insta::assert_snapshot!(output);
@@ -37,7 +37,7 @@ fn test_naming_camel_case() {
         &["schemas/naming.graphql"],
         PluginOptions {
             naming_convention: Some(NamingConvention::Simple(NamingCase::CamelCase)),
-            ..PluginOptions::serde_default()
+            ..PluginOptions::default()
         },
     );
     insta::assert_snapshot!(output);
@@ -50,7 +50,7 @@ fn test_naming_constant_case() {
         &["schemas/naming.graphql"],
         PluginOptions {
             naming_convention: Some(NamingConvention::Simple(NamingCase::ConstantCase)),
-            ..PluginOptions::serde_default()
+            ..PluginOptions::default()
         },
     );
     insta::assert_snapshot!(output);
@@ -67,7 +67,7 @@ fn test_naming_detailed_config() {
                 enum_values: Some(NamingCase::ConstantCase),
                 transform_underscore: true,
             })),
-            ..PluginOptions::serde_default()
+            ..PluginOptions::default()
         },
     );
     insta::assert_snapshot!(output);
@@ -84,7 +84,7 @@ fn test_naming_transform_underscore() {
                 enum_values: Some(NamingCase::CamelCase),
                 transform_underscore: true,
             })),
-            ..PluginOptions::serde_default()
+            ..PluginOptions::default()
         },
     );
     insta::assert_snapshot!(output);
@@ -96,7 +96,7 @@ fn test_enum_prefix() {
         &["schemas/naming.graphql"],
         PluginOptions {
             enum_prefix: Some("E".to_string()),
-            ..PluginOptions::serde_default()
+            ..PluginOptions::default()
         },
     );
     insta::assert_snapshot!(output);
@@ -108,7 +108,7 @@ fn test_enum_suffix() {
         &["schemas/naming.graphql"],
         PluginOptions {
             enum_suffix: Some("Enum".to_string()),
-            ..PluginOptions::serde_default()
+            ..PluginOptions::default()
         },
     );
     insta::assert_snapshot!(output);
@@ -121,7 +121,7 @@ fn test_enum_prefix_and_suffix() {
         PluginOptions {
             enum_prefix: Some("E".to_string()),
             enum_suffix: Some("Type".to_string()),
-            ..PluginOptions::serde_default()
+            ..PluginOptions::default()
         },
     );
     insta::assert_snapshot!(output);

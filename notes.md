@@ -68,3 +68,33 @@
 DELETE CACHE ISSUE
 
 TODO: double warn for duplicate fragment names
+
+---
+
+Bug:
+
+``` graphql
+type Foo {
+  id: ID!
+  name: String
+}
+
+type Query {
+  foo: Foo!
+}
+```
+
+``` graphql
+{
+  foo
+}
+```
+
+outputs? (probably should error)
+
+``` ts
+export interface Unknown_1_Query {
+  readonly __typename?: 'Query';
+  readonly foo: Foo;
+}
+```

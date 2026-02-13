@@ -38,7 +38,6 @@ fn load_and_generate(config_name: &str) -> HashMap<String, String> {
         schema: &schema,
         documents: &documents,
         generates: &config.generates,
-        preset: config.preset,
     };
 
     let result = generate_from_input(&input).expect("Failed to generate");
@@ -101,7 +100,6 @@ fn test_schema_types_only() {
         schema: &schema,
         documents: &documents,
         generates: &generates,
-        preset: gql_codegen_core::Preset::default(),
     };
 
     let result = generate_from_input(&input).expect("Failed to generate");

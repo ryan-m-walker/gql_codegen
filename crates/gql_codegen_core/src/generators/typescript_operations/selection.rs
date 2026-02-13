@@ -7,8 +7,10 @@ use crate::Result;
 use crate::config::TypenamePolicy;
 use crate::generators::GeneratorContext;
 use crate::generators::common::helpers::{
-    ScalarDirection, get_array_type, get_readonly_kw, indent, render_decl_closing, render_type,
+    FieldType, ScalarDirection, get_array_type, get_optional_prop_modifier, get_readonly_kw,
+    indent, render_decl_closing, render_type,
 };
+use crate::generators::typescript_operations::field::render_field;
 use crate::generators::typescript_operations::typename::render_op_typename;
 
 #[derive(Debug, Clone)]
@@ -221,7 +223,7 @@ pub(crate) fn render_normalized(
     normalized: &NormalizedSelectionSet,
     depth: usize,
 ) -> Result<()> {
-    writeln!(ctx.writer, "{{")?;
+    // writeln!(ctx.writer, "{{")?;
 
     for (response_name, field) in &normalized.fields {
         // __typename: emit string literal type based on policy
@@ -235,18 +237,18 @@ pub(crate) fn render_normalized(
 
     indent(ctx, depth)?;
 
-    if depth == 0 {
-        render_decl_closing(ctx)?;
-    } else {
-        writeln!(ctx.writer, "}};")?;
-    }
+    // if depth == 0 {
+    //     render_decl_closing(ctx)?;
+    // } else {
+    //     writeln!(ctx.writer, "}};")?;
+    // }
 
     Ok(())
 }
 
 /// Render a single field entry: indentation, name, optionality, and value.
 /// Shared between `render_normalized` and `render_variants`.
-fn render_field(
+fn _render_field(
     ctx: &mut GeneratorContext,
     response_name: &str,
     field: &NormalizedSelection,
@@ -267,17 +269,43 @@ fn render_field(
 
     write!(ctx.writer, "{readonly}{response_name}{optional}: ")?;
 
-    if !field.children.variants.is_empty() {
-        return render_variant_field(ctx, &field.children, &field.field_type, depth);
-    }
+    // if !field.children.variants.is_empty() {
+    //     return render_variant_field(ctx, &field.children, &field.field_type, depth);
+    // }
+    //
+    // if field.children.fields.is_empty() {
+    //     let ts_type = render_type(ctx, &field.field_type, ScalarDirection::Output);
+    //     writeln!(ctx.writer, "{ts_type};")?;
+    //     return Ok(());
+    // }
 
-    if field.children.fields.is_empty() {
-        let ts_type = render_type(ctx, &field.field_type, ScalarDirection::Output);
-        writeln!(ctx.writer, "{ts_type};")?;
-        return Ok(());
-    }
+    // TODO: this doesn't work so right
+    // Wrap in array layers (e.g. `ReadonlyArray<`) for list types
+    // let nullable = !field.field_type.is_non_null();
+    // let list_depth = write_list_open(ctx, &field.field_type)?;
+    //
+    // render_normalized(ctx, &field.children, depth + list_depth)?;
 
-    render_normalized(ctx, &field.children, depth)
+    // if list_depth > 0 {
+    //     // Close list layers with nullability
+    //     for i in (0..list_depth).rev() {
+    //         indent(ctx, depth + i)?;
+    //         write!(ctx.writer, ">")?;
+    //         if !is_non_null_at_depth(&field.field_type, i) {
+    //             write!(ctx.writer, " | null")?;
+    //         }
+    //         if i == 0 {
+    //             writeln!(ctx.writer, ";")?;
+    //         } else {
+    //             writeln!(ctx.writer)?;
+    //         }
+    //     }
+    // } else if nullable {
+    // Non-list nullable: already closed by render_normalized's `};`, need ` | null`
+    // Actually render_normalized writes `};` — we need to adjust
+    // }
+
+    Ok(())
 }
 
 /// Render a field whose children contain union/interface variants.
@@ -338,9 +366,9 @@ fn write_list_open(ctx: &mut GeneratorContext, ty: &Type) -> Result<usize> {
     match ty {
         Type::NonNullList(inner) | Type::List(inner) => {
             let array_type = get_array_type(ctx);
-            writeln!(ctx.writer, "{array_type}<")?;
+            write!(ctx.writer, "{array_type}<")?;
             let layers = write_list_open(ctx, inner)?;
-            Ok(layers + 1)
+            Ok(layers)
         }
         _ => Ok(0),
     }
@@ -366,7 +394,7 @@ fn is_non_null_at_depth(ty: &Type, target_depth: usize) -> bool {
 ///   | { __typename?: 'Book'; shared_field: T; book_field: U }
 ///   | { __typename?: 'Movie'; shared_field: T; movie_field: V }
 /// ```
-fn render_variants(
+pub(crate) fn render_variants(
     ctx: &mut GeneratorContext,
     selection_set: &NormalizedSelectionSet,
     depth: usize,
@@ -399,9 +427,9 @@ fn render_variants(
     }
 
     if ctx.options.future_proof_unions {
+        let readonly = get_readonly_kw(ctx);
         indent(ctx, depth)?;
-        writeln!(ctx.writer, "| {{ __typename?: '%other' }}")?;
-        // TODO: semicolon here if non-nullable
+        write!(ctx.writer, "| {{ {readonly}__typename?: '%other' }}")?;
     }
 
     Ok(())

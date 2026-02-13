@@ -2,12 +2,14 @@
 source: crates/gql_codegen_core/tests/generators/typescript/interfaces.rs
 expression: output
 ---
-export interface Article implements Node {
+export interface Article extends Node {
+  readonly __typename?: 'Article';
   readonly id: string;
   readonly title: string;
 }
 
-export interface Comment implements Node {
+export interface Comment extends Node {
+  readonly __typename?: 'Comment';
   readonly id: string;
   readonly text: string;
 }
@@ -17,6 +19,7 @@ export interface Node {
 }
 
 export interface Query {
+  readonly __typename?: 'Query';
   readonly _empty?: string | null;
   readonly node?: Node | null;
 }

@@ -1,0 +1,23 @@
+---
+source: crates/gql_codegen_core/tests/generators/typescript/enums.rs
+assertion_line: 48
+expression: output
+---
+export const enum Color {
+  RED = 'RED',
+  GREEN = 'GREEN',
+  BLUE = 'BLUE',
+}
+
+export interface Query {
+  readonly __typename?: 'Query';
+  readonly _empty?: string | null | undefined;
+  readonly status?: Status | null | undefined;
+  readonly color?: Color | null | undefined;
+}
+
+export const enum Status {
+  ACTIVE = 'ACTIVE',
+  INACTIVE = 'INACTIVE',
+  PENDING = 'PENDING',
+}

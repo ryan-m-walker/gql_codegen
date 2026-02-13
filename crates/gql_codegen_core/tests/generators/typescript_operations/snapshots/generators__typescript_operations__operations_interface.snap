@@ -3,17 +3,18 @@ source: crates/gql_codegen_core/tests/generators/typescript_operations/mod.rs
 expression: output
 ---
 export interface GetNodeQuery {
+  readonly __typename?: 'Query';
   readonly node?: 
-  | {
-    readonly __typename: 'Article';
-    readonly id: string;
-    readonly title: string;
-  }
-  | {
-    readonly __typename: 'Comment';
-    readonly id: string;
-    readonly text: string;
-  }
-  | { __typename?: '%other' }
-  | null;
+    | {
+      readonly __typename?: 'Article';
+      readonly id: string;
+      readonly title: string;
+    }
+    | {
+      readonly __typename?: 'Comment';
+      readonly id: string;
+      readonly text: string;
+    }
+    | { __typename?: '%other' }
+    | null;
 }

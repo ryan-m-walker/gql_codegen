@@ -8,16 +8,19 @@ export interface createUserInput {
 }
 
 export interface http_Status {
+  readonly __typename?: 'HTTP_STATUS';
   readonly statusCode: number;
 }
 
 export interface query {
+  readonly __typename?: 'Query';
   readonly _empty?: string | null;
   readonly userProfile?: userProfile | null;
   readonly httpStatus?: http_Status | null;
 }
 
 export interface userProfile {
+  readonly __typename?: 'UserProfile';
   readonly firstName: string;
   readonly lastName: string;
 }

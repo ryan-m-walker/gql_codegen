@@ -1,21 +1,8 @@
 use crate::PluginOptions;
-use crate::diagnostic::{Diagnostic, DiagnosticCategory, Diagnostics};
+use crate::diagnostic::Diagnostics;
 
 /// Validate resolved plugin options and emit warnings for conflicting settings.
-pub(crate) fn validate_options(options: &PluginOptions, diagnostics: &mut Diagnostics) {
-    let enums_as_types = options.enums_as_types.unwrap_or(true);
-
-    if options.future_proof_enums && !enums_as_types {
-        diagnostics.push(Diagnostic::warning(
-            DiagnosticCategory::Config,
-            "`futureProofEnums` has no effect when `enumsAsTypes` is enabled",
-        ));
-    }
-
-    if options.numeric_enums && enums_as_types {
-        diagnostics.push(Diagnostic::warning(
-            DiagnosticCategory::Config,
-            "`enumsAsTypes` has no effect when `numericEnums` is enabled",
-        ));
-    }
-}
+///
+/// With fixed SGC defaults, options can't conflict — this is a no-op.
+/// Kept as a hook for future validation needs.
+pub(crate) fn validate_options(_options: &PluginOptions, _diagnostics: &mut Diagnostics) {}

@@ -27,8 +27,12 @@ pub(crate) fn render_fragment<'a>(
     let name = ctx.transform_type_name(&name);
 
     render_decl_prefix(ctx, &name, None)?;
+    writeln!(ctx.writer, "{{")?;
+
     render_normalized(ctx, &normalized, 0)?;
+
     writeln!(ctx.writer)?;
+    writeln!(ctx.writer, "}}")?;
 
     Ok(())
 }

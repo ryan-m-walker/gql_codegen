@@ -66,7 +66,7 @@ mod test {
     // ── render_decl_opening ──────────────────────────────────────────────
 
     #[test]
-    fn decl_opening_type_default() {
+    fn decl_opening_default_is_interface() {
         let ctx = TestCtxBuilder::new();
 
         let output = ctx.run(|ctx| {
@@ -74,7 +74,8 @@ mod test {
             Ok(())
         });
 
-        assert_eq!(output, "export type Foo = {\n");
+        // SGC default: declaration_kind = Interface
+        assert_eq!(output, "export interface Foo {\n");
     }
 
     #[test]
@@ -134,11 +135,13 @@ mod test {
             Ok(())
         });
 
-        assert_eq!(output, "type Foo = {\n");
+        // SGC default: Interface, no_export removes "export"
+        assert_eq!(output, "interface Foo {\n");
     }
 
     #[test]
-    fn decl_opening_type_with_interface() {
+    fn decl_opening_default_with_interface() {
+        // SGC default is Interface → uses "extends" keyword
         let ctx = TestCtxBuilder::new()
             .schema_str(
                 "interface Node { id: ID! }
@@ -152,18 +155,18 @@ mod test {
             Ok(())
         });
 
-        assert_eq!(output, "export type User = Node & {\n");
+        assert_eq!(output, "export interface User extends Node {\n");
     }
 
     #[test]
-    fn decl_opening_interface_with_implements() {
+    fn decl_opening_type_with_interface() {
         let ctx = TestCtxBuilder::new()
             .schema_str(
                 "interface Node { id: ID! }
                  type User implements Node { id: ID!, name: String }",
             )
             .options(PluginOptions {
-                declaration_kind: Some(DeclarationKind::Interface),
+                declaration_kind: Some(DeclarationKind::Type),
                 ..Default::default()
             })
             .build();
@@ -174,7 +177,7 @@ mod test {
             Ok(())
         });
 
-        assert_eq!(output, "export interface User implements Node {\n");
+        assert_eq!(output, "export type User = Node & {\n");
     }
 
     #[test]
@@ -201,7 +204,8 @@ mod test {
     }
 
     #[test]
-    fn decl_opening_type_with_multiple_interfaces() {
+    fn decl_opening_default_with_multiple_interfaces() {
+        // SGC default is Interface → uses "extends" with comma-separated list
         let ctx = TestCtxBuilder::new()
             .schema_str(
                 "interface Node { id: ID! }
@@ -216,14 +220,56 @@ mod test {
             Ok(())
         });
 
+        assert_eq!(
+            output,
+            "export interface User extends Node, Timestamped {\n"
+        );
+    }
+
+    #[test]
+    fn decl_opening_type_with_multiple_interfaces() {
+        let ctx = TestCtxBuilder::new()
+            .schema_str(
+                "interface Node { id: ID! }
+                 interface Timestamped { createdAt: String }
+                 type User implements Node & Timestamped { id: ID!, createdAt: String }",
+            )
+            .options(PluginOptions {
+                declaration_kind: Some(DeclarationKind::Type),
+                ..Default::default()
+            })
+            .build();
+        let user = ctx.get_object("User");
+
+        let output = ctx.run(|gen_ctx| {
+            render_decl_opening(gen_ctx, "User", Some(&user.implements_interfaces))?;
+            Ok(())
+        });
+
         assert_eq!(output, "export type User = Node & Timestamped & {\n");
     }
 
     // ── render_decl_closing ──────────────────────────────────────────────
 
     #[test]
-    fn decl_closing_type_has_semicolon() {
+    fn decl_closing_default_no_semicolon() {
+        // SGC default: Interface → no trailing semicolon
         let ctx = TestCtxBuilder::new();
+
+        let output = ctx.run(|ctx| {
+            render_decl_closing(ctx)?;
+            Ok(())
+        });
+
+        assert_eq!(output, "}\n");
+    }
+
+    #[test]
+    fn decl_closing_type_has_semicolon() {
+        let ctx = TestCtxBuilder::new().options(PluginOptions {
+            declaration_kind: Some(DeclarationKind::Type),
+            ..Default::default()
+        });
 
         let output = ctx.run(|ctx| {
             render_decl_closing(ctx)?;
@@ -396,8 +442,25 @@ mod test {
     // ── full declaration round-trip ──────────────────────────────────────
 
     #[test]
-    fn full_type_declaration() {
+    fn full_default_declaration() {
+        // SGC default: Interface → no `= {` syntax, no trailing semicolon
         let ctx = TestCtxBuilder::new();
+
+        let output = ctx.run(|ctx| {
+            render_decl_opening(ctx, "User", None)?;
+            render_decl_closing(ctx)?;
+            Ok(())
+        });
+
+        assert_eq!(output, "export interface User {\n}\n");
+    }
+
+    #[test]
+    fn full_type_declaration() {
+        let ctx = TestCtxBuilder::new().options(PluginOptions {
+            declaration_kind: Some(DeclarationKind::Type),
+            ..Default::default()
+        });
 
         let output = ctx.run(|ctx| {
             render_decl_opening(ctx, "User", None)?;

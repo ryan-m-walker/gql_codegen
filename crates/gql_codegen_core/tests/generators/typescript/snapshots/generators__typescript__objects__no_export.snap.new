@@ -1,0 +1,27 @@
+---
+source: crates/gql_codegen_core/tests/generators/typescript/objects.rs
+assertion_line: 72
+expression: output
+---
+interface Post {
+  readonly __typename?: 'Post';
+  readonly id: string;
+  readonly title: string;
+  readonly body?: string | null | undefined;
+  readonly published: boolean;
+}
+
+interface Query {
+  readonly __typename?: 'Query';
+  readonly _empty?: string | null | undefined;
+  readonly user?: User | null | undefined;
+  readonly post?: Post | null | undefined;
+}
+
+interface User {
+  readonly __typename?: 'User';
+  readonly id: string;
+  readonly name: string;
+  readonly email?: string | null | undefined;
+  readonly age?: number | null | undefined;
+}

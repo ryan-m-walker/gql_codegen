@@ -24,7 +24,7 @@ fn test_scalars_with_mappings() {
         &["schemas/scalar.graphql"],
         PluginOptions {
             scalars,
-            ..PluginOptions::serde_default()
+            ..PluginOptions::default()
         },
     );
     insta::assert_snapshot!(output);
@@ -37,7 +37,7 @@ fn test_scalars_default_scalar_type() {
         &["schemas/scalar.graphql"],
         PluginOptions {
             default_scalar_type: Some("any".to_string()),
-            ..PluginOptions::serde_default()
+            ..PluginOptions::default()
         },
     );
     insta::assert_snapshot!(output);
@@ -56,7 +56,7 @@ fn test_scalars_strict_with_all_mapped() {
         PluginOptions {
             scalars,
             strict_scalars: true,
-            ..PluginOptions::serde_default()
+            ..PluginOptions::default()
         },
     );
     insta::assert_snapshot!(output);
@@ -72,7 +72,7 @@ fn test_scalars_strict_missing_scalar_errors() {
         PluginOptions {
             strict_scalars: true,
             use_utility_types: true,
-            ..PluginOptions::serde_default()
+            ..PluginOptions::default()
         },
     );
 

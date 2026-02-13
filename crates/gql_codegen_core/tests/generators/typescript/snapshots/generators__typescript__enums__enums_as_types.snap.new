@@ -1,0 +1,23 @@
+---
+source: crates/gql_codegen_core/tests/generators/typescript/enums.rs
+assertion_line: 22
+expression: output
+---
+export type Color =
+  | 'RED'
+  | 'GREEN'
+  | 'BLUE'
+  | '%future added value';
+
+export interface Query {
+  readonly __typename?: 'Query';
+  readonly _empty?: string | null | undefined;
+  readonly status?: Status | null | undefined;
+  readonly color?: Color | null | undefined;
+}
+
+export type Status =
+  | 'ACTIVE'
+  | 'INACTIVE'
+  | 'PENDING'
+  | '%future added value';

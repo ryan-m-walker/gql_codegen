@@ -1,0 +1,38 @@
+---
+source: crates/gql_codegen_core/tests/generators/typescript_operations/mod.rs
+assertion_line: 65
+expression: output
+---
+export interface CreateUserMutation {
+  readonly __typename?: 'Mutation';
+  readonly createUser: {
+    readonly __typename?: 'User';
+    readonly id: string;
+    readonly name: string;
+  };
+}
+export interface CreateUserMutationVariables {
+  readonly input: CreateUserInput;
+}
+
+export interface GetUserQuery {
+  readonly __typename?: 'Query';
+  readonly user?: {
+    readonly __typename?: 'User';
+    readonly id: string;
+    readonly name: string;
+    readonly email?: string | null | undefined;
+  } | null | undefined;
+}
+export interface GetUserQueryVariables {
+  readonly id: string;
+}
+
+export interface GetUsersQuery {
+  readonly __typename?: 'Query';
+  readonly users: ReadonlyArray<{
+    readonly __typename?: 'User';
+    readonly id: string;
+    readonly name: string;
+  }>;
+}

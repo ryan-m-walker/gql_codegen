@@ -1,12 +1,13 @@
 //! Tests for typescript-operations plugin (operation type generation)
 
 mod config;
+mod lists;
 
 use std::collections::HashMap;
 use std::path::PathBuf;
 
 use gql_codegen_core::{
-    ExtractConfig, GenerateInput, OutputConfig, PluginConfig, PluginOptions, Preset, SourceCache,
+    ExtractConfig, GenerateInput, OutputConfig, PluginConfig, PluginOptions, SourceCache,
     StringOrArray, collect_documents, generate_from_input, load_schema, load_sources,
     resolve_schema_paths,
 };
@@ -47,7 +48,6 @@ fn generate_operations(
         schema: &schema,
         documents: &docs,
         generates: &generates,
-        preset: Preset::default(),
     };
 
     let result = generate_from_input(&input).unwrap();
@@ -102,7 +102,7 @@ fn test_operations_immutable() {
         &["documents/queries.graphql"],
         PluginOptions {
             immutable_types: true,
-            ..PluginOptions::serde_default()
+            ..PluginOptions::default()
         },
     );
     insta::assert_snapshot!(output);

@@ -3,13 +3,12 @@ import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 
 import type { DocumentNode, GraphQLSchema } from 'graphql'
-import { createJiti } from 'jiti'
 import { exists } from './utils.js'
 
 // Duck-type checks to avoid cross-realm instanceof issues.
 // graphql-js's isSchema/isScalarType use instanceof internally, which
 // throws when the schema was loaded from a different module context
-// (e.g., jiti, vitest transforms, or multiple graphql versions).
+// (e.g., multiple graphql versions or different bundler contexts).
 
 function isSchemaLike(value: unknown): value is GraphQLSchema {
     if (typeof value !== 'object' || value === null) return false
@@ -29,9 +28,9 @@ function isScalarTypeLike(type: unknown): boolean {
     )
 }
 
-// Runtime graphql functions, loaded through jiti for realm compatibility.
+// Runtime graphql functions, resolved from the user's project node_modules.
 // We must NOT use statically imported print/printSchema — they come from
-// our module context, but the schema comes from jiti's module context.
+// our module context, but the schema comes from the user's project context.
 // Using same-realm functions avoids the "Cannot use X from another module
 // or realm" error that graphql-js throws via internal instanceof checks.
 interface GraphQLRuntime {
@@ -58,9 +57,15 @@ export interface ResolvedSchemas {
  *
  * Programmatic schemas are imported and converted to SDL strings.
  * Static paths are passed through for Rust to handle.
+ *
+ * Uses Rust-powered schema caching: the module graph is walked with oxc to
+ * discover all dependencies, and their metadata is cached. On subsequent runs,
+ * only file stats are checked — if nothing changed, the cached SDL is returned
+ * without re-importing the schema.
  */
 export async function resolveSchemas(
     schema: string | string[],
+    cacheDir?: string,
 ): Promise<ResolvedSchemas> {
     const paths = Array.isArray(schema) ? schema : [schema]
 
@@ -71,7 +76,7 @@ export async function resolveSchemas(
     }
 
     for (const schemaPath of paths) {
-        const loaded = await loadSchema(schemaPath)
+        const loaded = await loadSchema(schemaPath, cacheDir)
 
         if (loaded) {
             result.schemaContent.push(loaded.sdl)
@@ -112,9 +117,6 @@ export async function loadSchema(
         return null
     }
 
-    // Try native import() first — inherits tsx/ts-node loader hooks and
-    // the user's registered resolvers. Falls back to jiti for standalone use
-    // (no TS runtime registered).
     const [mod, graphql] = await importModule(resolved)
 
     return resolveSchemaFromModule(mod, schemaPath, graphql)
@@ -123,35 +125,25 @@ export async function loadSchema(
 type ImportResult = [mod: unknown, graphql: GraphQLRuntime]
 
 /**
- * Resolve `graphql` from the schema file's node_modules — not from the CLI's.
- * This ensures printSchema/isSchema use the same graphql instance as the schema.
+ * Import a schema module using native import() and resolve graphql
+ * from the user's project node_modules for same-realm compatibility.
+ *
+ * Relies on the user's Node.js environment (tsx, ts-node, etc.) to handle
+ * TypeScript transpilation, path aliases, and module resolution.
  */
-function resolveGraphqlFrom(schemaPath: string): string {
-    const req = createRequire(schemaPath)
-    return pathToFileURL(req.resolve('graphql')).href
-}
-
 async function importModule(resolved: string): Promise<ImportResult> {
-    const fileUrl = pathToFileURL(resolved).href
-    const graphqlUrl = resolveGraphqlFrom(resolved)
+    // Resolve graphql from the schema file's location, not ours.
+    // This ensures we use the same graphql instance as the schema module,
+    // avoiding cross-realm instanceof issues.
+    const req = createRequire(resolved)
+    const graphqlUrl = pathToFileURL(req.resolve('graphql')).href
 
-    try {
-        // Native import() inherits registered loaders (tsx, ts-node, etc.)
-        // and the user's registered resolvers.
-        const [mod, graphql] = await Promise.all([
-            import(fileUrl),
-            import(graphqlUrl) as Promise<typeof import('graphql')>,
-        ])
-        return [mod, graphql]
-    } catch {
-        // No TS runtime available — fall back to jiti for transpilation.
-        const jiti = createJiti(resolved, { jsx: true })
-        const [mod, graphql] = await Promise.all([
-            jiti.import(resolved),
-            jiti.import('graphql') as Promise<typeof import('graphql')>,
-        ])
-        return [mod, graphql as GraphQLRuntime]
-    }
+    const [mod, graphql] = await Promise.all([
+        import(pathToFileURL(resolved).href),
+        import(graphqlUrl) as Promise<typeof import('graphql')>,
+    ])
+
+    return [mod, graphql]
 }
 
 /**

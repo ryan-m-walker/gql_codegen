@@ -7,7 +7,7 @@
 use std::collections::BTreeMap;
 
 use gql_codegen_core::test_utils::TestGen;
-use gql_codegen_core::{PluginOptions, Preset, ScalarConfig, TypenamePolicy};
+use gql_codegen_core::{PluginOptions, ScalarConfig, TypenamePolicy};
 
 const SCHEMA: &str = "\
 type Query { user(id: ID!): User, users: [User!]! }
@@ -63,7 +63,7 @@ fn immutable_types_adds_readonly() {
         QUERY,
         PluginOptions {
             immutable_types: true,
-            ..PluginOptions::serde_default()
+            ..PluginOptions::default()
         },
     );
 
@@ -75,15 +75,15 @@ fn immutable_types_adds_readonly() {
 
 #[test]
 fn mutable_types_no_readonly() {
-    // graphql-codegen preset defaults immutable_types to false
-    // (SGC preset defaults it to true, and boolean false can't override via merge)
     let output = TestGen::new()
         .no_base_schema()
         .schema_str(SCHEMA)
         .operations_str(QUERY)
         .plugin("typescript-operations")
-        .preset(Preset::GraphqlCodegen)
-        .options(PluginOptions::serde_default())
+        .options(PluginOptions {
+            immutable_types: false,
+            ..PluginOptions::default()
+        })
         .generate();
 
     assert!(!output.contains("readonly"));
@@ -99,7 +99,7 @@ fn skip_typename_omits_typename_field() {
         query,
         PluginOptions {
             skip_typename: true,
-            ..PluginOptions::serde_default()
+            ..PluginOptions::default()
         },
     );
 
@@ -112,9 +112,8 @@ fn typename_included_by_default() {
     let query = "query GetUser($id: ID!) { user(id: $id) { __typename id } }";
     let output = gen_ops(SCHEMA, query, PluginOptions::default());
 
-    // SGC preset defaults to AsSelected — explicitly selected __typename is non-optional
-    assert!(output.contains("__typename: 'User';"));
-    assert!(!output.contains("__typename?"));
+    // SGC default: typename_policy: Always → __typename is always optional
+    assert!(output.contains("__typename?: 'User';"));
 }
 
 // ── typename_policy ──────────────────────────────────────────────
@@ -127,7 +126,7 @@ fn typename_policy_always_injects_even_when_not_selected() {
         query,
         PluginOptions {
             typename_policy: Some(TypenamePolicy::Always),
-            ..PluginOptions::serde_default()
+            ..PluginOptions::default()
         },
     );
 
@@ -143,7 +142,7 @@ fn typename_policy_as_selected_only_when_queried() {
         query,
         PluginOptions {
             typename_policy: Some(TypenamePolicy::AsSelected),
-            ..PluginOptions::serde_default()
+            ..PluginOptions::default()
         },
     );
 
@@ -159,7 +158,7 @@ fn typename_policy_as_selected_non_optional_when_queried() {
         query,
         PluginOptions {
             typename_policy: Some(TypenamePolicy::AsSelected),
-            ..PluginOptions::serde_default()
+            ..PluginOptions::default()
         },
     );
 
@@ -175,7 +174,7 @@ fn typename_policy_skip_never_emits() {
         query,
         PluginOptions {
             typename_policy: Some(TypenamePolicy::Skip),
-            ..PluginOptions::serde_default()
+            ..PluginOptions::default()
         },
     );
 
@@ -191,7 +190,7 @@ fn skip_typename_bool_backwards_compat() {
         query,
         PluginOptions {
             skip_typename: true,
-            ..PluginOptions::serde_default()
+            ..PluginOptions::default()
         },
     );
 
@@ -207,7 +206,7 @@ fn typename_policy_always_with_non_optional() {
         PluginOptions {
             typename_policy: Some(TypenamePolicy::Always),
             non_optional_typename: true,
-            ..PluginOptions::serde_default()
+            ..PluginOptions::default()
         },
     );
 
@@ -232,7 +231,7 @@ scalar DateTime
         query,
         PluginOptions {
             scalars,
-            ..PluginOptions::serde_default()
+            ..PluginOptions::default()
         },
     );
 
@@ -260,7 +259,7 @@ scalar DateTime
         query,
         PluginOptions {
             scalars,
-            ..PluginOptions::serde_default()
+            ..PluginOptions::default()
         },
     );
 
@@ -345,7 +344,7 @@ fn no_export_removes_export_keyword() {
         QUERY,
         PluginOptions {
             no_export: true,
-            ..PluginOptions::serde_default()
+            ..PluginOptions::default()
         },
     );
 

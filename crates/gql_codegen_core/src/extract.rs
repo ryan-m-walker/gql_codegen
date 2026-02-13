@@ -1,8 +1,9 @@
 //! Fast, resilient, zero-copy GraphQL extraction from source files.
 //!
 //! Supported patterns:
-//! - `gql`...``
-//! - `graphql`...``
+//! - `gql`...``         (tagged template literal)
+//! - `graphql`...``     (tagged template literal)
+//! - `graphql(`...``)`  (function call with template literal)
 //! - `/* GraphQL */`...``
 //!
 //! Inspired by Relay's approach:
@@ -142,7 +143,10 @@ pub fn extract<'a>(source: &'a str, config: &ExtractConfig) -> Vec<Extracted<'a>
                 // Check if this identifier is one of our tags
                 if config.tags.iter().any(|tag| tag == ident) {
                     scanner.skip_whitespace();
-                    if scanner.peek() == '`' {
+                    let next = scanner.peek();
+
+                    if next == '`' {
+                        // Tagged template literal: graphql`...`
                         scanner.advance();
                         if let Some(text) = scanner.read_template_literal() {
                             results.push(Extracted {
@@ -150,6 +154,25 @@ pub fn extract<'a>(source: &'a str, config: &ExtractConfig) -> Vec<Extracted<'a>
                                 line: start_line,
                                 column: start_col,
                             });
+                        }
+                    } else if next == '(' {
+                        // Function call: graphql(`...`)
+                        scanner.advance(); // consume (
+                        scanner.skip_whitespace();
+                        if scanner.peek() == '`' {
+                            scanner.advance();
+                            if let Some(text) = scanner.read_template_literal() {
+                                results.push(Extracted {
+                                    text,
+                                    line: start_line,
+                                    column: start_col,
+                                });
+                                // Skip past closing paren
+                                scanner.skip_whitespace();
+                                if scanner.peek() == ')' {
+                                    scanner.advance();
+                                }
+                            }
                         }
                     }
                 }
@@ -598,6 +621,49 @@ mod tests {
         // text should be within source's memory range
         assert!(text_ptr >= source_ptr);
         assert!(text_ptr < unsafe { source_ptr.add(source.len()) });
+    }
+
+    #[test]
+    fn test_function_call_graphql() {
+        let source = r#"const q = graphql(`query { user }`);"#;
+        let results = extract_default(source);
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].text, "query { user }");
+    }
+
+    #[test]
+    fn test_function_call_gql() {
+        let source = r#"const q = gql(`query { user }`);"#;
+        let results = extract_default(source);
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].text, "query { user }");
+    }
+
+    #[test]
+    fn test_function_call_multiline() {
+        let source = r#"
+            const TestMutation = graphql(`
+                mutation testMutation($input: String!) {
+                    test(input: $input) {
+                        __typename
+                        ... on Success {
+                            data
+                        }
+                    }
+                }
+            `)
+        "#;
+        let results = extract_default(source);
+        assert_eq!(results.len(), 1);
+        assert!(results[0].text.contains("mutation testMutation"));
+    }
+
+    #[test]
+    fn test_function_call_with_spaces() {
+        let source = r#"const q = graphql(  `query { user }`  );"#;
+        let results = extract_default(source);
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].text, "query { user }");
     }
 
     #[test]

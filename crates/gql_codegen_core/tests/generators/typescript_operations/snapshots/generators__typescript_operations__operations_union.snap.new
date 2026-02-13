@@ -4,17 +4,18 @@ assertion_line: 85
 expression: output
 ---
 export interface SearchQuery {
+  readonly __typename?: 'Query';
   readonly search: ReadonlyArray<
-      | {
-        readonly __typename: 'Book';
-        readonly isbn: string;
-        readonly title: string;
-      }
-      | {
-        readonly __typename: 'Movie';
-        readonly imdbId: string;
-        readonly title: string;
-      }
-      | { __typename?: '%other' }
+    | {
+      readonly __typename?: 'Book';
+      readonly isbn: string;
+      readonly title: string;
+    }
+    | {
+      readonly __typename?: 'Movie';
+      readonly imdbId: string;
+      readonly title: string;
+    }
+    | { readonly __typename?: '%other' }
   >;
 }

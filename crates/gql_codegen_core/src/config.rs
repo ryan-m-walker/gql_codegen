@@ -3,79 +3,14 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap};
-use std::str::FromStr;
 
 // Re-export casing types for convenience
 pub use crate::casing::{NamingCase, NamingConvention, NamingConventionConfig};
-
-/// Preset determines default configuration values
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
-#[serde(rename_all = "kebab-case")]
-pub enum Preset {
-    /// SGC defaults: inline scalars/nullables, future-proof enums/unions
-    /// Optimized for TypeScript compiler performance
-    #[default]
-    Sgc,
-    /// graphql-codegen compatibility: Maybe<T> wrappers, Scalars map, utility types
-    /// Use for drop-in replacement with identical output
-    GraphqlCodegen,
-}
-
-impl Preset {
-    /// Get the default PluginOptions for this preset
-    pub fn default_options(&self) -> PluginOptions {
-        match self {
-            Preset::Sgc => PluginOptions {
-                // SGC defaults: optimized for TS performance and safety
-                declaration_kind: Some(DeclarationKind::Interface),
-                use_utility_types: false,
-                enums_as_types: Some(true),
-                future_proof_enums: true,
-                future_proof_unions: true,
-                immutable_types: true,
-                default_scalar_type: Some("unknown".to_string()),
-                typename_policy: Some(TypenamePolicy::AsSelected),
-                // SGC style (internal)
-                pretty_documents: true,
-                ..Default::default()
-            },
-            Preset::GraphqlCodegen => PluginOptions {
-                // graphql-codegen compat: use wrappers, matches their defaults
-                use_utility_types: true,
-                enums_as_types: Some(false), // graphql-codegen defaults to TS enums
-                future_proof_enums: false,
-                future_proof_unions: false,
-                default_scalar_type: Some("any".to_string()),
-                // compat style (internal)
-                pretty_documents: false,
-                ..Default::default()
-            },
-        }
-    }
-}
-
-impl FromStr for Preset {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s.to_lowercase().as_str() {
-            "sgc" => Ok(Preset::Sgc),
-            "graphql-codegen" | "graphqlcodegen" | "compat" => Ok(Preset::GraphqlCodegen),
-            _ => Err(format!(
-                "Unknown preset '{s}'. Valid presets: sgc, graphql-codegen",
-            )),
-        }
-    }
-}
 
 /// Main configuration - matches TypeScript `CodegenConfig`
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct CodegenConfig {
-    /// Preset for default values: "sgc" (default) or "graphql-codegen"
-    #[serde(default)]
-    pub preset: Preset,
-
     /// Path to GraphQL schema file(s)
     pub schema: StringOrArray,
 
@@ -258,178 +193,232 @@ impl ScalarConfig {
     }
 }
 
-/// Plugin options - shared config structure
-/// Uses BTreeMap for scalars to enable Hash derivation (cache key generation)
-#[derive(Debug, Clone, Default, Hash, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+/// Plugin options - shared config structure.
+///
+/// Only `scalars` is user-configurable via JSON config. All other fields are
+/// locked to SGC defaults via `#[serde(skip)]` and the manual `Default` impl.
+/// Generators read these fields as before — they just always get SGC values now.
+///
+/// Uses BTreeMap for scalars to enable Hash derivation (cache key generation).
+#[derive(Debug, Clone, Hash, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct PluginOptions {
     // ─────────────────────────────────────────────────────────────────────────
-    // SGC Specific
-    // ─────────────────────────────────────────────────────────────────────────
-    /// When false (default): inline scalars and nullables directly (e.g., `string`, `T | null`)
-    /// When true: generate utility types like `Maybe<T>`, `Scalars['String']['output']`
-    /// Use `true` for graphql-codegen compatibility
-    #[serde(default)]
-    pub use_utility_types: bool,
-
-    /// Inline fragment spreads into document text (document generator)
-    #[serde(default)]
-    pub inline_fragments: bool,
-
-    /// Remove duplicate field selections (document generator)
-    #[serde(default)]
-    pub dedupe_selections: bool,
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // GraphQL Codegen Options
+    // User-configurable fields
     // ─────────────────────────────────────────────────────────────────────────
     /// Custom scalar mappings (GraphQL scalar name -> TypeScript type)
     #[serde(default)]
     pub scalars: BTreeMap<String, ScalarConfig>,
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // Fixed SGC defaults (not exposed in config schema)
+    // ─────────────────────────────────────────────────────────────────────────
+    /// When false (default): inline scalars and nullables directly
+    #[serde(skip)]
+    #[schemars(skip)]
+    pub use_utility_types: bool,
+
+    /// Inline fragment spreads into document text (document generator)
+    #[serde(skip)]
+    #[schemars(skip)]
+    pub inline_fragments: bool,
+
+    /// Remove duplicate field selections (document generator)
+    #[serde(skip)]
+    #[schemars(skip)]
+    pub dedupe_selections: bool,
+
     /// Skip rendering of built-in scalars
-    #[serde(default)]
+    #[serde(skip)]
+    #[schemars(skip)]
     pub disable_descriptions: bool,
 
     /// Error if a custom scalar is found without a mapping in `scalars`
-    /// Helps catch missing scalar configurations early
-    #[serde(default)]
+    #[serde(skip)]
+    #[schemars(skip)]
     pub strict_scalars: bool,
 
     /// Default type to use for unknown scalars (default: "unknown")
-    /// Common values: "unknown", "any", "string"
-    #[serde(default)]
+    #[serde(skip)]
+    #[schemars(skip)]
     pub default_scalar_type: Option<String>,
 
     /// Add readonly modifier to generated types
-    #[serde(default)]
+    #[serde(skip)]
+    #[schemars(skip)]
     pub immutable_types: bool,
 
     /// Generate enums as TypeScript string union types
-    /// None = not set (use preset default), Some(val) = explicitly set by user
-    #[serde(default)]
+    #[serde(skip)]
+    #[schemars(skip)]
     pub enums_as_types: Option<bool>,
 
     /// Generate enums as `as const` objects (better tree-shaking)
-    #[serde(default)]
+    #[serde(skip)]
+    #[schemars(skip)]
     pub enums_as_const: bool,
 
     /// Add future-proof "%future added value" to enums
-    #[serde(default)]
+    #[serde(skip)]
+    #[schemars(skip)]
     pub future_proof_enums: bool,
 
     /// Prefix to add to enum type names
-    #[serde(default)]
+    #[serde(skip)]
+    #[schemars(skip)]
     pub enum_prefix: Option<String>,
 
     /// Suffix to add to enum type names
-    #[serde(default)]
+    #[serde(skip)]
+    #[schemars(skip)]
     pub enum_suffix: Option<String>,
 
     /// Use `const enum` instead of `enum` for better tree-shaking
-    #[serde(default)]
+    #[serde(skip)]
+    #[schemars(skip)]
     pub const_enums: bool,
 
     /// Use numeric enum values instead of string literals
-    #[serde(default)]
+    #[serde(skip)]
+    #[schemars(skip)]
     pub numeric_enums: bool,
 
     /// Only generate enums, no other types
-    #[serde(default)]
+    #[serde(skip)]
+    #[schemars(skip)]
     pub only_enums: bool,
 
     /// Skip `export` keyword on generated types
-    #[serde(default)]
+    #[serde(skip)]
+    #[schemars(skip)]
     pub no_export: bool,
 
     /// Only generate types that are used in operations
-    /// Reduces output size by omitting unused schema types
-    #[serde(default)]
+    #[serde(skip)]
+    #[schemars(skip)]
     pub only_operation_types: bool,
 
     /// Add future-proof entry to union types
-    #[serde(default)]
+    #[serde(skip)]
+    #[schemars(skip)]
     pub future_proof_unions: bool,
 
-    /// Controls how `__typename` is emitted. Replaces skip_typename/non_optional_typename.
-    #[serde(default)]
+    /// Controls how `__typename` is emitted
+    #[serde(skip)]
+    #[schemars(skip)]
     pub typename_policy: Option<TypenamePolicy>,
 
-    /// Skip __typename field in generated types (deprecated — use typename_policy: "skip")
-    #[serde(default)]
+    /// Skip __typename field in generated types
+    #[serde(skip)]
+    #[schemars(skip)]
     pub skip_typename: bool,
 
-    /// Make __typename non-optional (deprecated — use typename_policy: "as-selected")
-    #[serde(default)]
+    /// Make __typename non-optional
+    #[serde(skip)]
+    #[schemars(skip)]
     pub non_optional_typename: bool,
 
     /// Avoid using TypeScript optionals (?), use explicit null instead
-    #[serde(default)]
+    #[serde(skip)]
+    #[schemars(skip)]
     pub avoid_optionals: AvoidOptionals,
 
-    /// Customize the Maybe type (default: "T | null")
-    /// Examples: "T | null | undefined", "Maybe<T>"
-    #[serde(default)]
+    /// Customize the Maybe type
+    #[serde(skip)]
+    #[schemars(skip)]
     pub maybe_value: Option<String>,
 
-    /// Separate Maybe type for input fields/arguments (default: uses maybe_value)
-    /// Useful for differentiating input vs output nullability handling
-    #[serde(default)]
+    /// Separate Maybe type for input fields/arguments
+    #[serde(skip)]
+    #[schemars(skip)]
     pub input_maybe_value: Option<String>,
 
     /// Use `type` instead of `interface` for object types
-    /// TODO: parse as string for more resilant parsing -> fallback to default and emit warning
-    #[serde(default)]
+    #[serde(skip)]
+    #[schemars(skip)]
     pub declaration_kind: Option<DeclarationKind>,
 
     /// Prefix to add to all generated type names
-    #[serde(default)]
+    #[serde(skip)]
+    #[schemars(skip)]
     pub types_prefix: Option<String>,
 
     /// Suffix to add to all generated type names
-    #[serde(default)]
+    #[serde(skip)]
+    #[schemars(skip)]
     pub types_suffix: Option<String>,
 
     /// Use `import type` syntax for type imports
-    #[serde(default)]
+    #[serde(skip)]
+    #[schemars(skip)]
     pub use_type_imports: bool,
 
     /// GraphQL tag style for document generator
-    #[serde(default)]
+    #[serde(skip)]
+    #[schemars(skip)]
     pub graphql_tag: Option<GraphqlTag>,
 
     /// Naming convention for generated types
-    /// Can be a string ("keep", "pascalCase", etc.) or object with typeNames/enumValues
-    #[serde(default)]
+    #[serde(skip)]
+    #[schemars(skip)]
     pub naming_convention: Option<NamingConvention>,
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Internal preset-only flags (not exposed in config schema)
-    // These are set by presets and cannot be overridden by users
-    // ─────────────────────────────────────────────────────────────────────────
     /// Pretty-print document strings with indentation
-    /// SGC style - graphql-codegen uses single-line
     #[serde(skip)]
     #[schemars(skip)]
     pub pretty_documents: bool,
 }
 
-impl PluginOptions {
-    /// Create PluginOptions with serde default values.
-    /// Use this instead of `..Default::default()` when you want values that match
-    /// what serde would produce from an empty JSON object `{}`.
-    ///
-    /// Note: If you add a new field with a non-false/None serde default,
-    /// update this method and `merge_options()` in codegen.rs.
-    pub fn serde_default() -> Self {
-        // All fields use #[serde(default)] which matches Default::default()
-        Self::default()
+/// Manual Default impl — returns fixed SGC defaults.
+///
+/// These are the opinionated defaults optimized for TypeScript compiler
+/// performance and type safety. All generators receive these values.
+impl Default for PluginOptions {
+    fn default() -> Self {
+        Self {
+            scalars: BTreeMap::new(),
+            // SGC defaults
+            // https://github.com/microsoft/TypeScript/wiki/Performance#preferring-interfaces-over-intersections
+            declaration_kind: Some(DeclarationKind::Interface),
+            use_utility_types: false,
+            enums_as_types: Some(true),
+            future_proof_enums: true,
+            future_proof_unions: true,
+            immutable_types: true,
+            default_scalar_type: Some("unknown".to_string()),
+            typename_policy: Some(TypenamePolicy::Always),
+            pretty_documents: true,
+            // Everything else: false/None/default
+            inline_fragments: false,
+            dedupe_selections: false,
+            disable_descriptions: false,
+            strict_scalars: false,
+            enums_as_const: false,
+            enum_prefix: None,
+            enum_suffix: None,
+            const_enums: false,
+            numeric_enums: false,
+            only_enums: false,
+            no_export: false,
+            only_operation_types: false,
+            skip_typename: false,
+            non_optional_typename: false,
+            avoid_optionals: AvoidOptionals::Boolean(false),
+            maybe_value: None,
+            input_maybe_value: None,
+            types_prefix: None,
+            types_suffix: None,
+            use_type_imports: false,
+            graphql_tag: None,
+            naming_convention: None,
+        }
     }
+}
 
-    /// Resolve the effective typename policy from the new enum field
-    /// or the legacy boolean flags.
+impl PluginOptions {
+    /// Resolve the effective typename policy.
+    /// Legacy `skip_typename` flag takes precedence for backwards compat.
     pub fn resolved_typename_policy(&self) -> TypenamePolicy {
-        // Legacy flag takes precedence for backwards compat
         if self.skip_typename {
             return TypenamePolicy::Skip;
         }
@@ -555,5 +544,32 @@ mod tests {
         let hooks = config.hooks.unwrap();
         assert_eq!(hooks.after_one_file_write, vec!["biome format --write"]);
         assert_eq!(hooks.after_all_file_write, vec!["echo done"]);
+    }
+
+    #[test]
+    fn default_plugin_options_are_sgc_defaults() {
+        let opts = PluginOptions::default();
+        assert_eq!(opts.declaration_kind, Some(DeclarationKind::Interface));
+        assert!(opts.immutable_types);
+        assert_eq!(opts.enums_as_types, Some(true));
+        assert!(opts.future_proof_enums);
+        assert!(opts.future_proof_unions);
+        assert_eq!(opts.default_scalar_type, Some("unknown".to_string()));
+        assert_eq!(opts.typename_policy, Some(TypenamePolicy::Always));
+        assert!(opts.pretty_documents);
+        assert!(!opts.use_utility_types);
+    }
+
+    #[test]
+    fn plugin_options_serde_only_reads_scalars() {
+        // Verify that JSON config only affects scalars — other fields are skipped
+        let json = r#"{"scalars": {"DateTime": "string"}, "immutableTypes": false}"#;
+        let opts: PluginOptions = serde_json::from_str(json).unwrap();
+        // scalars should be set
+        assert!(opts.scalars.contains_key("DateTime"));
+        // immutableTypes is #[serde(skip)] → gets bool::default() (false), NOT
+        // the struct's manual Default impl (true). The production path then
+        // merge_options() with SGC defaults as base, which restores it to true.
+        assert!(!opts.immutable_types);
     }
 }

@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 use gql_codegen_core::{
-    ExtractConfig, GenerateInput, GraphqlTag, OutputConfig, PluginConfig, PluginOptions, Preset,
+    ExtractConfig, GenerateInput, GraphqlTag, OutputConfig, PluginConfig, PluginOptions,
     SourceCache, StringOrArray, collect_documents, generate_from_input, load_schema, load_sources,
     resolve_schema_paths,
 };
@@ -39,7 +39,6 @@ fn generate_docs(schema_files: &[&str], document_files: &[&str], options: Plugin
         schema: &schema,
         documents: &docs,
         generates: &generates,
-        preset: Preset::default(),
     };
 
     let result = generate_from_input(&input).unwrap();
@@ -64,7 +63,7 @@ fn test_documents_with_gql_tag() {
         &["documents/queries.graphql"],
         PluginOptions {
             graphql_tag: Some(GraphqlTag::Gql),
-            ..PluginOptions::serde_default()
+            ..PluginOptions::default()
         },
     );
     insta::assert_snapshot!(output);

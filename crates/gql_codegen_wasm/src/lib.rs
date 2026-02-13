@@ -8,7 +8,7 @@ use std::path::PathBuf;
 use gql_codegen_core::diagnostic::{render_diagnostic_string, render_diagnostics_string};
 use gql_codegen_core::{
     CollectedDocuments, ExtractConfig, GenerateInput, OutputConfig, PluginConfig, PluginOptions,
-    Preset, SourceCache, StringOrArray, collect_documents, config_json_schema, generate_from_input,
+    SourceCache, StringOrArray, collect_documents, config_json_schema, generate_from_input,
     load_schema_from_contents,
 };
 use serde::{Deserialize, Serialize};
@@ -40,12 +40,6 @@ pub struct GenerateResult {
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct WasmConfig {
-    #[serde(default)]
-    pub preset: Preset,
-    #[serde(default)]
-    pub schema: Option<StringOrArray>,
-    #[serde(default)]
-    pub documents: Option<StringOrArray>,
     pub generates: HashMap<String, WasmOutputConfig>,
 }
 
@@ -143,26 +137,22 @@ fn generate_internal(
         .map(|d| render_diagnostic_string(d))
         .collect();
 
-    // Extract preset and build generates config from wasm_config or use defaults
-    let (preset, generates): (Preset, HashMap<String, OutputConfig>) = match wasm_config {
-        Some(cfg) => {
-            let preset = cfg.preset;
-            let generates = cfg
-                .generates
-                .into_iter()
-                .map(|(path, out)| {
-                    let output_config = OutputConfig {
-                        plugins: out.plugins.into_iter().map(PluginConfig::Name).collect(),
-                        prelude: None,
-                        config: out.config,
-                        documents_only: false,
-                        hooks: None,
-                    };
-                    (path, output_config)
-                })
-                .collect();
-            (preset, generates)
-        }
+    // Build generates config from wasm_config or use defaults
+    let generates: HashMap<String, OutputConfig> = match wasm_config {
+        Some(cfg) => cfg
+            .generates
+            .into_iter()
+            .map(|(path, out)| {
+                let output_config = OutputConfig {
+                    plugins: out.plugins.into_iter().map(PluginConfig::Name).collect(),
+                    prelude: None,
+                    config: out.config,
+                    documents_only: false,
+                    hooks: None,
+                };
+                (path, output_config)
+            })
+            .collect(),
         None => {
             // Default: typescript + typescript-operations
             let mut map = HashMap::new();
@@ -179,7 +169,7 @@ fn generate_internal(
                     hooks: None,
                 },
             );
-            (Preset::default(), map)
+            map
         }
     };
 
@@ -188,7 +178,6 @@ fn generate_internal(
         schema: &schema,
         documents: &documents,
         generates: &generates,
-        preset,
     };
 
     match generate_from_input(&input) {
@@ -280,7 +269,7 @@ mod tests {
 
         let result = generate_internal(&[schema.to_string()], &[], None);
         assert!(result.error.is_none());
-        // SGC preset uses interfaces by default
+        // SGC defaults use interfaces
         assert!(result.output.contains("interface User"));
     }
 

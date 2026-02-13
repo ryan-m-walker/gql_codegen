@@ -12,7 +12,7 @@ fn test_maybe_value() {
         PluginOptions {
             maybe_value: Some("T | null | undefined".to_string()),
             use_utility_types: true,
-            ..PluginOptions::serde_default()
+            ..PluginOptions::default()
         },
     );
 

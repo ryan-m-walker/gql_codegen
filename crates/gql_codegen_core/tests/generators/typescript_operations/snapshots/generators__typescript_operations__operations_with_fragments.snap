@@ -3,11 +3,14 @@ source: crates/gql_codegen_core/tests/generators/typescript_operations/mod.rs
 expression: output
 ---
 export interface GetUserWithFragmentsQuery {
+  readonly __typename?: 'Query';
   readonly user?: {
+    readonly __typename?: 'User';
     readonly id: string;
     readonly name: string;
     readonly email?: string | null;
     readonly posts: {
+      readonly __typename?: 'Post';
       readonly id: string;
       readonly title: string;
       readonly body: string;
@@ -20,12 +23,14 @@ export interface GetUserWithFragmentsQueryVariables {
 }
 
 export interface PostFieldsFragment {
+  readonly __typename?: 'Post';
   readonly id: string;
   readonly title: string;
   readonly body: string;
 }
 
 export interface UserFieldsFragment {
+  readonly __typename?: 'User';
   readonly id: string;
   readonly name: string;
   readonly email?: string | null;

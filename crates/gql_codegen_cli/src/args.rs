@@ -1,5 +1,4 @@
 use clap::Parser;
-use gql_codegen_core::Preset;
 use std::path::PathBuf;
 
 #[derive(Parser, Debug)]
@@ -10,11 +9,6 @@ pub(crate) struct CliArgs {
     /// Path to the config file (JSON)
     #[arg(short, long, default_value = "codegen.json")]
     pub config: PathBuf,
-
-    /// Preset for default values: sgc (default) or graphql-codegen
-    /// Use "graphql-codegen" for drop-in compatibility
-    #[arg(short, long, value_parser = parse_preset)]
-    pub preset: Option<Preset>,
 
     /// Check mode - validate without writing files
     #[arg(long)]
@@ -47,8 +41,4 @@ pub(crate) struct CliArgs {
     /// Max diagnostics to show per error (0 = all, default 3)
     #[arg(long)]
     pub max_diagnostics: Option<usize>,
-}
-
-fn parse_preset(s: &str) -> Result<Preset, String> {
-    s.parse()
 }

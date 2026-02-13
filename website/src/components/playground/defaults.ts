@@ -2,15 +2,22 @@ import type { CodegenConfig } from './types'
 
 export const DEFAULT_SCHEMA = `scalar DateTime
 
-type Post {
+interface Node {
+  id: ID!
+}
+
+type Post implements Node {
   id: ID!
   title: String!
-  content: String
-  author: User!
+  body: String!
   published: Boolean!
+  author: User!
+  createdAt: DateTime!
 }
 
 type Query {
+  node(id: ID!): Node
+  nodes(ids: [ID!]!): [Node]!
   user(id: ID!): User
   users: [User!]!
 }
@@ -20,24 +27,21 @@ enum Role {
     USER
 }
 
-type User {
+type User implements Node {
   id: ID!
   name: String!
   email: String!
-  posts: [Post!]!
   role: Role!
+  posts: [Post!]!
   createdAt: DateTime!
 }`
 
 export const DEFAULT_OPERATIONS = `query GetUser($id: ID!) {
-  user(id: $id) {
-    id
-    name
-    email
-    posts {
+  node(id: $id) {
+    __typename
+    ... on User {
       id
-      title
-      published
+      ... UserFields
     }
   }
 }
@@ -50,14 +54,27 @@ query GetUsers {
 }
 
 fragment UserFields on User {
-  id
   name
   email
+  posts {
+    id
+    title
+    published
+  }
+}
+
+query Nodes($ids: [ID!]!) {
+  nodes(ids: $ids) {
+    ... on User {
+      name
+    }
+    ... on Post {
+      title
+    }
+  }
 }`
 
-// Default config - preset handles defaults internally in core
 export const defaultConfig: CodegenConfig = {
-    preset: 'graphql-codegen',
     generates: {
         'types.ts': {
             plugins: ['typescript', 'typescript-operations'],

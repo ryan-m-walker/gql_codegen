@@ -16,7 +16,7 @@ fn test_enums_as_types() {
         &["schemas/enum.graphql"],
         PluginOptions {
             enums_as_types: Some(true),
-            ..PluginOptions::serde_default()
+            ..PluginOptions::default()
         },
     );
     insta::assert_snapshot!(output);
@@ -29,7 +29,7 @@ fn test_enums_future_proof() {
         PluginOptions {
             enums_as_types: Some(true),
             future_proof_enums: true,
-            ..PluginOptions::serde_default()
+            ..PluginOptions::default()
         },
     );
     insta::assert_snapshot!(output);
@@ -42,7 +42,7 @@ fn test_const_enums() {
         PluginOptions {
             enums_as_types: Some(false),
             const_enums: true,
-            ..PluginOptions::serde_default()
+            ..PluginOptions::default()
         },
     );
     insta::assert_snapshot!(output);

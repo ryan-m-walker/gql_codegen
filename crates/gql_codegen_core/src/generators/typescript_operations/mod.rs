@@ -6,11 +6,14 @@ use crate::generators::typescript_operations::fragment::render_fragment;
 use crate::generators::typescript_operations::operation::render_operation;
 use crate::{ParsedFragment, Result};
 
+mod field;
 mod fragment;
 mod operation;
 mod selection;
 mod typename;
 mod variables;
+
+// TODO: if typescript plugin isn't available generate necessary scalars
 
 /// Item to generate - either a fragment or operation
 enum GenerateItem<'a> {

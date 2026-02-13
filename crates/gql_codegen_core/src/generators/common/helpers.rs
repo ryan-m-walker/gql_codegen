@@ -51,6 +51,7 @@ pub(crate) enum ScalarDirection {
     Output,
 }
 
+// TODO: move to typescript
 pub(crate) fn get_optional_prop_modifier(
     ctx: &GeneratorContext,
     field_type: &FieldType,
@@ -88,7 +89,7 @@ pub(crate) fn wrap_maybe(ctx: &GeneratorContext, value: &str, dir: ScalarDirecti
             ScalarDirection::Input => format!("InputMaybe<{value}>"),
         }
     } else {
-        format!("{value} | null")
+        format!("{value} | null | undefined")
     }
 }
 
@@ -203,30 +204,29 @@ pub(crate) fn render_decl_prefix(
 
     write!(ctx.writer, "{export}{decl_kind} {name}{separator}")?;
 
-    if let Some(interfaces) = implements_interfaces {
-        if !interfaces.is_empty() {
-            match ctx.options.declaration_kind {
-                Some(DeclarationKind::Type) | None => {
-                    for interface in interfaces {
-                        write!(ctx.writer, "{interface}")?;
-                        write!(ctx.writer, " & ")?;
-                    }
-                }
-                _ => {
-                    write!(ctx.writer, "implements ")?;
+    if let Some(interfaces) = implements_interfaces.filter(|i| !i.is_empty()) {
+        let (kw, joiner, end) = match ctx.options.declaration_kind {
+            Some(DeclarationKind::Type) | None => (None, " & ", Some(" &")),
+            Some(DeclarationKind::Interface) => (Some("extends "), ", ", None),
+            _ => (Some("implements "), ", ", None),
+        };
 
-                    // TODO: transform interface name
-                    for (i, interface) in interfaces.iter().enumerate() {
-                        write!(ctx.writer, "{interface}")?;
-                        if i < interfaces.len() - 1 {
-                            write!(ctx.writer, ", ")?;
-                        }
-                    }
+        if let Some(kw) = kw {
+            write!(ctx.writer, "{kw}")?;
+        }
 
-                    write!(ctx.writer, " ")?;
-                }
+        for (i, interface) in interfaces.iter().enumerate() {
+            write!(ctx.writer, "{interface}")?;
+            if i < interfaces.len() - 1 {
+                write!(ctx.writer, "{joiner}")?;
             }
         }
+
+        if let Some(end) = end {
+            write!(ctx.writer, "{end}")?;
+        }
+
+        write!(ctx.writer, " ")?;
     }
 
     Ok(())

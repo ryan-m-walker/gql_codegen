@@ -3,6 +3,7 @@ source: crates/gql_codegen_core/tests/generators/typescript/objects.rs
 expression: output
 ---
 interface Post {
+  readonly __typename?: 'Post';
   readonly id: string;
   readonly title: string;
   readonly body?: string | null;
@@ -10,12 +11,14 @@ interface Post {
 }
 
 interface Query {
+  readonly __typename?: 'Query';
   readonly _empty?: string | null;
   readonly user?: User | null;
   readonly post?: Post | null;
 }
 
 interface User {
+  readonly __typename?: 'User';
   readonly id: string;
   readonly name: string;
   readonly email?: string | null;

@@ -16,7 +16,7 @@ fn test_unions_skip_typename() {
         &["schemas/union.graphql"],
         PluginOptions {
             skip_typename: true,
-            ..PluginOptions::serde_default()
+            ..PluginOptions::default()
         },
     );
     insta::assert_snapshot!(output);

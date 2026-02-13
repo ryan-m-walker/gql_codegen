@@ -1,21 +1,15 @@
-import type { GenerationResult, Preset, CodegenConfig } from './types'
+import type { GenerationResult } from './types'
 
 interface ToolbarProps {
     isGenerating: boolean
-    codegenResult: GenerationResult | null
-    sgcResult: GenerationResult | null
-    config: CodegenConfig
-    onPresetChange: (preset: Preset) => void
+    result: GenerationResult | null
     onShare: () => void
     shareMessage: string | null
 }
 
 export default function Toolbar({
     isGenerating,
-    codegenResult,
-    sgcResult,
-    config,
-    onPresetChange,
+    result,
     onShare,
     shareMessage,
 }: ToolbarProps) {
@@ -47,65 +41,21 @@ export default function Toolbar({
                         </svg>
                         Generating...
                     </span>
-                ) : codegenResult && sgcResult ? (
+                ) : result ? (
                     <span className="text-xs text-text-muted">
-                        graphql-codegen:{' '}
                         <span
                             className={
-                                codegenResult.error
-                                    ? 'text-red-400'
-                                    : 'text-blue-400'
-                            }
-                        >
-                            {codegenResult.timeMs.toFixed(1)}ms
-                        </span>
-                        {' · '}SGC:{' '}
-                        <span
-                            className={
-                                sgcResult.error
+                                result.error
                                     ? 'text-red-400'
                                     : 'text-green-400'
                             }
                         >
-                            {sgcResult.timeMs.toFixed(1)}ms
+                            {result.timeMs.toFixed(1)}ms
                         </span>
-                        {!codegenResult.error &&
-                            !sgcResult.error &&
-                            sgcResult.timeMs < codegenResult.timeMs && (
-                                <span className="text-green-400 ml-1">
-                                    (
-                                    {(
-                                        codegenResult.timeMs /
-                                        sgcResult.timeMs
-                                    ).toFixed(1)}
-                                    x faster)
-                                </span>
-                            )}
                     </span>
                 ) : null}
             </div>
             <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2">
-                    <label
-                        htmlFor="preset"
-                        className="text-xs text-text-muted"
-                    >
-                        Preset:
-                    </label>
-                    <select
-                        id="preset"
-                        value={config.preset || 'graphql-codegen'}
-                        onChange={(e) =>
-                            onPresetChange(e.target.value as Preset)
-                        }
-                        className="px-2 py-1 text-xs font-medium text-text-secondary bg-surface-inset hover:opacity-80 rounded border border-border-muted focus:border-green-500 focus:outline-none transition-colors cursor-pointer"
-                    >
-                        <option value="sgc">SGC (Optimized)</option>
-                        <option value="graphql-codegen">
-                            graphql-codegen (Compatible)
-                        </option>
-                    </select>
-                </div>
                 <button
                     onClick={onShare}
                     className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-secondary hover:text-text-heading bg-surface-inset hover:opacity-80 rounded transition-colors"

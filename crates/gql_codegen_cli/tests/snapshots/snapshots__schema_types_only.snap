@@ -4,16 +4,17 @@ expression: content
 ---
 export interface CreateUserInput {
   readonly name: string;
-  readonly email?: string | null;
-  readonly age?: number | null;
-  readonly role?: Role | null;
+  readonly email?: string | null | undefined;
+  readonly age?: number | null | undefined;
+  readonly role?: Role | null | undefined;
 }
 
 export type DateTime = unknown;
 
 export interface Mutation {
+  readonly __typename?: 'Mutation';
   readonly createUser: User;
-  readonly updateUser?: User | null;
+  readonly updateUser?: User | null | undefined;
   readonly deleteUser: boolean;
 }
 
@@ -31,6 +32,7 @@ export interface MutationDeleteUserArgs {
 }
 
 export interface Post {
+  readonly __typename?: 'Post';
   readonly id: string;
   readonly title: string;
   readonly body: string;
@@ -40,9 +42,10 @@ export interface Post {
 }
 
 export interface Query {
-  readonly user?: User | null;
+  readonly __typename?: 'Query';
+  readonly user?: User | null | undefined;
   readonly users: ReadonlyArray<User>;
-  readonly post?: Post | null;
+  readonly post?: Post | null | undefined;
 }
 
 export interface QueryUserArgs {
@@ -50,7 +53,7 @@ export interface QueryUserArgs {
 }
 
 export interface QueryUsersArgs {
-  readonly filter?: UserFilter | null;
+  readonly filter?: UserFilter | null | undefined;
 }
 
 export interface QueryPostArgs {
@@ -64,24 +67,25 @@ export type Role =
   | '%future added value';
 
 export interface UpdateUserInput {
-  readonly name?: string | null;
-  readonly email?: string | null;
-  readonly age?: number | null;
-  readonly role?: Role | null;
+  readonly name?: string | null | undefined;
+  readonly email?: string | null | undefined;
+  readonly age?: number | null | undefined;
+  readonly role?: Role | null | undefined;
 }
 
 export interface User {
+  readonly __typename?: 'User';
   readonly id: string;
   readonly name: string;
-  readonly email?: string | null;
-  readonly age?: number | null;
+  readonly email?: string | null | undefined;
+  readonly age?: number | null | undefined;
   readonly role: Role;
   readonly posts: ReadonlyArray<Post>;
   readonly createdAt: unknown;
 }
 
 export interface UserFilter {
-  readonly role?: Role | null;
-  readonly minAge?: number | null;
-  readonly maxAge?: number | null;
+  readonly role?: Role | null | undefined;
+  readonly minAge?: number | null | undefined;
+  readonly maxAge?: number | null | undefined;
 }

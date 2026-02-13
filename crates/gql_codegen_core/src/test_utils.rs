@@ -4,7 +4,6 @@
 //! - [`TestGen`]: Full pipeline builder (schema → codegen → output string)
 //! - [`TestCtx`]: Lightweight context for unit-testing individual renderers
 
-use std::collections::HashMap;
 use std::path::PathBuf;
 
 use apollo_compiler::schema::{
@@ -14,11 +13,11 @@ use apollo_compiler::validation::Valid;
 use apollo_compiler::{Node, Schema};
 use indexmap::IndexMap;
 
-use crate::codegen::{GenerateInput, GenerateResult, generate_from_input};
-use crate::config::{OutputConfig, PluginConfig, PluginOptions, Preset};
+use crate::codegen::{GenerateResult, GeneratedFile};
+use crate::config::PluginOptions;
 use crate::documents::collect_documents;
 use crate::extract::ExtractConfig;
-use crate::generators::GeneratorContext;
+use crate::generators::{GeneratorContext, run_generator};
 use crate::schema::load_schema_from_contents;
 use crate::source_cache::SourceCache;
 use crate::Result;
@@ -64,21 +63,19 @@ pub struct TestGen {
     operations: Vec<Source>,
     plugin: String,
     options: PluginOptions,
-    preset: Preset,
     include_base_schema: bool,
 }
 
 impl TestGen {
     /// Create a new builder with sensible defaults.
     ///
-    /// Defaults: `"typescript"` plugin, default preset, auto-includes `schemas/base.graphql`.
+    /// Defaults: `"typescript"` plugin, SGC defaults, auto-includes `schemas/base.graphql`.
     pub fn new() -> Self {
         Self {
             schemas: Vec::new(),
             operations: Vec::new(),
             plugin: "typescript".to_string(),
             options: PluginOptions::default(),
-            preset: Preset::default(),
             include_base_schema: true,
         }
     }
@@ -119,12 +116,6 @@ impl TestGen {
         self
     }
 
-    /// Set preset (default: `Preset::default()`).
-    pub fn preset(mut self, preset: Preset) -> Self {
-        self.preset = preset;
-        self
-    }
-
     /// Skip auto-including `schemas/base.graphql`.
     pub fn no_base_schema(mut self) -> Self {
         self.include_base_schema = false;
@@ -144,6 +135,11 @@ impl TestGen {
     }
 
     /// Run generation and return a [`Result`] for error testing.
+    ///
+    /// Bypasses `generate_from_input` and `merge_options` — the supplied
+    /// `PluginOptions` are passed directly to the generator, so test
+    /// overrides like `immutable_types: false` work without being
+    /// discarded by the production merge logic.
     pub fn try_generate(&self) -> Result<GenerateResult> {
         let fixtures = fixtures_dir();
 
@@ -213,26 +209,32 @@ impl TestGen {
         let extract_config = ExtractConfig::default();
         let documents = collect_documents(&source_cache, &extract_config);
 
-        let mut generates = HashMap::new();
-        generates.insert(
-            "output.ts".to_string(),
-            OutputConfig {
-                plugins: vec![PluginConfig::Name(self.plugin.clone())],
-                config: Some(self.options.clone()),
-                prelude: None,
-                documents_only: false,
-                hooks: None,
-            },
-        );
+        // Call the generator directly, bypassing merge_options.
+        // Test options are used as-is — no merge with SGC defaults.
+        let mut buffer = Vec::new();
+        let mut diagnostics = documents.diagnostics.clone();
 
-        let input = GenerateInput {
+        let mut ctx = GeneratorContext {
             schema: &schema,
-            documents: &documents,
-            generates: &generates,
-            preset: self.preset,
+            operations: &documents.operations,
+            fragments: &documents.fragments,
+            options: &self.options,
+            writer: &mut buffer,
+            diagnostics: &mut diagnostics,
         };
 
-        generate_from_input(&input)
+        run_generator(&self.plugin, &mut ctx)?;
+
+        let content =
+            String::from_utf8(buffer).expect("generator output should be valid UTF-8");
+
+        Ok(GenerateResult {
+            files: vec![GeneratedFile {
+                path: "output.ts".to_string(),
+                content,
+            }],
+            diagnostics,
+        })
     }
 }
 

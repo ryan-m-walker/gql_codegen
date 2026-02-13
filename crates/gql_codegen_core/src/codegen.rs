@@ -5,7 +5,7 @@
 //! - `generate`: Convenience wrapper that handles file I/O
 //! - `generate_cached`: Full caching support with two-phase optimization
 
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::fs;
 use std::path::PathBuf;
 
@@ -15,7 +15,7 @@ use apollo_compiler::validation::Valid;
 use crate::cache::{
     Cache, MetadataCheckResult, compute_hashes_from_cache, create_glob_cache, is_glob_cache_valid,
 };
-use crate::config::{OutputConfig, PluginOptions, Preset};
+use crate::config::{AvoidOptionals, OutputConfig, PluginOptions};
 use crate::diagnostic::{Diagnostic, DiagnosticCategory, Diagnostics};
 use crate::documents::{
     CollectedDocuments, collect_documents, expand_document_globs, load_sources_from_paths,
@@ -64,8 +64,6 @@ pub struct GenerateInput<'a> {
     pub documents: &'a CollectedDocuments<'a>,
     /// Output configurations
     pub generates: &'a HashMap<String, OutputConfig>,
-    /// Preset for default options
-    pub preset: Preset,
 }
 
 /// Pure generation function - NO filesystem access
@@ -90,8 +88,8 @@ pub fn generate_from_input(input: &GenerateInput) -> Result<GenerateResult> {
             content.push('\n');
         }
 
-        // Start with preset defaults, then override with config
-        let mut base_options = input.preset.default_options();
+        // Start with SGC defaults, then merge user scalars from config
+        let mut base_options = PluginOptions::default();
         if let Some(ref config_options) = output_config.config {
             base_options = merge_options(&base_options, Some(config_options));
         }
@@ -180,103 +178,117 @@ pub fn generate(config: &CodegenConfig) -> Result<GenerateResult> {
         schema: &schema,
         documents: &documents,
         generates: &config.generates,
-        preset: config.preset,
     };
 
     generate_from_input(&input)
 }
 
-/// Merge base options with plugin-specific options
+/// What `#[serde(skip)]` produces for each field — the type-level defaults
+/// (bool → false, Option → None, etc.), NOT the SGC defaults.
 ///
-/// This does field-by-field merging: for each field, if the plugin value
-/// differs from the serde default, use the plugin value; otherwise use base.
-/// This allows preset defaults to "show through" for fields the user didn't set.
+/// Used by `merge_options` to detect which fields were explicitly set.
+fn serde_field_defaults() -> PluginOptions {
+    PluginOptions {
+        scalars: BTreeMap::new(),
+        use_utility_types: false,
+        inline_fragments: false,
+        dedupe_selections: false,
+        disable_descriptions: false,
+        strict_scalars: false,
+        default_scalar_type: None,
+        immutable_types: false,
+        enums_as_types: None,
+        enums_as_const: false,
+        future_proof_enums: false,
+        future_proof_unions: false,
+        enum_prefix: None,
+        enum_suffix: None,
+        const_enums: false,
+        numeric_enums: false,
+        only_enums: false,
+        no_export: false,
+        only_operation_types: false,
+        skip_typename: false,
+        non_optional_typename: false,
+        avoid_optionals: AvoidOptionals::default(),
+        maybe_value: None,
+        input_maybe_value: None,
+        declaration_kind: None,
+        types_prefix: None,
+        types_suffix: None,
+        use_type_imports: false,
+        graphql_tag: None,
+        naming_convention: None,
+        typename_policy: None,
+        pretty_documents: false,
+    }
+}
+
+/// Merge base options with plugin-specific overrides.
 ///
-/// Fields that need tri-state semantics (user-set vs not-set matters) use
-/// `Option<T>` so serde default `None` is distinguishable from `Some(val)`.
+/// Compares each field against `serde_field_defaults()` — the type-level
+/// defaults that `#[serde(skip)]` produces. If a field differs from that
+/// baseline, it was explicitly set (either in test code or by a future
+/// config path) and takes precedence over the base (SGC defaults).
+///
+/// In the production path, deserialized JSON configs have all `#[serde(skip)]`
+/// fields at type defaults, so only `scalars` can differ and override the base.
+/// In tests, Rust code can construct `PluginOptions { immutable_types: false, .. }`
+/// and the override is preserved.
 fn merge_options(base: &PluginOptions, plugin: Option<&PluginOptions>) -> PluginOptions {
     let Some(p) = plugin else {
         return base.clone();
     };
 
-    // Create the serde default to compare against.
-    // This must match what serde produces from an empty JSON `{}`.
-    let serde_default = PluginOptions::serde_default();
+    let defaults = serde_field_defaults();
 
-    // Macro to merge a field: use plugin if it differs from serde default, else base
     macro_rules! merge_field {
-        ($field:ident) => {
-            if p.$field != serde_default.$field {
-                p.$field.clone()
-            } else {
-                base.$field.clone()
-            }
+        ($result:expr, $plugin:expr, $defaults:expr, $($field:ident),+ $(,)?) => {
+            $(
+                if $plugin.$field != $defaults.$field {
+                    $result.$field = $plugin.$field.clone();
+                }
+            )+
         };
     }
 
-    PluginOptions {
-        // SGC specific
-        use_utility_types: merge_field!(use_utility_types),
-        inline_fragments: merge_field!(inline_fragments),
-        dedupe_selections: merge_field!(dedupe_selections),
-        disable_descriptions: merge_field!(disable_descriptions),
-
-        // Scalars
-        scalars: if p.scalars.is_empty() {
-            base.scalars.clone()
-        } else {
-            p.scalars.clone()
-        },
-        strict_scalars: merge_field!(strict_scalars),
-        default_scalar_type: merge_field!(default_scalar_type),
-
-        // Types
-        immutable_types: merge_field!(immutable_types),
-        declaration_kind: merge_field!(declaration_kind),
-        types_prefix: merge_field!(types_prefix),
-        types_suffix: merge_field!(types_suffix),
-
-        // Enums
-        // enums_as_types is Option<bool>: None (not set) matches serde default,
-        // Some(val) (user-set) differs — merge_field handles this correctly.
-        enums_as_types: merge_field!(enums_as_types),
-        enums_as_const: merge_field!(enums_as_const),
-        future_proof_enums: merge_field!(future_proof_enums),
-        enum_prefix: merge_field!(enum_prefix),
-        enum_suffix: merge_field!(enum_suffix),
-        const_enums: merge_field!(const_enums),
-        numeric_enums: merge_field!(numeric_enums),
-        only_enums: merge_field!(only_enums),
-
-        // Output control
-        no_export: merge_field!(no_export),
-        only_operation_types: merge_field!(only_operation_types),
-
-        // Unions
-        future_proof_unions: merge_field!(future_proof_unions),
-
-        // Typename
-        typename_policy: merge_field!(typename_policy),
-        skip_typename: merge_field!(skip_typename),
-        non_optional_typename: merge_field!(non_optional_typename),
-
-        // Optionals/nullables
-        avoid_optionals: merge_field!(avoid_optionals),
-        maybe_value: merge_field!(maybe_value),
-        input_maybe_value: merge_field!(input_maybe_value),
-
-        // Imports
-        use_type_imports: merge_field!(use_type_imports),
-
-        // Documents
-        graphql_tag: merge_field!(graphql_tag),
-
-        // Formatting
-        naming_convention: merge_field!(naming_convention),
-
-        // Internal preset-only flags (always from base, user can't override)
-        pretty_documents: base.pretty_documents,
-    }
+    let mut result = base.clone();
+    merge_field!(
+        result, p, defaults,
+        scalars,
+        use_utility_types,
+        inline_fragments,
+        dedupe_selections,
+        disable_descriptions,
+        strict_scalars,
+        default_scalar_type,
+        immutable_types,
+        enums_as_types,
+        enums_as_const,
+        future_proof_enums,
+        future_proof_unions,
+        enum_prefix,
+        enum_suffix,
+        const_enums,
+        numeric_enums,
+        only_enums,
+        no_export,
+        only_operation_types,
+        skip_typename,
+        non_optional_typename,
+        avoid_optionals,
+        maybe_value,
+        input_maybe_value,
+        declaration_kind,
+        types_prefix,
+        types_suffix,
+        use_type_imports,
+        graphql_tag,
+        naming_convention,
+        typename_policy,
+        pretty_documents,
+    );
+    result
 }
 
 /// Generate with caching support (two-phase optimization)
@@ -408,7 +420,6 @@ pub fn generate_cached(
         schema: &schema,
         documents: &documents,
         generates: &config.generates,
-        preset: config.preset,
     };
     let result = generate_from_input(&input)?;
     crate::timing!("Code generation", t0.elapsed());

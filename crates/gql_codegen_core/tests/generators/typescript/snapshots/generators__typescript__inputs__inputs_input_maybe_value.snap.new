@@ -1,0 +1,25 @@
+---
+source: crates/gql_codegen_core/tests/generators/typescript/inputs.rs
+assertion_line: 60
+expression: output
+---
+export interface PaginationInput {
+  readonly page: number;
+  readonly perPage?: number | null | undefined;
+}
+
+export interface Query {
+  readonly __typename?: 'Query';
+  readonly _empty?: string | null | undefined;
+  readonly search: ReadonlyArray<string>;
+}
+
+export interface QuerySearchArgs {
+  readonly filter: SearchFilter;
+}
+
+export interface SearchFilter {
+  readonly query: string;
+  readonly limit?: number | null | undefined;
+  readonly tags?: ReadonlyArray<string> | null | undefined;
+}

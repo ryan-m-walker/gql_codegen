@@ -8,7 +8,7 @@ use std::collections::BTreeMap;
 
 use gql_codegen_core::test_utils::TestGen;
 use gql_codegen_core::{
-    DeclarationKind, NamingCase, NamingConvention, NamingConventionConfig, PluginOptions, Preset,
+    DeclarationKind, NamingCase, NamingConvention, NamingConventionConfig, PluginOptions,
     ScalarConfig, TypenamePolicy,
 };
 
@@ -22,12 +22,13 @@ fn numeric_enums() {
         .options(PluginOptions {
             enums_as_types: Some(false),
             numeric_enums: true,
-            ..PluginOptions::serde_default()
+            typename_policy: Some(TypenamePolicy::Skip),
+            ..PluginOptions::default()
         })
         .generate();
 
-    // SGC preset: interface decl + readonly + immutable + AsSelected typename
-    // User overrides: TS enums with numeric values
+    // SGC defaults: interface decl + readonly + immutable
+    // Test overrides: TS enums with numeric values, skip typename for focus
     assert_eq!(
         output,
         "\
@@ -54,7 +55,7 @@ fn numeric_enums_suppresses_const() {
             enums_as_types: Some(false),
             numeric_enums: true,
             const_enums: true,
-            ..PluginOptions::serde_default()
+            ..PluginOptions::default()
         })
         .generate();
 
@@ -74,7 +75,8 @@ fn declaration_kind_type_alias() {
         .schema_str("type Query { ok: Boolean! }")
         .options(PluginOptions {
             declaration_kind: Some(DeclarationKind::Type),
-            ..PluginOptions::serde_default()
+            typename_policy: Some(TypenamePolicy::Skip),
+            ..PluginOptions::default()
         })
         .generate();
 
@@ -97,7 +99,8 @@ fn declaration_kind_class() {
         .schema_str("type Query { ok: Boolean! }")
         .options(PluginOptions {
             declaration_kind: Some(DeclarationKind::Class),
-            ..PluginOptions::serde_default()
+            typename_policy: Some(TypenamePolicy::Skip),
+            ..PluginOptions::default()
         })
         .generate();
 
@@ -120,7 +123,7 @@ fn declaration_kind_abstract_class() {
         .schema_str("type Query { ok: Boolean! }")
         .options(PluginOptions {
             declaration_kind: Some(DeclarationKind::AbstractClass),
-            ..PluginOptions::serde_default()
+            ..PluginOptions::default()
         })
         .generate();
 
@@ -146,7 +149,7 @@ scalar DateTime
         )
         .options(PluginOptions {
             only_enums: true,
-            ..PluginOptions::serde_default()
+            ..PluginOptions::default()
         })
         .generate();
 
@@ -169,7 +172,7 @@ fn use_utility_types_renders_scalars_map() {
         .schema_str("type Query { ok: Boolean }\nscalar DateTime")
         .options(PluginOptions {
             use_utility_types: true,
-            ..PluginOptions::serde_default()
+            ..PluginOptions::default()
         })
         .generate();
 
@@ -194,7 +197,7 @@ fn use_utility_types_wraps_nullable_fields() {
         .schema_str("type Query { name: String }")
         .options(PluginOptions {
             use_utility_types: true,
-            ..PluginOptions::serde_default()
+            ..PluginOptions::default()
         })
         .generate();
 
@@ -220,7 +223,7 @@ fn scalars_detailed_input_output() {
         .schema_str("type Query { ok: Boolean }\nscalar DateTime")
         .options(PluginOptions {
             scalars,
-            ..PluginOptions::serde_default()
+            ..PluginOptions::default()
         })
         .generate();
 
@@ -244,7 +247,7 @@ type Query { user: User }
         )
         .options(PluginOptions {
             disable_descriptions: true,
-            ..PluginOptions::serde_default()
+            ..PluginOptions::default()
         })
         .generate();
 
@@ -279,7 +282,7 @@ fn non_optional_typename() {
         .options(PluginOptions {
             non_optional_typename: true,
             typename_policy: Some(TypenamePolicy::Always),
-            ..PluginOptions::serde_default()
+            ..PluginOptions::default()
         })
         .generate();
 
@@ -295,7 +298,7 @@ fn non_optional_typename_default_is_optional() {
         .schema_str("type Query { ok: Boolean! }")
         .options(PluginOptions {
             typename_policy: Some(TypenamePolicy::Always),
-            ..PluginOptions::serde_default()
+            ..PluginOptions::default()
         })
         .generate();
 
@@ -317,7 +320,7 @@ enum Role { ADMIN USER }
         )
         .options(PluginOptions {
             types_prefix: Some("I".to_string()),
-            ..PluginOptions::serde_default()
+            ..PluginOptions::default()
         })
         .generate();
 
@@ -336,7 +339,7 @@ fn types_suffix_applied_to_all_types() {
         .schema_str("type Query { ok: Boolean! }")
         .options(PluginOptions {
             types_suffix: Some("GQL".to_string()),
-            ..PluginOptions::serde_default()
+            ..PluginOptions::default()
         })
         .generate();
 
@@ -351,7 +354,7 @@ fn types_prefix_does_not_affect_typename_value() {
         .options(PluginOptions {
             types_prefix: Some("I".to_string()),
             typename_policy: Some(TypenamePolicy::Always),
-            ..PluginOptions::serde_default()
+            ..PluginOptions::default()
         })
         .generate();
 
@@ -370,7 +373,7 @@ fn enums_as_const() {
         .schema_str("type Query { ok: Boolean }\nenum Status { ACTIVE INACTIVE }")
         .options(PluginOptions {
             enums_as_const: true,
-            ..PluginOptions::serde_default()
+            ..PluginOptions::default()
         })
         .generate();
 
@@ -389,7 +392,7 @@ fn enums_as_const_with_values() {
         .schema_str("type Query { ok: Boolean }\nenum Color { RED GREEN BLUE }")
         .options(PluginOptions {
             enums_as_const: true,
-            ..PluginOptions::serde_default()
+            ..PluginOptions::default()
         })
         .generate();
 
@@ -409,7 +412,7 @@ fn numeric_enums_overrides_enums_as_const() {
         .options(PluginOptions {
             enums_as_const: true,
             numeric_enums: true,
-            ..PluginOptions::serde_default()
+            ..PluginOptions::default()
         })
         .generate();
 
@@ -427,7 +430,7 @@ fn enums_as_const_full_output() {
         .schema_str("type Query { ok: Boolean }\nenum Role { ADMIN USER GUEST }")
         .options(PluginOptions {
             enums_as_const: true,
-            ..PluginOptions::serde_default()
+            ..PluginOptions::default()
         })
         .generate();
 
@@ -456,7 +459,7 @@ fn future_proof_enums_not_added_to_ts_enums() {
         .options(PluginOptions {
             enums_as_types: Some(false),
             future_proof_enums: true,
-            ..PluginOptions::serde_default()
+            ..PluginOptions::default()
         })
         .generate();
 
@@ -474,7 +477,7 @@ fn future_proof_enums_added_to_type_unions() {
         .options(PluginOptions {
             enums_as_types: Some(true),
             future_proof_enums: true,
-            ..PluginOptions::serde_default()
+            ..PluginOptions::default()
         })
         .generate();
 
@@ -490,40 +493,12 @@ fn future_proof_enums_not_added_to_const_objects() {
         .options(PluginOptions {
             enums_as_const: true,
             future_proof_enums: true,
-            ..PluginOptions::serde_default()
+            ..PluginOptions::default()
         })
         .generate();
 
     assert!(output.contains("as const;"));
     assert!(!output.contains("%future added value"));
-}
-
-// ── preset differences ─────────────────────────────────────────────
-
-#[test]
-fn sgc_preset_uses_interface_declarations() {
-    let output = TestGen::new()
-        .no_base_schema()
-        .schema_str("type Query { ok: Boolean! }")
-        .preset(Preset::Sgc)
-        .generate();
-
-    assert!(output.contains("export interface Query {"));
-    assert!(output.contains("readonly"));
-}
-
-#[test]
-fn graphql_codegen_preset_uses_type_aliases() {
-    let output = TestGen::new()
-        .no_base_schema()
-        .schema_str("type Query { ok: Boolean! }")
-        .preset(Preset::GraphqlCodegen)
-        .generate();
-
-    // graphql-codegen compat: type aliases, Maybe wrappers, Scalars map
-    assert!(output.contains("export type Query = {"));
-    assert!(output.contains("type Maybe<T>"));
-    assert!(output.contains("Scalars"));
 }
 
 // ── naming_convention: simple ─────────────────────────────────────
@@ -546,7 +521,7 @@ fn naming_simple_camel_case_transforms_type_names() {
         .schema_str(CASING_SCHEMA)
         .options(PluginOptions {
             naming_convention: Some(NamingConvention::Simple(NamingCase::CamelCase)),
-            ..PluginOptions::serde_default()
+            ..PluginOptions::default()
         })
         .generate();
 
@@ -570,7 +545,7 @@ fn naming_simple_camel_case_also_transforms_enum_values() {
         .schema_str("type Query { ok: Boolean }\nenum Status { ACTIVE_USER INACTIVE_USER }")
         .options(PluginOptions {
             naming_convention: Some(NamingConvention::Simple(NamingCase::CamelCase)),
-            ..PluginOptions::serde_default()
+            ..PluginOptions::default()
         })
         .generate();
 
@@ -586,7 +561,7 @@ fn naming_simple_constant_case() {
         .schema_str("type Query { ok: Boolean }\nenum UserRole { AdminUser RegularUser }")
         .options(PluginOptions {
             naming_convention: Some(NamingConvention::Simple(NamingCase::ConstantCase)),
-            ..PluginOptions::serde_default()
+            ..PluginOptions::default()
         })
         .generate();
 
@@ -604,7 +579,7 @@ fn naming_simple_snake_case() {
         .schema_str("type Query { ok: Boolean }\ntype UserProfile { firstName: String! }")
         .options(PluginOptions {
             naming_convention: Some(NamingConvention::Simple(NamingCase::SnakeCase)),
-            ..PluginOptions::serde_default()
+            ..PluginOptions::default()
         })
         .generate();
 
@@ -625,7 +600,7 @@ fn naming_detailed_separate_type_and_enum() {
                 enum_values: Some(NamingCase::CamelCase),
                 transform_underscore: false,
             })),
-            ..PluginOptions::serde_default()
+            ..PluginOptions::default()
         })
         .generate();
 
@@ -647,7 +622,7 @@ fn naming_detailed_transform_underscore_removes_underscores() {
                 enum_values: Some(NamingCase::CamelCase),
                 transform_underscore: true,
             })),
-            ..PluginOptions::serde_default()
+            ..PluginOptions::default()
         })
         .generate();
 
@@ -667,7 +642,7 @@ fn naming_detailed_constant_case_enum_values() {
                 enum_values: Some(NamingCase::ConstantCase),
                 transform_underscore: false,
             })),
-            ..PluginOptions::serde_default()
+            ..PluginOptions::default()
         })
         .generate();
 
@@ -690,7 +665,7 @@ fn naming_detailed_type_names_only() {
                 enum_values: None, // defaults to Keep
                 transform_underscore: false,
             })),
-            ..PluginOptions::serde_default()
+            ..PluginOptions::default()
         })
         .generate();
 
@@ -711,7 +686,7 @@ fn naming_transforms_field_type_references() {
         .schema_str("type Query { user: UserProfile }\ntype UserProfile { name: String! }")
         .options(PluginOptions {
             naming_convention: Some(NamingConvention::Simple(NamingCase::SnakeCase)),
-            ..PluginOptions::serde_default()
+            ..PluginOptions::default()
         })
         .generate();
 
@@ -726,7 +701,7 @@ fn naming_transforms_union_member_references() {
         .schema_str("type Query { ok: Boolean }\ntype Dog { name: String! }\ntype Cat { name: String! }\nunion Pet = Dog | Cat")
         .options(PluginOptions {
             naming_convention: Some(NamingConvention::Simple(NamingCase::ConstantCase)),
-            ..PluginOptions::serde_default()
+            ..PluginOptions::default()
         })
         .generate();
 
@@ -745,7 +720,7 @@ fn naming_does_not_transform_field_names() {
         .schema_str("type Query { ok: Boolean! }\ntype UserProfile { firstName: String! }")
         .options(PluginOptions {
             naming_convention: Some(NamingConvention::Simple(NamingCase::ConstantCase)),
-            ..PluginOptions::serde_default()
+            ..PluginOptions::default()
         })
         .generate();
 
@@ -763,7 +738,7 @@ fn naming_does_not_transform_typename_value() {
         .options(PluginOptions {
             naming_convention: Some(NamingConvention::Simple(NamingCase::SnakeCase)),
             typename_policy: Some(TypenamePolicy::Always),
-            ..PluginOptions::serde_default()
+            ..PluginOptions::default()
         })
         .generate();
 
@@ -787,7 +762,7 @@ fn naming_with_ts_enums() {
                 enum_values: Some(NamingCase::CamelCase),
                 transform_underscore: true,
             })),
-            ..PluginOptions::serde_default()
+            ..PluginOptions::default()
         })
         .generate();
 
@@ -809,7 +784,7 @@ fn naming_with_const_objects() {
                 enum_values: Some(NamingCase::CamelCase),
                 transform_underscore: true,
             })),
-            ..PluginOptions::serde_default()
+            ..PluginOptions::default()
         })
         .generate();
 
@@ -832,7 +807,7 @@ fn naming_with_numeric_enums() {
                 enum_values: Some(NamingCase::CamelCase),
                 transform_underscore: true,
             })),
-            ..PluginOptions::serde_default()
+            ..PluginOptions::default()
         })
         .generate();
 
@@ -851,7 +826,7 @@ fn naming_with_types_prefix_applies_after_casing() {
         .options(PluginOptions {
             types_prefix: Some("I".to_string()),
             naming_convention: Some(NamingConvention::Simple(NamingCase::PascalCase)),
-            ..PluginOptions::serde_default()
+            ..PluginOptions::default()
         })
         .generate();
 
@@ -872,7 +847,7 @@ fn naming_with_enum_prefix_and_casing() {
                 enum_values: None,
                 transform_underscore: true,
             })),
-            ..PluginOptions::serde_default()
+            ..PluginOptions::default()
         })
         .generate();
 
