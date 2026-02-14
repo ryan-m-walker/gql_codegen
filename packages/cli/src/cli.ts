@@ -213,7 +213,6 @@ function handleResult(
 }
 
 export async function run(): Promise<void> {
-    console.log('STARTIN!!!!!!!!!!!')
     // parseArgs returns loosely-typed values — this narrowing is safe because
     // parseArgs only populates values for the options we declared in CLI_OPTIONS
     const { values } = parseArgs({

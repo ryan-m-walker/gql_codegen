@@ -1,0 +1,25 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout title="Schema Sources">
+  <h1 class="text-2xl font-semibold mb-4">Schema Sources</h1>
+  <p class="text-text-muted mb-4">
+    The <code class="bg-surface-inset px-2 py-1 rounded">schema</code> option accepts:
+  </p>
+  <ul class="list-disc list-inside text-text-muted space-y-2 mb-4">
+    <li>A path to a <code class="bg-surface-inset px-1 rounded">.graphql</code> file</li>
+    <li>A glob pattern matching multiple schema files</li>
+    <li>An array of paths or patterns</li>
+  </ul>
+  <div class="bg-surface-raised rounded-lg p-4 font-mono text-sm">
+    <pre class="text-text-secondary"><span class="text-code-comment">// Single file</span>
+schema: <span class="text-code-string">'./schema.graphql'</span>
+
+<span class="text-code-comment">// Multiple files</span>
+schema: [
+  <span class="text-code-string">'./schema/*.graphql'</span>,
+  <span class="text-code-string">'./extensions/**/*.graphql'</span>
+]</pre>
+  </div>
+</DocsLayout>

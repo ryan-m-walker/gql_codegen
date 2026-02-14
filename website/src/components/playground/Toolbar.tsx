@@ -1,23 +1,19 @@
-import type { GenerationResult } from './types'
-
 interface ToolbarProps {
     isGenerating: boolean
-    result: GenerationResult | null
     onShare: () => void
     shareMessage: string | null
 }
 
 export default function Toolbar({
     isGenerating,
-    result,
     onShare,
     shareMessage,
 }: ToolbarProps) {
     return (
-        <div className="flex items-center justify-between px-4 py-2 border-b border-border-default bg-surface-raised">
+        <div className="flex items-center justify-between px-4 py-2 border-y border-border-default">
             <div className="flex items-center gap-4">
                 <h1 className="text-lg font-semibold">Playground</h1>
-                {isGenerating ? (
+                {isGenerating && (
                     <span className="text-xs text-text-muted flex items-center gap-2">
                         <svg
                             className="animate-spin h-3 w-3"
@@ -41,19 +37,7 @@ export default function Toolbar({
                         </svg>
                         Generating...
                     </span>
-                ) : result ? (
-                    <span className="text-xs text-text-muted">
-                        <span
-                            className={
-                                result.error
-                                    ? 'text-red-400'
-                                    : 'text-green-400'
-                            }
-                        >
-                            {result.timeMs.toFixed(1)}ms
-                        </span>
-                    </span>
-                ) : null}
+                )}
             </div>
             <div className="flex items-center gap-3">
                 <button

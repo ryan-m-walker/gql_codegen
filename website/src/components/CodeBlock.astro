@@ -1,0 +1,44 @@
+---
+import { Code } from 'astro:components';
+import sgcLight from '../themes/sgc-light.json';
+import sgcDark from '../themes/sgc-dark.json';
+
+interface Props {
+  code: string;
+  lang?: string;
+}
+
+const { code, lang = 'typescript' } = Astro.props;
+---
+
+<div class="code-block bg-surface-raised rounded-lg p-4 font-mono text-sm overflow-x-auto">
+  <Code
+    code={code}
+    lang={lang}
+    themes={{ light: sgcLight, dark: sgcDark }}
+    defaultColor={false}
+  />
+</div>
+
+<style>
+  .code-block :global(pre) {
+    background: transparent !important;
+    margin: 0;
+    padding: 0;
+    overflow: visible;
+  }
+
+  .code-block :global(code) {
+    background: transparent;
+  }
+
+  /* Light mode: use the light theme colors */
+  .code-block :global(span) {
+    color: var(--shiki-light) !important;
+  }
+
+  /* Dark mode: swap to dark theme colors */
+  :global(.dark) .code-block :global(span) {
+    color: var(--shiki-dark) !important;
+  }
+</style>

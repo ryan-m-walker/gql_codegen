@@ -1,0 +1,106 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+import CodeBlock from '../../components/CodeBlock.astro';
+
+const beforeConfig = `import type { CodegenConfig } from '@graphql-codegen/cli';
+
+const config: CodegenConfig = {
+  schema: './schema.graphql',
+  documents: 'src/**/*.tsx',
+  generates: {
+    './src/generated/types.ts': {
+      plugins: ['typescript', 'typescript-operations']
+    }
+  }
+};
+
+export default config;`;
+
+const afterConfig = `import type { CodegenConfig } from '@sgc/cli';
+
+const config: CodegenConfig = {
+  schema: './schema.graphql',
+  documents: 'src/**/*.tsx',
+  outputs: {
+    './src/generated/types.ts': {
+      generators: ['schema-types', 'operation-types']
+    }
+  }
+};
+
+export default config;`;
+---
+
+<DocsLayout title="From graphql-codegen">
+  <h1 class="text-2xl font-semibold mb-2">Migrating from graphql-codegen</h1>
+  <p class="text-text-muted mb-8">
+    SGC is not a drop-in replacement &mdash; it's an opinionated, TypeScript-first codegen tool with its own API. But migrating is straightforward.
+  </p>
+
+  <h2 class="text-xl font-semibold mb-3">Terminology changes</h2>
+  <div class="overflow-x-auto mb-8">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-border-default">
+          <th class="text-left py-3 px-4 text-text-muted">graphql-codegen</th>
+          <th class="text-left py-3 px-4 text-text-muted">SGC</th>
+        </tr>
+      </thead>
+      <tbody class="text-text-secondary">
+        <tr class="border-b border-border-default/50">
+          <td class="py-3 px-4 font-mono text-xs">generates</td>
+          <td class="py-3 px-4 font-mono text-xs">outputs</td>
+        </tr>
+        <tr class="border-b border-border-default/50">
+          <td class="py-3 px-4 font-mono text-xs">plugins</td>
+          <td class="py-3 px-4 font-mono text-xs">generators</td>
+        </tr>
+        <tr class="border-b border-border-default/50">
+          <td class="py-3 px-4 font-mono text-xs">typescript</td>
+          <td class="py-3 px-4 font-mono text-xs">schema-types</td>
+        </tr>
+        <tr class="border-b border-border-default/50">
+          <td class="py-3 px-4 font-mono text-xs">typescript-operations</td>
+          <td class="py-3 px-4 font-mono text-xs">operation-types</td>
+        </tr>
+        <tr class="border-b border-border-default/50">
+          <td class="py-3 px-4 font-mono text-xs">typed-document-node</td>
+          <td class="py-3 px-4 font-mono text-xs">typed-documents</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="text-xl font-semibold mb-3">Config changes</h2>
+  <h3 class="text-base font-semibold mt-4 mb-2 text-text-muted">Before &mdash; graphql-codegen</h3>
+  <CodeBlock code={beforeConfig} lang="typescript" />
+
+  <h3 class="text-base font-semibold mt-6 mb-2 text-text-muted">After &mdash; SGC</h3>
+  <CodeBlock code={afterConfig} lang="typescript" />
+
+  <h2 class="text-xl font-semibold mt-10 mb-3">Key differences</h2>
+  <ul class="list-disc list-inside text-text-secondary space-y-3">
+    <li><strong>No plugin ecosystem</strong> &mdash; SGC has a curated set of built-in generators, not a plugin system. If you need a plugin that doesn't have an SGC equivalent yet, you'll need to keep graphql-codegen for that output.</li>
+    <li><strong>Opinionated defaults</strong> &mdash; SGC defaults to <code class="bg-surface-inset px-1 rounded text-xs">readonly</code> types, string union enums, and <code class="bg-surface-inset px-1 rounded text-xs">interface</code> declarations. These are all configurable, but the defaults are intentional. See <a href="/docs/configuration" class="text-amber-500 hover:underline">config options</a>.</li>
+    <li><strong>TypeScript-first</strong> &mdash; SGC only generates TypeScript. If you need Flow, Java, or other language output, use graphql-codegen.</li>
+  </ul>
+
+  <h2 class="text-xl font-semibold mt-10 mb-3">Package changes</h2>
+  <div class="bg-surface-raised rounded-lg p-4 font-mono text-sm">
+    <pre class="text-text-secondary"><span class="text-code-comment"># Remove graphql-codegen packages</span>
+<span class="text-code-command">pnpm remove</span> @graphql-codegen/cli @graphql-codegen/typescript @graphql-codegen/typescript-operations
+
+<span class="text-code-comment"># Install SGC</span>
+<span class="text-code-command">pnpm add</span> -D @sgc/cli</pre>
+  </div>
+
+  <div class="bg-surface-raised rounded-lg p-4 font-mono text-sm mt-4">
+    <pre class="text-text-secondary"><span class="text-code-comment">// package.json</span>
+{'{'}
+  "scripts": {'{'}
+    <span class="text-red-400 line-through">"codegen": "graphql-codegen"</span>
+    <span class="text-code-command">"codegen": "sgc"</span>
+  {'}'}
+{'}'}</pre>
+  </div>
+</DocsLayout>

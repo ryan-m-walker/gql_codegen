@@ -132,12 +132,11 @@ export default function Playground() {
         <div className="flex flex-col h-full">
             <Toolbar
                 isGenerating={isGenerating}
-                result={result}
                 onShare={handleShare}
                 shareMessage={shareMessage}
             />
 
-            <div className="flex flex-1 overflow-hidden">
+            <div className="grid grid-cols-2 flex-1 overflow-hidden">
                 <InputPanel
                     inputTab={inputTab}
                     onTabChange={setInputTab}
@@ -161,12 +160,6 @@ export default function Playground() {
                 />
             </div>
 
-            <div className="px-4 py-2 border-t border-border-default text-xs text-text-faint flex items-center justify-between">
-                <span>
-                    Edit the schema and operations to see generated TypeScript types.
-                </span>
-                <span>Powered by SGC (Rust/WASM) — runs entirely in your browser.</span>
-            </div>
         </div>
     )
 }

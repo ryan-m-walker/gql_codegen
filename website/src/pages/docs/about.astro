@@ -1,0 +1,102 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout title="About">
+  <h1 class="text-2xl font-semibold mb-2">About SGC</h1>
+  <p class="text-text-secondary mb-8">
+    SGC (Speedy GraphQL Codegen) is a GraphQL code generator built from the ground up in Rust. It's TypeScript-first, opinionated, and fast.
+  </p>
+
+  <h2 class="text-xl font-semibold mb-3">What is GraphQL codegen?</h2>
+  <p class="text-text-secondary mb-4">
+    If you use GraphQL, you write a schema that describes your data and operations that query it. But without codegen, there's a gap: your frontend code doesn't know what shape the data will be. You end up writing types by hand, guessing at nullability, and catching mistakes at runtime instead of compile time.
+  </p>
+  <p class="text-text-secondary mb-4">
+    A GraphQL code generator reads your schema and operations, and produces TypeScript types that exactly match them. Your queries become type-safe. Your editor autocompletes field names. Refactors that change the schema surface as type errors instantly, not as production bugs.
+  </p>
+  <p class="text-text-secondary mb-8">
+    SGC does this in three steps: it generates <a href="/docs/generator-schema-types" class="text-amber-500 hover:underline">types from your schema</a>, <a href="/docs/generator-operation-types" class="text-amber-500 hover:underline">types from your operations</a>, and optionally <a href="/docs/generator-typed-documents" class="text-amber-500 hover:underline">typed document constants</a> that wire everything together at runtime.
+  </p>
+
+  <h2 class="text-xl font-semibold mb-3">Inspirations</h2>
+  <p class="text-text-secondary mb-8">
+    SGC is inspired by <a href="https://the-guild.dev/graphql/codegen" class="text-amber-500 hover:underline">GraphQL Code Generator</a> by The Guild, which built the ecosystem and proved codegen is essential for GraphQL DX. SGC takes a narrower approach &mdash; TypeScript only, opinionated defaults &mdash; with patterns drawn from <a href="https://relay.dev" class="text-amber-500 hover:underline">Relay</a>'s approach to type safety and schema evolution.
+  </p>
+
+  <h2 class="text-xl font-semibold mb-3">Design principles</h2>
+
+  <!-- Performance -->
+  <h3 class="text-lg font-semibold mt-6 mb-2">Fast by default</h3>
+  <p class="text-text-secondary mb-3">
+    SGC is written in Rust with zero-copy parsing, parallel file I/O, and content-addressed caching. The goal is that codegen is never the bottleneck in your workflow &mdash; it should finish before you switch back to your editor.
+  </p>
+
+  <!-- Type-safe output -->
+  <h3 class="text-lg font-semibold mt-6 mb-2">Type-only output</h3>
+  <p class="text-text-secondary mb-3">
+    SGC generates pure TypeScript types with zero runtime overhead. No TypeScript enums (which emit runtime JavaScript), no helper functions, no classes. Just interfaces, type aliases, and string unions that disappear completely after compilation.
+  </p>
+
+  <!-- Performant TypeScript -->
+  <h3 class="text-lg font-semibold mt-6 mb-2">Performant TypeScript</h3>
+  <p class="text-text-secondary mb-3">
+    The generated code is optimized for the TypeScript compiler itself. Interfaces are used over type aliases because they're <a href="https://github.com/microsoft/TypeScript/wiki/Performance#preferring-interfaces-over-intersections" class="text-amber-500 hover:underline">faster to check at scale</a>. Deep type lookups and complex conditional types are avoided in favor of simple, flat declarations that keep <code class="bg-surface-inset px-1.5 py-0.5 rounded text-xs">tsc</code> fast even in large codebases.
+  </p>
+
+  <!-- Future-proofing -->
+  <h3 class="text-lg font-semibold mt-6 mb-2">Future-proof by default</h3>
+  <p class="text-text-secondary mb-3">
+    Inspired by Relay's approach to schema evolution, SGC generates types that are resilient to backend changes:
+  </p>
+  <ul class="list-disc list-inside text-text-secondary space-y-2 mb-3">
+    <li><strong>Enum unions include <code class="bg-surface-inset px-1 rounded text-xs">'%future added value'</code></strong> &mdash; so exhaustive switch statements don't crash at runtime when the backend adds a new member</li>
+    <li><strong>Union types include a fallback</strong> &mdash; same idea for GraphQL unions, preventing unhandled cases</li>
+    <li><strong>All fields are <code class="bg-surface-inset px-1 rounded text-xs">readonly</code></strong> &mdash; prevents accidental mutation of normalized cache data, a common source of subtle bugs</li>
+  </ul>
+
+  <!-- Opinionated -->
+  <h3 class="text-lg font-semibold mt-6 mb-2">Opinionated, not inflexible</h3>
+  <p class="text-text-secondary mb-3">
+    SGC ships with strong defaults that reflect modern best practices. You <em>can</em> change them &mdash; every default is configurable &mdash; but you shouldn't have to. The goal is that the zero-config output is the output you'd choose if you thought carefully about every option.
+  </p>
+
+  <div class="overflow-x-auto mt-6">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-border-default">
+          <th class="text-left py-3 px-4 text-text-muted">Default</th>
+          <th class="text-left py-3 px-4 text-text-muted">Why</th>
+        </tr>
+      </thead>
+      <tbody class="text-text-secondary">
+        <tr class="border-b border-border-default/50">
+          <td class="py-3 px-4 font-mono text-xs">interface</td>
+          <td class="py-3 px-4">Faster for the TypeScript compiler than type aliases at scale</td>
+        </tr>
+        <tr class="border-b border-border-default/50">
+          <td class="py-3 px-4 font-mono text-xs">readonly</td>
+          <td class="py-3 px-4">Prevents mutation bugs, especially with normalized caches</td>
+        </tr>
+        <tr class="border-b border-border-default/50">
+          <td class="py-3 px-4 font-mono text-xs">string unions over enums</td>
+          <td class="py-3 px-4">No runtime code, better tree-shaking, no TS enum footguns</td>
+        </tr>
+        <tr class="border-b border-border-default/50">
+          <td class="py-3 px-4 font-mono text-xs">future-proof enums</td>
+          <td class="py-3 px-4">Exhaustive checks don't break when the backend evolves</td>
+        </tr>
+        <tr class="border-b border-border-default/50">
+          <td class="py-3 px-4 font-mono text-xs">unknown for unmapped scalars</td>
+          <td class="py-3 px-4">Forces you to explicitly map custom scalars rather than silently accepting <code class="bg-surface-inset px-1 rounded text-xs">any</code></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Fault tolerant -->
+  <h3 class="text-lg font-semibold mt-8 mb-2">Fault tolerant</h3>
+  <p class="text-text-secondary mb-3">
+    A broken query in one file shouldn't prevent the rest of your codebase from generating. SGC reports diagnostics per-file and continues generating output for everything that's valid. You get useful error messages, not a wall of stack traces.
+  </p>
+</DocsLayout>

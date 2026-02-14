@@ -4,9 +4,11 @@ import '../styles/global.css'
 interface Props {
   title: string;
   description?: string;
+  navClass?: string;
 }
 
-const { title, description = "Speedy GraphQL Codegen - A blazing fast GraphQL code generator written in Rust" } = Astro.props;
+const { title, description = "Speedy GraphQL Codegen - A blazing fast GraphQL code generator written in Rust", navClass } = Astro.props;
+const isHome = Astro.url.pathname === '/';
 ---
 
 <!doctype html>
@@ -29,18 +31,21 @@ const { title, description = "Speedy GraphQL Codegen - A blazing fast GraphQL co
     </script>
   </head>
   <body class="bg-surface text-text-primary min-h-screen">
-    <nav class="border-b border-border-default px-6 py-4">
+    <nav class:list={["relative z-20 px-6 py-4", navClass]}>
       <div class="flex items-center justify-between">
-        <a href="/" class="text-xl font-bold text-text-heading flex items-center gap-2">
-          <span class="text-2xl">⚡</span> SGC
+        <a href="/" class="text-xl font-bold flex items-center gap-2 px-2 py-1">
+          <svg class:list={["w-5 h-5", !isHome && "text-amber-400"]} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path fill-rule="evenodd" d="M14.615 1.595a.75.75 0 0 1 .359.852L12.982 9.75h7.268a.75.75 0 0 1 .548 1.262l-10.5 11.25a.75.75 0 0 1-1.272-.71l1.992-7.302H3.75a.75.75 0 0 1-.548-1.262l10.5-11.25a.75.75 0 0 1 .913-.143Z" clip-rule="evenodd" />
+          </svg>
+          SGC
         </a>
         <div class="flex items-center gap-6">
-          <a href="/docs" class="text-text-muted hover:text-text-heading transition-colors">Docs</a>
-          <a href="/playground" class="text-text-muted hover:text-text-heading transition-colors">Playground</a>
+          <a href="/docs" class="px-2 py-1 opacity-70 hover:opacity-100 transition-opacity">Docs</a>
+          <a href="/playground" class="px-2 py-1 opacity-70 hover:opacity-100 transition-opacity">Playground</a>
           <button
             id="theme-toggle"
             type="button"
-            class="text-text-muted hover:text-text-heading transition-colors p-1"
+            class="opacity-70 hover:opacity-100 transition-opacity p-2"
             aria-label="Toggle theme"
           >
             <!-- Sun icon (shown in dark mode) -->
@@ -52,7 +57,7 @@ const { title, description = "Speedy GraphQL Codegen - A blazing fast GraphQL co
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
             </svg>
           </button>
-          <a href="https://github.com/ryanwalker/sgc" class="text-text-muted hover:text-text-heading transition-colors">
+          <a href="https://github.com/ryanwalker/sgc" class="px-2 py-1 opacity-70 hover:opacity-100 transition-opacity">
             GitHub
           </a>
         </div>
@@ -62,7 +67,7 @@ const { title, description = "Speedy GraphQL Codegen - A blazing fast GraphQL co
       <slot />
     </main>
     <footer class="border-t border-border-default px-6 py-8 mt-auto">
-      <div class="max-w-6xl mx-auto text-center text-text-faint text-sm">
+      <div class="text-center text-text-faint text-sm">
         Built with Rust 🦀 and love
       </div>
     </footer>

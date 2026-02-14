@@ -4,38 +4,62 @@
 
 :root {
   --surface: #ffffff;
-  --surface-raised: #f3f4f6;
-  --surface-inset: #e5e7eb;
-  --text-primary: #111827;
-  --text-heading: #030712;
-  --text-secondary: #374151;
-  --text-muted: #6b7280;
-  --text-faint: #9ca3af;
-  --border-default: #e5e7eb;
-  --border-muted: #d1d5db;
-  --code-keyword: #2563eb;
-  --code-string: #b45309;
-  --code-comment: #9ca3af;
-  --code-command: #16a34a;
-  --code-value: #c2410c;
+  --surface-raised: #f5f5f5;
+  --surface-inset: #e5e5e5;
+  --text-primary: #171717;
+  --text-heading: #0a0a0a;
+  --text-secondary: #404040;
+  --text-muted: #737373;
+  --text-faint: #a3a3a3;
+  --border-default: #e5e5e5;
+  --border-muted: #d4d4d4;
+  --code-keyword: #b45309;
+  --code-string: #525252;
+  --code-comment: #a3a3a3;
+  --code-command: #b45309;
+  --code-value: #737373;
 }
 
 .dark {
-  --surface: #030712;
-  --surface-raised: #111827;
-  --surface-inset: #1f2937;
-  --text-primary: #f3f4f6;
+  --surface: #0a0a0a;
+  --surface-raised: #171717;
+  --surface-inset: #262626;
+  --text-primary: #f5f5f5;
   --text-heading: #ffffff;
-  --text-secondary: #d1d5db;
-  --text-muted: #9ca3af;
-  --text-faint: #6b7280;
-  --border-default: #1f2937;
-  --border-muted: #374151;
-  --code-keyword: #60a5fa;
-  --code-string: #facc15;
-  --code-comment: #6b7280;
-  --code-command: #4ade80;
-  --code-value: #fb923c;
+  --text-secondary: #d4d4d4;
+  --text-muted: #a3a3a3;
+  --text-faint: #737373;
+  --border-default: #262626;
+  --border-muted: #404040;
+  --code-keyword: #fbbf24;
+  --code-string: #fbbf24;
+  --code-comment: #737373;
+  --code-command: #fbbf24;
+  --code-value: #a3a3a3;
+}
+
+
+
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* Offset anchors for fixed nav */
+section[id] {
+  scroll-margin-top: 5rem;
+}
+
+/* Interactive element defaults */
+a, button, [role="button"] {
+  cursor: pointer;
+  border-radius: 4px;
+  transition: color 150ms, background-color 150ms, border-color 150ms, opacity 150ms, box-shadow 150ms;
+}
+
+a:focus-visible, button:focus-visible, [role="button"]:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px currentColor;
 }
 
 @theme inline {
@@ -54,4 +78,16 @@
   --color-code-comment: var(--code-comment);
   --color-code-command: var(--code-command);
   --color-code-value: var(--code-value);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

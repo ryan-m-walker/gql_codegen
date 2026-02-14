@@ -1,0 +1,108 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+import CodeBlock from '../../components/CodeBlock.astro';
+
+const inputExample = `type User {
+  id: ID!
+  name: String!
+  email: String
+  role: Role!
+  posts: [Post!]!
+}
+
+enum Role {
+  ADMIN
+  USER
+  MODERATOR
+}
+
+type Post {
+  id: ID!
+  title: String!
+  author: User!
+}
+
+input CreateUserInput {
+  name: String!
+  email: String
+  role: Role!
+}`;
+
+const outputExample = `export interface User {
+  readonly __typename: 'User';
+  readonly id: string;
+  readonly name: string;
+  readonly email: string | null;
+  readonly role: Role;
+  readonly posts: ReadonlyArray<Post>;
+}
+
+export type Role =
+  | 'ADMIN'
+  | 'USER'
+  | 'MODERATOR'
+  | '%future added value';
+
+export interface Post {
+  readonly __typename: 'Post';
+  readonly id: string;
+  readonly title: string;
+  readonly author: User;
+}
+
+export interface CreateUserInput {
+  readonly name: string;
+  readonly email?: string | null;
+  readonly role: Role;
+}`;
+
+const usageExample = `outputs: {
+  './src/generated/types.ts': {
+    generators: ['schema-types'],
+    config: {
+      scalars: {
+        DateTime: 'string',
+        JSON: 'Record<string, unknown>',
+      }
+    }
+  }
+}`;
+---
+
+<DocsLayout title="schema-types">
+  <h1 class="text-2xl font-semibold mb-2">schema-types</h1>
+  <p class="text-text-muted mb-8">
+    Generates TypeScript types from your GraphQL schema &mdash; interfaces, enums, scalars, unions, and input types.
+  </p>
+
+  <h2 class="text-xl font-semibold mb-3">Usage</h2>
+  <CodeBlock code={usageExample} lang="typescript" />
+
+  <h2 class="text-xl font-semibold mt-10 mb-3">What it generates</h2>
+  <ul class="list-disc list-inside text-text-secondary space-y-2 mb-6">
+    <li><strong>Object types</strong> &mdash; TypeScript interfaces with <code class="bg-surface-inset px-1 rounded text-xs">readonly</code> fields and <code class="bg-surface-inset px-1 rounded text-xs">__typename</code></li>
+    <li><strong>Enums</strong> &mdash; String union types with a <code class="bg-surface-inset px-1 rounded text-xs">%future added value</code> fallback</li>
+    <li><strong>Input types</strong> &mdash; Interfaces for mutation/query arguments</li>
+    <li><strong>Scalars</strong> &mdash; Mapped to TypeScript types via the <code class="bg-surface-inset px-1 rounded text-xs">scalars</code> config option</li>
+    <li><strong>Unions &amp; interfaces</strong> &mdash; Discriminated unions using <code class="bg-surface-inset px-1 rounded text-xs">__typename</code></li>
+  </ul>
+
+  <h2 class="text-xl font-semibold mt-10 mb-3">Example</h2>
+
+  <h3 class="text-base font-semibold mt-6 mb-2 text-text-muted">Input &mdash; GraphQL schema</h3>
+  <CodeBlock code={inputExample} lang="graphql" />
+
+  <h3 class="text-base font-semibold mt-6 mb-2 text-text-muted">Output &mdash; TypeScript</h3>
+  <CodeBlock code={outputExample} lang="typescript" />
+
+  <div class="bg-surface-raised rounded-lg p-4 mt-8 text-sm text-text-muted">
+    <strong class="text-text-heading">Why these defaults?</strong>
+    <ul class="list-disc list-inside mt-2 space-y-1">
+      <li><code class="bg-surface-inset px-1 rounded text-xs">readonly</code> &mdash; prevents accidental mutation of cache data</li>
+      <li><code class="bg-surface-inset px-1 rounded text-xs">interface</code> over <code class="bg-surface-inset px-1 rounded text-xs">type</code> &mdash; faster for the TypeScript compiler at scale</li>
+      <li>Union enums over TS enums &mdash; no runtime code, better tree-shaking</li>
+      <li><code class="bg-surface-inset px-1 rounded text-xs">%future added value</code> &mdash; prevents runtime crashes from new backend enum members</li>
+    </ul>
+    <p class="mt-2">All of these can be changed via <a href="/docs/configuration" class="text-amber-500 hover:underline">config options</a>.</p>
+  </div>
+</DocsLayout>

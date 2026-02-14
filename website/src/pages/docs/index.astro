@@ -1,0 +1,34 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { docsNav } from '../../data/docs-nav';
+---
+
+<Layout title="Documentation" navClass="sticky top-0 bg-surface border-b border-border-default">
+  <div class="max-w-4xl mx-auto px-6 py-12">
+    <h1 class="text-4xl font-bold mb-4">Documentation</h1>
+    <p class="text-text-muted mb-10">Everything you need to get started with Speedy GraphQL Codegen.</p>
+
+    <div class="space-y-10">
+      {docsNav.map((group) => (
+        <section>
+          <h2 class="text-sm font-semibold uppercase tracking-wider text-text-muted mb-4">
+            {group.group}
+          </h2>
+          <div class="grid sm:grid-cols-2 gap-4">
+            {group.items.map((item) => (
+              <a
+                href={item.href}
+                class="group block bg-surface-raised rounded-lg p-5 border border-transparent hover:border-amber-400/40 transition-colors"
+              >
+                <h3 class="font-semibold text-text-heading mb-1 group-hover:text-amber-400 transition-colors">
+                  {item.title}
+                </h3>
+                <p class="text-text-muted text-sm">{item.description}</p>
+              </a>
+            ))}
+          </div>
+        </section>
+      ))}
+    </div>
+  </div>
+</Layout>

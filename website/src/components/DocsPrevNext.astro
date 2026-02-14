@@ -1,0 +1,29 @@
+---
+import { docsNavFlat } from '../data/docs-nav';
+
+const currentPath = Astro.url.pathname.replace(/\/$/, '');
+const currentIndex = docsNavFlat.findIndex((item) => item.href === currentPath);
+const prev = currentIndex > 0 ? docsNavFlat[currentIndex - 1] : null;
+const next = currentIndex < docsNavFlat.length - 1 ? docsNavFlat[currentIndex + 1] : null;
+---
+
+{(prev || next) && (
+  <nav class="flex justify-between items-center border-t border-border-default pt-8 mt-12">
+    {prev ? (
+      <a href={prev.href} class="group flex items-center gap-2 text-text-muted hover:text-text-heading">
+        <svg class="w-4 h-4 transition-transform group-hover:-translate-x-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+        </svg>
+        <span class="text-sm">{prev.title}</span>
+      </a>
+    ) : <span />}
+    {next ? (
+      <a href={next.href} class="group flex items-center gap-2 text-text-muted hover:text-text-heading ml-auto">
+        <span class="text-sm">{next.title}</span>
+        <svg class="w-4 h-4 transition-transform group-hover:translate-x-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+        </svg>
+      </a>
+    ) : <span />}
+  </nav>
+)}

@@ -4,102 +4,273 @@ import { useRef, useEffect } from 'react'
 
 type Segment = { text: string; className: string }
 
-const GQL_LINES: Segment[][] = [
-    [
-        { text: 'type', className: 'text-code-keyword' },
-        { text: ' User ', className: 'text-code-value' },
-        { text: '{', className: 'text-text-secondary' },
-    ],
-    [
-        { text: '  id', className: 'text-text-primary' },
-        { text: ': ', className: 'text-text-secondary' },
-        { text: 'ID!', className: 'text-code-value' },
-    ],
-    [
-        { text: '  name', className: 'text-text-primary' },
-        { text: ': ', className: 'text-text-secondary' },
-        { text: 'String!', className: 'text-code-value' },
-    ],
-    [
-        { text: '  email', className: 'text-text-primary' },
-        { text: ': ', className: 'text-text-secondary' },
-        { text: 'String', className: 'text-code-value' },
-    ],
-    [
-        { text: '  posts', className: 'text-text-primary' },
-        { text: ': ', className: 'text-text-secondary' },
-        { text: '[Post!]!', className: 'text-code-value' },
-    ],
-    [{ text: '}', className: 'text-text-secondary' }],
-]
+// prefers-reduced-motion: checked at mount + listened for live changes
 
-const TS_LINES: Segment[][] = [
-    [
-        { text: 'export', className: 'text-code-keyword' },
-        { text: ' ', className: 'text-text-primary' },
-        { text: 'interface', className: 'text-code-keyword' },
-        { text: ' User ', className: 'text-code-value' },
-        { text: '{', className: 'text-text-secondary' },
-    ],
-    [
-        { text: '  ', className: 'text-text-primary' },
-        { text: 'readonly', className: 'text-code-keyword' },
-        { text: ' id', className: 'text-text-primary' },
-        { text: ': ', className: 'text-text-secondary' },
-        { text: 'string', className: 'text-code-value' },
-        { text: ';', className: 'text-text-secondary' },
-    ],
-    [
-        { text: '  ', className: 'text-text-primary' },
-        { text: 'readonly', className: 'text-code-keyword' },
-        { text: ' name', className: 'text-text-primary' },
-        { text: ': ', className: 'text-text-secondary' },
-        { text: 'string', className: 'text-code-value' },
-        { text: ';', className: 'text-text-secondary' },
-    ],
-    [
-        { text: '  ', className: 'text-text-primary' },
-        { text: 'readonly', className: 'text-code-keyword' },
-        { text: ' email', className: 'text-text-primary' },
-        { text: '?: ', className: 'text-text-secondary' },
-        { text: 'string', className: 'text-code-value' },
-        { text: ' | ', className: 'text-text-secondary' },
-        { text: 'null', className: 'text-code-keyword' },
-        { text: ';', className: 'text-text-secondary' },
-    ],
-    [
-        { text: '  ', className: 'text-text-primary' },
-        { text: 'readonly', className: 'text-code-keyword' },
-        { text: ' posts', className: 'text-text-primary' },
-        { text: ': ', className: 'text-text-secondary' },
-        { text: 'ReadonlyArray', className: 'text-code-value' },
-        { text: '<Post>', className: 'text-text-secondary' },
-        { text: ';', className: 'text-text-secondary' },
-    ],
-    [{ text: '}', className: 'text-text-secondary' }],
+// Shorthand helpers to reduce visual noise in line definitions
+const kw = (text: string): Segment => ({ text, className: 'text-code-keyword' })
+const val = (text: string): Segment => ({ text, className: 'text-code-value' })
+const pri = (text: string): Segment => ({
+    text,
+    className: 'text-text-primary',
+})
+const sec = (text: string): Segment => ({
+    text,
+    className: 'text-text-secondary',
+})
+const blank: Segment[] = [{ text: ' ', className: '' }]
+
+// --- Slide definitions ---
+
+interface Slide {
+    label: string
+    lines: Segment[][]
+}
+
+const SLIDES: Slide[] = [
+    // Slide 0: Schema — GraphQL
+    {
+        label: 'GraphQL',
+        lines: [
+            [kw('type'), val(' User '), sec('{')],
+            [pri('  id'), sec(': '), val('ID!')],
+            [pri('  name'), sec(': '), val('String!')],
+            [pri('  email'), sec(': '), val('String')],
+            [pri('  posts'), sec(': '), val('[Post!]!')],
+            [sec('}')],
+            blank,
+            [kw('enum'), val(' Role '), sec('{')],
+            [pri('  ADMIN')],
+            [pri('  USER')],
+            [pri('  MODERATOR')],
+            [sec('}')],
+            blank,
+            [kw('type'), val(' Post '), sec('{')],
+            [pri('  id'), sec(': '), val('ID!')],
+            [pri('  title'), sec(': '), val('String!')],
+            [pri('  author'), sec(': '), val('User!')],
+            [sec('}')],
+        ],
+    },
+    // Slide 1: Schema — TypeScript
+    {
+        label: 'TypeScript',
+        lines: [
+            [kw('export'), pri(' '), kw('interface'), val(' User '), sec('{')],
+            [
+                pri('  '),
+                kw('readonly'),
+                pri(' id'),
+                sec(': '),
+                val('string'),
+                sec(';'),
+            ],
+            [
+                pri('  '),
+                kw('readonly'),
+                pri(' name'),
+                sec(': '),
+                val('string'),
+                sec(';'),
+            ],
+            [
+                pri('  '),
+                kw('readonly'),
+                pri(' email'),
+                sec('?: '),
+                val('string'),
+                sec(' | '),
+                kw('null'),
+                sec(';'),
+            ],
+            [
+                pri('  '),
+                kw('readonly'),
+                pri(' posts'),
+                sec(': '),
+                val('ReadonlyArray'),
+                sec('<Post>'),
+                sec(';'),
+            ],
+            [sec('}')],
+            blank,
+            [kw('export'), pri(' '), kw('type'), val(' Role '), sec('=')],
+            [sec("  | '"), val('ADMIN'), sec("'")],
+            [sec("  | '"), val('USER'), sec("'")],
+            [sec("  | '"), val('MODERATOR'), sec("'")],
+            [sec("  | '"), val('%future added value'), sec("';")],
+            blank,
+            [kw('export'), pri(' '), kw('interface'), val(' Post '), sec('{')],
+            [
+                pri('  '),
+                kw('readonly'),
+                pri(' id'),
+                sec(': '),
+                val('string'),
+                sec(';'),
+            ],
+            [
+                pri('  '),
+                kw('readonly'),
+                pri(' title'),
+                sec(': '),
+                val('string'),
+                sec(';'),
+            ],
+            [
+                pri('  '),
+                kw('readonly'),
+                pri(' author'),
+                sec(': '),
+                val('User'),
+                sec(';'),
+            ],
+            [sec('}')],
+        ],
+    },
+    // Slide 2: Operation — GraphQL
+    {
+        label: 'GraphQL',
+        lines: [
+            [
+                kw('query'),
+                val(' GetUser'),
+                sec('('),
+                pri('$id'),
+                sec(': '),
+                val('ID!'),
+                sec(') {'),
+            ],
+            [
+                pri('  user'),
+                sec('('),
+                pri('id'),
+                sec(': '),
+                pri('$id'),
+                sec(') {'),
+            ],
+            [pri('    id')],
+            [pri('    name')],
+            [pri('    email')],
+            [pri('    role')],
+            [pri('    posts'), sec(' {')],
+            [pri('      id')],
+            [pri('      title')],
+            [sec('    }')],
+            [sec('  }')],
+            [sec('}')],
+        ],
+    },
+    // Slide 3: Operation — TypeScript
+    {
+        label: 'TypeScript',
+        lines: [
+            [
+                kw('export'),
+                pri(' '),
+                kw('type'),
+                val(' GetUserQueryVariables '),
+                sec('= {'),
+            ],
+            [
+                pri('  '),
+                kw('readonly'),
+                pri(' id'),
+                sec(': '),
+                val('string'),
+                sec(';'),
+            ],
+            [sec('};')],
+            blank,
+            [
+                kw('export'),
+                pri(' '),
+                kw('type'),
+                val(' GetUserQuery '),
+                sec('= {'),
+            ],
+            [pri('  '), kw('readonly'), pri(' user'), sec(': {')],
+            [
+                pri('    '),
+                kw('readonly'),
+                pri(' id'),
+                sec(': '),
+                val('string'),
+                sec(';'),
+            ],
+            [
+                pri('    '),
+                kw('readonly'),
+                pri(' name'),
+                sec(': '),
+                val('string'),
+                sec(';'),
+            ],
+            [
+                pri('    '),
+                kw('readonly'),
+                pri(' email'),
+                sec('?: '),
+                val('string'),
+                sec(' | '),
+                kw('null'),
+                sec(';'),
+            ],
+            [
+                pri('    '),
+                kw('readonly'),
+                pri(' role'),
+                sec(': '),
+                val('Role'),
+                sec(';'),
+            ],
+            [
+                pri('    '),
+                kw('readonly'),
+                pri(' posts'),
+                sec(': '),
+                val('ReadonlyArray'),
+                sec('<{'),
+            ],
+            [
+                pri('      '),
+                kw('readonly'),
+                pri(' id'),
+                sec(': '),
+                val('string'),
+                sec(';'),
+            ],
+            [
+                pri('      '),
+                kw('readonly'),
+                pri(' title'),
+                sec(': '),
+                val('string'),
+                sec(';'),
+            ],
+            [sec('    }'), sec('>'), sec(';')],
+            [sec('  }'), sec(' | '), kw('null'), sec(';')],
+            [sec('};')],
+        ],
+    },
 ]
 
 // --- Scramble character selection ---
 
 const chars = [
-    ...Array.from({ length: 10 }, () => '█'),
-    ...Array.from({ length: 10 }, () => '░'),
-    ...Array.from({ length: 10 }, () => '▒'),
-    ...Array.from({ length: 10 }, () => '▓'),
-    // ...Array.from({ length: 10 }, () => '┃'),
-    // ...Array.from({ length: 10 }, () => '╋'),
-    ...Array.from({ length: 10 }, () => '─'),
-    ...Array.from({ length: 10 }, () => '<'),
-    ...Array.from({ length: 10 }, () => '>'),
-    ...Array.from({ length: 10 }, () => '{'),
-    ...Array.from({ length: 10 }, () => '}'),
-    ...Array.from({ length: 10 }, () => ';'),
-    ...Array.from({ length: 10 }, () => ':'),
-    ...Array.from({ length: 10 }, () => '='),
-    // ...Array.from({ length: 10 }, () => '→'),
-    // ...Array.from({ length: 10 }, () => '←'),
-    ...Array.from({ length: 10 }, () => '∷'),
-    ...Array.from({ length: 10 }, () => '?'),
+    ...Array.from({ length: 20 }, () => '█'),
+    ...Array.from({ length: 20 }, () => '░'),
+    ...Array.from({ length: 20 }, () => '▒'),
+    ...Array.from({ length: 20 }, () => '▓'),
+    ...Array.from({ length: 20 }, () => '─'),
+    ...Array.from({ length: 20 }, () => '<'),
+    ...Array.from({ length: 20 }, () => '>'),
+    ...Array.from({ length: 20 }, () => '{'),
+    ...Array.from({ length: 20 }, () => '}'),
+    ...Array.from({ length: 20 }, () => ';'),
+    ...Array.from({ length: 20 }, () => ':'),
+    ...Array.from({ length: 20 }, () => '='),
+    ...Array.from({ length: 20 }, () => '∷'),
+    ...Array.from({ length: 20 }, () => '?'),
     ...Array.from({ length: 1 }, () => '🦀'),
 ]
 
@@ -114,7 +285,6 @@ function segmentsToString(segments: Segment[]): string {
     return segments.map((s) => s.text).join('')
 }
 
-/** Find the CSS class for the character at `index` within a line's segments */
 function charClassAt(segments: Segment[], index: number): string {
     let offset = 0
     for (const seg of segments) {
@@ -127,7 +297,7 @@ function charClassAt(segments: Segment[], index: number): string {
 // --- Animation timing constants ---
 
 const INITIAL_DELAY = 1500
-const LINE_STAGGER = 250
+const LINE_STAGGER = 120
 const SCRAMBLE_DURATION = 700
 const RESOLVE_DURATION = 500
 const PAUSE_DURATION = 3500
@@ -140,20 +310,20 @@ interface LineState {
     resolvedCount: number
 }
 
-// --- Language label helpers ---
+// --- Language label ---
 
 function createLabel(text: string): HTMLSpanElement {
     const label = document.createElement('span')
     label.className =
-        'absolute top-3 right-3 md:top-4 md:right-4 text-xs text-text-faint transition-opacity duration-200 whitespace-normal'
+        'absolute top-3 right-3 md:top-4 md:right-4 text-xs text-text-muted transition-opacity duration-200 whitespace-normal font-semibold'
     label.textContent = text
     return label
 }
 
 // --- Static fallback for reduced-motion ---
 
-function renderStatic(container: HTMLDivElement, lines: Segment[][]) {
-    for (const line of lines) {
+function renderStatic(container: HTMLDivElement, slide: Slide) {
+    for (const line of slide.lines) {
         const div = document.createElement('div')
         div.className = 'leading-relaxed h-[1.75em]'
         for (const seg of line) {
@@ -166,9 +336,26 @@ function renderStatic(container: HTMLDivElement, lines: Segment[][]) {
     }
 }
 
+// --- Precompute dimensions across all slides ---
+
+function computeDimensions() {
+    const maxLines = Math.max(...SLIDES.map((s) => s.lines.length))
+    const maxLens: number[] = []
+    for (let i = 0; i < maxLines; i++) {
+        let max = 0
+        for (const slide of SLIDES) {
+            if (i < slide.lines.length) {
+                max = Math.max(max, segmentsToString(slide.lines[i]).length)
+            }
+        }
+        maxLens.push(max)
+    }
+    return { maxLines, maxLens }
+}
+
 // --- Component ---
 
-export default function CodeTransform() {
+export default function CodeTransform({ className }: { className?: string }) {
     const containerRef = useRef<HTMLDivElement>(null)
     const rafRef = useRef(0)
     const isVisibleRef = useRef(false)
@@ -180,32 +367,26 @@ export default function CodeTransform() {
         // Clear any previous DOM from prior effect run (HMR, Strict Mode)
         container.textContent = ''
 
-        // Respect prefers-reduced-motion — show static GQL, no animation
-        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-            renderStatic(container, GQL_LINES)
-            container.appendChild(createLabel('GraphQL'))
+        const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)')
+
+        // Respect prefers-reduced-motion — show static slide, no animation
+        if (motionQuery.matches) {
+            renderStatic(container, SLIDES[0])
+            container.appendChild(createLabel(SLIDES[0].label))
             return
         }
 
-        // Language label in top-right corner
-        const label = createLabel('GraphQL')
+        const { maxLines, maxLens } = computeDimensions()
+        const label = createLabel(SLIDES[0].label)
 
-        // Build DOM structure: one div per line, one span per character position
-        const lineCount = GQL_LINES.length
+        // Build DOM: one div per line, one span per char position
         const charSpans: HTMLSpanElement[][] = []
-        const maxLens: number[] = []
-
-        for (let i = 0; i < lineCount; i++) {
-            const gqlLen = segmentsToString(GQL_LINES[i]).length
-            const tsLen = segmentsToString(TS_LINES[i]).length
-            const maxLen = Math.max(gqlLen, tsLen)
-            maxLens.push(maxLen)
-
+        for (let i = 0; i < maxLines; i++) {
             const lineEl = document.createElement('div')
             lineEl.className = 'leading-relaxed h-[1.75em]'
 
             const spans: HTMLSpanElement[] = []
-            for (let j = 0; j < maxLen; j++) {
+            for (let j = 0; j < maxLens[i]; j++) {
                 const span = document.createElement('span')
                 spans.push(span)
                 lineEl.appendChild(span)
@@ -213,34 +394,33 @@ export default function CodeTransform() {
             charSpans.push(spans)
             container.appendChild(lineEl)
         }
-
         container.appendChild(label)
 
-        // --- Mutable animation state (all in closure, not React state) ---
-        let direction: 'gql-to-ts' | 'ts-to-gql' = 'gql-to-ts'
+        // --- Mutable animation state ---
+        let slideIndex = 0
         let phase: 'waiting' | 'animating' | 'paused' = 'waiting'
         let phaseStart = 0
         const lineStates: LineState[] = Array.from(
-            { length: lineCount },
-            () => ({
-                phase: 'idle' as LinePhase,
-                resolvedCount: 0,
-            }),
+            { length: maxLines },
+            () => ({ phase: 'idle' as LinePhase, resolvedCount: 0 }),
         )
 
-        const getSource = () =>
-            direction === 'gql-to-ts' ? GQL_LINES : TS_LINES
-        const getTarget = () =>
-            direction === 'gql-to-ts' ? TS_LINES : GQL_LINES
+        function getSourceSlide() {
+            return SLIDES[slideIndex]
+        }
+        function getTargetSlide() {
+            return SLIDES[(slideIndex + 1) % SLIDES.length]
+        }
 
-        /** Write one line's characters directly to the DOM */
         function renderLine(i: number) {
             const spans = charSpans[i]
             const ls = lineStates[i]
-            const source = getSource()
-            const target = getTarget()
-            const srcStr = segmentsToString(source[i])
-            const tgtStr = segmentsToString(target[i])
+            const source = getSourceSlide().lines
+            const target = getTargetSlide().lines
+            const srcSegs = i < source.length ? source[i] : []
+            const tgtSegs = i < target.length ? target[i] : []
+            const srcStr = segmentsToString(srcSegs)
+            const tgtStr = segmentsToString(tgtSegs)
             const len = maxLens[i]
 
             for (let j = 0; j < len; j++) {
@@ -249,7 +429,7 @@ export default function CodeTransform() {
                     case 'idle': {
                         span.textContent = j < srcStr.length ? srcStr[j] : ' '
                         span.className =
-                            j < srcStr.length ? charClassAt(source[i], j) : ''
+                            j < srcStr.length ? charClassAt(srcSegs, j) : ''
                         break
                     }
                     case 'scrambling': {
@@ -263,9 +443,7 @@ export default function CodeTransform() {
                             span.textContent =
                                 j < tgtStr.length ? tgtStr[j] : ' '
                             span.className =
-                                j < tgtStr.length
-                                    ? charClassAt(target[i], j)
-                                    : ''
+                                j < tgtStr.length ? charClassAt(tgtSegs, j) : ''
                         } else {
                             const show = Math.random() < SCRAMBLE_DENSITY
                             span.textContent = show ? getScrambleChar() : ' '
@@ -276,15 +454,15 @@ export default function CodeTransform() {
                     case 'done': {
                         span.textContent = j < tgtStr.length ? tgtStr[j] : ' '
                         span.className =
-                            j < tgtStr.length ? charClassAt(target[i], j) : ''
+                            j < tgtStr.length ? charClassAt(tgtSegs, j) : ''
                         break
                     }
                 }
             }
         }
 
-        // Initial render: show GQL statically
-        for (let i = 0; i < lineCount; i++) renderLine(i)
+        // Initial render: show first slide statically
+        for (let i = 0; i < maxLines; i++) renderLine(i)
 
         // --- Main animation loop ---
         function tick(now: number) {
@@ -313,7 +491,7 @@ export default function CodeTransform() {
                 case 'animating': {
                     let allDone = true
 
-                    for (let i = 0; i < lineCount; i++) {
+                    for (let i = 0; i < maxLines; i++) {
                         const ls = lineStates[i]
                         const lineStart = i * LINE_STAGGER
 
@@ -354,9 +532,7 @@ export default function CodeTransform() {
                     if (allDone) {
                         phase = 'paused'
                         phaseStart = now
-                        const targetLabel =
-                            direction === 'gql-to-ts' ? 'TypeScript' : 'GraphQL'
-                        label.textContent = targetLabel
+                        label.textContent = getTargetSlide().label
                         label.style.opacity = '1'
                     }
                     break
@@ -364,11 +540,8 @@ export default function CodeTransform() {
 
                 case 'paused': {
                     if (elapsed >= PAUSE_DURATION) {
-                        // Flip direction and restart
-                        direction =
-                            direction === 'gql-to-ts'
-                                ? 'ts-to-gql'
-                                : 'gql-to-ts'
+                        // Advance to next slide
+                        slideIndex = (slideIndex + 1) % SLIDES.length
                         phase = 'animating'
                         phaseStart = now
                         label.style.opacity = '0'
@@ -384,7 +557,18 @@ export default function CodeTransform() {
             rafRef.current = requestAnimationFrame(tick)
         }
 
-        // --- IntersectionObserver: only animate when visible ---
+        // --- Live reduced-motion listener (e.g. DevTools toggle) ---
+        const onMotionChange = (e: MediaQueryListEvent) => {
+            if (e.matches) {
+                cancelAnimationFrame(rafRef.current)
+                container.textContent = ''
+                renderStatic(container, SLIDES[slideIndex])
+                container.appendChild(createLabel(SLIDES[slideIndex].label))
+            }
+        }
+        motionQuery.addEventListener('change', onMotionChange)
+
+        // --- IntersectionObserver ---
         const observer = new IntersectionObserver(
             ([entry]) => {
                 isVisibleRef.current = entry.isIntersecting
@@ -393,7 +577,7 @@ export default function CodeTransform() {
         )
         observer.observe(container)
 
-        // --- Tab visibility: pause when hidden, avoid time jumps on resume ---
+        // --- Tab visibility ---
         const onVisibilityChange = () => {
             if (document.hidden) {
                 cancelAnimationFrame(rafRef.current)
@@ -404,20 +588,23 @@ export default function CodeTransform() {
         }
         document.addEventListener('visibilitychange', onVisibilityChange)
 
-        // Start the loop
         rafRef.current = requestAnimationFrame(tick)
 
         return () => {
             cancelAnimationFrame(rafRef.current)
             observer.disconnect()
             document.removeEventListener('visibilitychange', onVisibilityChange)
+            motionQuery.removeEventListener('change', onMotionChange)
         }
     }, [])
 
     return (
         <div
             ref={containerRef}
-            className="relative bg-surface-raised rounded-lg p-4 md:p-6 font-mono text-sm md:text-base overflow-x-auto whitespace-pre"
+            className={
+                className ??
+                'relative bg-surface-raised rounded-lg p-4 md:p-6 font-mono text-sm md:text-base overflow-x-auto whitespace-pre'
+            }
         />
     )
 }

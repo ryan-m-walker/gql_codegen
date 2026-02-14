@@ -1,0 +1,284 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+import CodeBlock from '../../components/CodeBlock.astro';
+
+const minimalExample = `import type { CodegenConfig } from '@sgc/cli';
+
+const config: CodegenConfig = {
+  schema: './schema.graphql',
+  documents: 'src/**/*.graphql',
+  outputs: {
+    './src/generated/types.ts': {}
+  }
+};
+
+export default config;`;
+
+const fullExample = `import type { CodegenConfig } from '@sgc/cli';
+
+const config: CodegenConfig = {
+  schema: ['./schema/**/*.graphql'],
+  documents: ['src/**/*.graphql', '!src/generated/**'],
+
+  outputs: {
+    // Schema + operation types in one file
+    './src/generated/types.ts': {
+      generators: ['schema-types', 'operation-types'],
+      config: {
+        scalars: {
+          DateTime: 'string',
+          JSON: 'Record<string, unknown>',
+        }
+      }
+    },
+
+    // Typed document constants in a separate file
+    './src/generated/documents.ts': {
+      generators: ['typed-documents']
+    }
+  },
+
+  hooks: {
+    afterGenerate: ['biome format --write']
+  }
+};
+
+export default config;`;
+
+const generatorConfigExample = `outputs: {
+  './src/generated/types.ts': {
+    generators: [
+      'schema-types',
+      {
+        'operation-types': {
+          // Generator-specific config
+          flattenSelections: true
+        }
+      }
+    ],
+    // Shared config applies to all generators in this output
+    config: {
+      scalars: {
+        DateTime: 'string'
+      }
+    }
+  }
+}`;
+---
+
+<DocsLayout title="Configuration">
+  <h1 class="text-2xl font-semibold mb-2">Configuration</h1>
+  <p class="text-text-muted mb-8">
+    SGC is configured with a TypeScript file that exports a <code class="bg-surface-inset px-2 py-0.5 rounded text-sm">CodegenConfig</code> object.
+  </p>
+
+  <!-- Minimal example -->
+  <h2 class="text-xl font-semibold mb-3">Quick start</h2>
+  <p class="text-text-secondary mb-4">
+    Create a <code class="bg-surface-inset px-2 py-0.5 rounded text-sm">codegen.config.ts</code> in your project root. The minimal config needs three things: where your schema is, where your operations are, and where to write the output.
+  </p>
+  <CodeBlock code={minimalExample} lang="typescript" />
+  <p class="text-text-muted text-sm mt-3 mb-8">
+    When <code class="bg-surface-inset px-1.5 py-0.5 rounded text-xs">generators</code> is omitted, SGC runs all built-in generators: <code class="bg-surface-inset px-1.5 py-0.5 rounded text-xs">schema-types</code>, <code class="bg-surface-inset px-1.5 py-0.5 rounded text-xs">operation-types</code>, and <code class="bg-surface-inset px-1.5 py-0.5 rounded text-xs">typed-documents</code>.
+  </p>
+
+  <!-- Full example -->
+  <h2 class="text-xl font-semibold mb-3">Full example</h2>
+  <p class="text-text-secondary mb-4">
+    Multiple outputs, custom scalars, explicit generators, and a formatting hook:
+  </p>
+  <CodeBlock code={fullExample} lang="typescript" />
+
+  <!-- Config reference -->
+  <h2 class="text-xl font-semibold mt-10 mb-3">Config reference</h2>
+
+  <!-- schema -->
+  <h3 class="text-lg font-semibold mt-8 mb-2"><code class="text-code-keyword">schema</code></h3>
+  <p class="text-text-secondary mb-3">
+    Path(s) to your GraphQL schema. Accepts a string, array of strings, or glob patterns. Files are merged into a single schema.
+  </p>
+  <CodeBlock code={`// Single file
+schema: './schema.graphql'
+
+// Multiple files / globs
+schema: ['./schema/**/*.graphql', './extensions/*.graphql']
+
+// Remote endpoint
+schema: 'https://api.example.com/graphql'
+
+// Introspection JSON
+schema: './schema.json'`} lang="typescript" />
+
+  <!-- documents -->
+  <h3 class="text-lg font-semibold mt-8 mb-2"><code class="text-code-keyword">documents</code></h3>
+  <p class="text-text-secondary mb-3">
+    Glob pattern(s) for files containing GraphQL operations (queries, mutations, subscriptions, fragments). Prefix with <code class="bg-surface-inset px-1.5 py-0.5 rounded text-xs">!</code> to exclude.
+  </p>
+  <CodeBlock code={`documents: ['src/**/*.graphql', '!src/generated/**']`} lang="typescript" />
+
+  <!-- outputs -->
+  <h3 class="text-lg font-semibold mt-8 mb-2"><code class="text-code-keyword">outputs</code></h3>
+  <p class="text-text-secondary mb-3">
+    A map of output file paths to their configuration. Each key is a file path where generated code will be written.
+  </p>
+
+  <div class="overflow-x-auto mb-4">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-border-default">
+          <th class="text-left py-3 px-4 text-text-muted">Field</th>
+          <th class="text-left py-3 px-4 text-text-muted">Type</th>
+          <th class="text-left py-3 px-4 text-text-muted">Description</th>
+        </tr>
+      </thead>
+      <tbody class="text-text-secondary">
+        <tr class="border-b border-border-default/50">
+          <td class="py-3 px-4 font-mono text-code-keyword text-xs">generators</td>
+          <td class="py-3 px-4 font-mono text-xs">GeneratorConfig[]</td>
+          <td class="py-3 px-4">Which generators to run. Defaults to all built-in generators if omitted.</td>
+        </tr>
+        <tr class="border-b border-border-default/50">
+          <td class="py-3 px-4 font-mono text-code-keyword text-xs">config</td>
+          <td class="py-3 px-4 font-mono text-xs">SharedConfig</td>
+          <td class="py-3 px-4">Shared options applied to all generators in this output.</td>
+        </tr>
+        <tr class="border-b border-border-default/50">
+          <td class="py-3 px-4 font-mono text-code-keyword text-xs">prelude</td>
+          <td class="py-3 px-4 font-mono text-xs">string</td>
+          <td class="py-3 px-4">Content prepended to the output file (e.g. custom imports).</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p class="text-text-secondary mb-3">
+    Generators can be a simple string name or an object with config:
+  </p>
+  <CodeBlock code={generatorConfigExample} lang="typescript" />
+
+  <!-- hooks -->
+  <h3 class="text-lg font-semibold mt-8 mb-2"><code class="text-code-keyword">hooks</code></h3>
+  <p class="text-text-secondary mb-3">
+    Shell commands to run at various lifecycle points.
+  </p>
+  <div class="overflow-x-auto mb-4">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-border-default">
+          <th class="text-left py-3 px-4 text-text-muted">Hook</th>
+          <th class="text-left py-3 px-4 text-text-muted">Type</th>
+          <th class="text-left py-3 px-4 text-text-muted">Description</th>
+        </tr>
+      </thead>
+      <tbody class="text-text-secondary">
+        <tr class="border-b border-border-default/50">
+          <td class="py-3 px-4 font-mono text-code-keyword text-xs">afterGenerate</td>
+          <td class="py-3 px-4 font-mono text-xs">string[]</td>
+          <td class="py-3 px-4">Commands to run after all files are generated. Useful for formatting.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Shared config options -->
+  <h2 class="text-xl font-semibold mt-10 mb-3">Config options</h2>
+  <p class="text-text-secondary mb-4">
+    These options can be set in the shared <code class="bg-surface-inset px-1.5 py-0.5 rounded text-xs">config</code> block of any output, or within a generator-specific config object. SGC ships with opinionated defaults &mdash; here's what each one does and why.
+  </p>
+
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-border-default">
+          <th class="text-left py-3 px-4 text-text-muted">Option</th>
+          <th class="text-left py-3 px-4 text-text-muted">Type</th>
+          <th class="text-left py-3 px-4 text-text-muted">Default</th>
+          <th class="text-left py-3 px-4 text-text-muted">Description</th>
+        </tr>
+      </thead>
+      <tbody class="text-text-secondary">
+        <tr class="border-b border-border-default/50">
+          <td class="py-3 px-4 font-mono text-code-keyword text-xs">scalars</td>
+          <td class="py-3 px-4 font-mono text-xs">Record&lt;string, string&gt;</td>
+          <td class="py-3 px-4 font-mono text-xs">{'{}'}</td>
+          <td class="py-3 px-4">Map custom GraphQL scalars to TypeScript types. Unmapped scalars default to <code class="bg-surface-inset px-1 rounded text-xs">unknown</code>.</td>
+        </tr>
+        <tr class="border-b border-border-default/50">
+          <td class="py-3 px-4 font-mono text-code-keyword text-xs">prelude</td>
+          <td class="py-3 px-4 font-mono text-xs">string</td>
+          <td class="py-3 px-4 font-mono text-xs">&mdash;</td>
+          <td class="py-3 px-4">Arbitrary content prepended to the generated file. Useful for custom imports.</td>
+        </tr>
+        <tr class="border-b border-border-default/50">
+          <td class="py-3 px-4 font-mono text-code-keyword text-xs">declarationKind</td>
+          <td class="py-3 px-4 font-mono text-xs">'interface' | 'type'</td>
+          <td class="py-3 px-4 font-mono text-xs">'interface'</td>
+          <td class="py-3 px-4">Whether to emit interfaces or type aliases. Interfaces are the default because they're faster for the TypeScript compiler at scale and produce better error messages.</td>
+        </tr>
+        <tr class="border-b border-border-default/50">
+          <td class="py-3 px-4 font-mono text-code-keyword text-xs">immutableTypes</td>
+          <td class="py-3 px-4 font-mono text-xs">boolean</td>
+          <td class="py-3 px-4 font-mono text-xs">true</td>
+          <td class="py-3 px-4">Add <code class="bg-surface-inset px-1 rounded text-xs">readonly</code> to all fields. On by default because mutating codegen output is almost always a bug &mdash; especially with normalized caches.</td>
+        </tr>
+        <tr class="border-b border-border-default/50">
+          <td class="py-3 px-4 font-mono text-code-keyword text-xs">enumsAsTypes</td>
+          <td class="py-3 px-4 font-mono text-xs">boolean</td>
+          <td class="py-3 px-4 font-mono text-xs">true</td>
+          <td class="py-3 px-4">Emit enums as string union types instead of TypeScript enums. TS enums have <a href="https://www.typescriptlang.org/docs/handbook/enums.html#const-enums" class="text-amber-500 hover:underline">known footguns</a> &mdash; unions are safer, tree-shake better, and don't generate runtime code.</td>
+        </tr>
+        <tr class="border-b border-border-default/50">
+          <td class="py-3 px-4 font-mono text-code-keyword text-xs">futureProofEnums</td>
+          <td class="py-3 px-4 font-mono text-xs">boolean</td>
+          <td class="py-3 px-4 font-mono text-xs">true</td>
+          <td class="py-3 px-4">Append a <code class="bg-surface-inset px-1 rounded text-xs">'%future added value'</code> member to enum unions. Prevents exhaustive switch statements from breaking at runtime when the backend adds new enum values.</td>
+        </tr>
+        <tr class="border-b border-border-default/50">
+          <td class="py-3 px-4 font-mono text-code-keyword text-xs">futureProofUnions</td>
+          <td class="py-3 px-4 font-mono text-xs">boolean</td>
+          <td class="py-3 px-4 font-mono text-xs">true</td>
+          <td class="py-3 px-4">Same concept for GraphQL union types &mdash; adds a fallback member for forward compatibility.</td>
+        </tr>
+        <tr class="border-b border-border-default/50">
+          <td class="py-3 px-4 font-mono text-code-keyword text-xs">typeNamePrefix</td>
+          <td class="py-3 px-4 font-mono text-xs">string</td>
+          <td class="py-3 px-4 font-mono text-xs">''</td>
+          <td class="py-3 px-4">Prefix added to all generated type names.</td>
+        </tr>
+        <tr class="border-b border-border-default/50">
+          <td class="py-3 px-4 font-mono text-code-keyword text-xs">typeNameSuffix</td>
+          <td class="py-3 px-4 font-mono text-xs">string</td>
+          <td class="py-3 px-4 font-mono text-xs">''</td>
+          <td class="py-3 px-4">Suffix added to all generated type names.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Available generators -->
+  <h2 class="text-xl font-semibold mt-10 mb-3">Available generators</h2>
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-border-default">
+          <th class="text-left py-3 px-4 text-text-muted">Name</th>
+          <th class="text-left py-3 px-4 text-text-muted">Description</th>
+        </tr>
+      </thead>
+      <tbody class="text-text-secondary">
+        <tr class="border-b border-border-default/50">
+          <td class="py-3 px-4"><a href="/docs/generator-schema-types" class="font-mono text-xs text-amber-500 hover:underline">schema-types</a></td>
+          <td class="py-3 px-4">TypeScript interfaces, enums, scalars, unions, and input types from your schema.</td>
+        </tr>
+        <tr class="border-b border-border-default/50">
+          <td class="py-3 px-4"><a href="/docs/generator-operation-types" class="font-mono text-xs text-amber-500 hover:underline">operation-types</a></td>
+          <td class="py-3 px-4">Typed result and variable types for your queries, mutations, subscriptions, and fragments.</td>
+        </tr>
+        <tr class="border-b border-border-default/50">
+          <td class="py-3 px-4"><a href="/docs/generator-typed-documents" class="font-mono text-xs text-amber-500 hover:underline">typed-documents</a></td>
+          <td class="py-3 px-4">Typed document constants for use with client libraries like Apollo, urql, and React Query.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</DocsLayout>

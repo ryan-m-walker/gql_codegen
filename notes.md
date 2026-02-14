@@ -98,3 +98,10 @@ export interface Unknown_1_Query {
   readonly foo: Foo;
 }
 ```
+
+
+cli options for schema and documents
+
+```
+npx sgc -s schema.graphql -d src/**/*.graphql
+```

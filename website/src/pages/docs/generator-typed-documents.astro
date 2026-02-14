@@ -1,0 +1,96 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+import CodeBlock from '../../components/CodeBlock.astro';
+
+const inputExample = `query GetUser($id: ID!) {
+  user(id: $id) {
+    id
+    name
+    email
+  }
+}
+
+fragment UserFields on User {
+  id
+  name
+  email
+}`;
+
+const outputExample = `import type { TypedDocumentNode } from '@graphql-typed-document-node/core';
+
+export const GetUserDocument: TypedDocumentNode<
+  GetUserQuery,
+  GetUserQueryVariables
+> = {
+  kind: 'Document',
+  definitions: [/* ... */]
+};
+
+export const UserFieldsFragmentDoc: TypedDocumentNode<
+  UserFieldsFragment,
+  unknown
+> = {
+  kind: 'Document',
+  definitions: [/* ... */]
+};`;
+
+const clientExample = `import { useQuery } from '@apollo/client';
+import { GetUserDocument } from './generated/documents';
+
+function UserProfile({ id }: { id: string }) {
+  // result.data is fully typed as GetUserQuery
+  // variables are typed as GetUserQueryVariables
+  const result = useQuery(GetUserDocument, {
+    variables: { id }
+  });
+
+  return <div>{result.data?.user?.name}</div>;
+}`;
+
+const usageExample = `outputs: {
+  './src/generated/types.ts': {
+    generators: ['schema-types', 'operation-types', 'typed-documents']
+  }
+}`;
+---
+
+<DocsLayout title="typed-documents">
+  <h1 class="text-2xl font-semibold mb-2">typed-documents</h1>
+  <p class="text-text-muted mb-8">
+    Generates typed document constants that you can pass directly to client libraries like Apollo, urql, and React Query for fully type-safe GraphQL operations at runtime.
+  </p>
+
+  <h2 class="text-xl font-semibold mb-3">Usage</h2>
+  <CodeBlock code={usageExample} lang="typescript" />
+
+  <div class="bg-surface-raised rounded-lg p-4 mt-4 mb-8 text-sm text-text-muted">
+    <strong class="text-text-heading">Note:</strong> This generator should be listed after <a href="/docs/generator-schema-types" class="text-amber-500 hover:underline">schema-types</a> and <a href="/docs/generator-operation-types" class="text-amber-500 hover:underline">operation-types</a>, as it references their output types.
+  </div>
+
+  <h2 class="text-xl font-semibold mt-6 mb-3">What it generates</h2>
+  <ul class="list-disc list-inside text-text-secondary space-y-2 mb-6">
+    <li><strong>Document constants</strong> &mdash; <code class="bg-surface-inset px-1 rounded text-xs">GetUserDocument</code>, typed with <code class="bg-surface-inset px-1 rounded text-xs">TypedDocumentNode</code></li>
+    <li><strong>Fragment documents</strong> &mdash; <code class="bg-surface-inset px-1 rounded text-xs">UserFieldsFragmentDoc</code>, for fragment composition</li>
+  </ul>
+
+  <h2 class="text-xl font-semibold mt-10 mb-3">Example</h2>
+
+  <h3 class="text-base font-semibold mt-6 mb-2 text-text-muted">Input &mdash; GraphQL operations</h3>
+  <CodeBlock code={inputExample} lang="graphql" />
+
+  <h3 class="text-base font-semibold mt-6 mb-2 text-text-muted">Output &mdash; TypeScript</h3>
+  <CodeBlock code={outputExample} lang="typescript" />
+
+  <h2 class="text-xl font-semibold mt-10 mb-3">Using with client libraries</h2>
+  <p class="text-text-secondary mb-4">
+    The typed document constants work with any client that supports <code class="bg-surface-inset px-1.5 py-0.5 rounded text-xs">TypedDocumentNode</code> &mdash; Apollo Client, urql, and others provide automatic type inference:
+  </p>
+  <CodeBlock code={clientExample} lang="typescript" />
+
+  <div class="bg-surface-raised rounded-lg p-4 mt-8 text-sm text-text-muted">
+    <strong class="text-text-heading">Why typed documents?</strong>
+    <p class="mt-2">
+      Without typed documents, you'd import a plain string and manually annotate the result and variable types on every <code class="bg-surface-inset px-1 rounded text-xs">useQuery</code> call. With typed documents, the types flow automatically &mdash; one import, zero annotations, and the compiler catches mistakes for you.
+    </p>
+  </div>
+</DocsLayout>

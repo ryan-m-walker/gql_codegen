@@ -1,0 +1,73 @@
+---
+import Layout from './Layout.astro';
+import DocsSidebar from '../components/DocsSidebar.astro';
+import DocsPrevNext from '../components/DocsPrevNext.astro';
+
+interface Props {
+  title: string;
+}
+
+const { title } = Astro.props;
+---
+
+<Layout title={title} navClass="sticky top-0 bg-surface border-b border-border-default">
+  <!-- Mobile sidebar toggle -->
+  <button
+    id="sidebar-toggle"
+    type="button"
+    class="lg:hidden fixed bottom-6 left-6 z-40 bg-amber-500 text-white p-3 rounded-full shadow-lg hover:bg-amber-600"
+    aria-label="Toggle navigation"
+  >
+    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+    </svg>
+  </button>
+
+  <!-- Mobile backdrop -->
+  <div id="sidebar-backdrop" class="hidden lg:hidden fixed inset-0 z-30 bg-black/50"></div>
+
+  <!-- Sidebar -->
+  <aside
+    id="sidebar"
+    class="fixed top-14 left-0 z-40 h-[calc(100vh-3.5rem)] w-56 bg-surface border-r border-border-default py-6 px-4 overflow-y-auto -translate-x-full lg:translate-x-0 lg:z-0 transition-transform duration-200"
+  >
+    <DocsSidebar />
+  </aside>
+
+  <!-- Content -->
+  <div class="lg:ml-56">
+    <div class="max-w-4xl mx-auto px-6 py-12">
+      <slot />
+      <DocsPrevNext />
+    </div>
+  </div>
+
+  <script is:inline>
+    const toggle = document.getElementById('sidebar-toggle');
+    const sidebar = document.getElementById('sidebar');
+    const backdrop = document.getElementById('sidebar-backdrop');
+
+    function openSidebar() {
+      sidebar.classList.remove('-translate-x-full');
+      backdrop.classList.remove('hidden');
+    }
+
+    function closeSidebar() {
+      sidebar.classList.add('-translate-x-full');
+      backdrop.classList.add('hidden');
+    }
+
+    toggle.addEventListener('click', () => {
+      const isOpen = !sidebar.classList.contains('-translate-x-full');
+      isOpen ? closeSidebar() : openSidebar();
+    });
+
+    backdrop.addEventListener('click', closeSidebar);
+
+    sidebar.querySelectorAll('a').forEach(link => {
+      link.addEventListener('click', () => {
+        if (window.innerWidth < 1024) closeSidebar();
+      });
+    });
+  </script>
+</Layout>

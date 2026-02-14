@@ -1,0 +1,23 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout title="CLI Usage">
+  <h1 class="text-2xl font-semibold mb-4">CLI Usage</h1>
+  <div class="bg-surface-raised rounded-lg p-4 font-mono text-sm">
+    <pre class="text-text-secondary"><span class="text-code-comment"># Run with default config (codegen.config.ts)</span>
+<span class="text-code-command">npx sgc</span>
+
+<span class="text-code-comment"># Specify config file</span>
+<span class="text-code-command">npx sgc</span> -c ./my-config.ts
+
+<span class="text-code-comment"># Watch mode</span>
+<span class="text-code-command">npx sgc</span> --watch
+
+<span class="text-code-comment"># Skip cache (force regeneration)</span>
+<span class="text-code-command">npx sgc</span> --no-cache
+
+<span class="text-code-comment"># Show timing information</span>
+<span class="text-code-command">npx sgc</span> --timing</pre>
+  </div>
+</DocsLayout>

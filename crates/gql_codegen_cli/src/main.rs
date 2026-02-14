@@ -18,6 +18,7 @@ use gql_codegen_core::{
 };
 
 mod args;
+mod load_schema;
 mod logger;
 
 use crate::args::CliArgs;

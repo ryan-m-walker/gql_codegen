@@ -1,39 +1,43 @@
 import type { Monaco } from '@monaco-editor/react'
 
+let themeDefined = false
+
 export function defineCustomTheme(monaco: Monaco) {
+    if (themeDefined) return
+    themeDefined = true
     monaco.editor.defineTheme('sgc-dark', {
         base: 'vs-dark',
         inherit: true,
         rules: [
-            { token: 'keyword', foreground: 'c792ea' },
-            { token: 'type', foreground: 'ffcb6b' },
-            { token: 'string', foreground: 'c3e88d' },
-            { token: 'number', foreground: 'f78c6c' },
-            { token: 'comment', foreground: '546e7a' },
-            { token: 'string.key.json', foreground: '82aaff' },
-            { token: 'string.value.json', foreground: 'c3e88d' },
-            { token: 'number.json', foreground: 'f78c6c' },
-            { token: 'keyword.json', foreground: 'c792ea' },
+            { token: 'keyword', foreground: 'fbbf24' },           // amber-400
+            { token: 'type', foreground: 'fbbf24' },              // amber-400
+            { token: 'string', foreground: 'fbbf24' },            // amber-400
+            { token: 'number', foreground: 'a3a3a3' },            // neutral-400
+            { token: 'comment', foreground: '525252' },            // neutral-600
+            { token: 'string.key.json', foreground: 'd4d4d4' },   // neutral-300
+            { token: 'string.value.json', foreground: 'fbbf24' }, // amber-400
+            { token: 'number.json', foreground: 'a3a3a3' },       // neutral-400
+            { token: 'keyword.json', foreground: 'fbbf24' },      // amber-400
         ],
         colors: {
-            'editor.background': '#00000000',
+            'editor.background': '#171717',
             'editor.lineHighlightBackground': '#ffffff08',
-            'editor.selectionBackground': '#ffffff20',
-            'editorLineNumber.foreground': '#4a5568',
-            'editorLineNumber.activeForeground': '#718096',
-            'editorCursor.foreground': '#ffcb6b',
-            'editor.selectionHighlightBackground': '#ffffff10',
+            'editor.selectionBackground': '#fbbf2420',
+            'editorLineNumber.foreground': '#404040',
+            'editorLineNumber.activeForeground': '#737373',
+            'editorCursor.foreground': '#fbbf24',
+            'editor.selectionHighlightBackground': '#fbbf2410',
             'editorIndentGuide.background': '#ffffff10',
             'editorIndentGuide.activeBackground': '#ffffff20',
             'scrollbarSlider.background': '#ffffff15',
             'scrollbarSlider.hoverBackground': '#ffffff25',
             'scrollbarSlider.activeBackground': '#ffffff30',
-            'editorBracketHighlight.foreground1': '#9ca3af',
-            'editorBracketHighlight.foreground2': '#9ca3af',
-            'editorBracketHighlight.foreground3': '#9ca3af',
-            'editorBracketHighlight.foreground4': '#9ca3af',
-            'editorBracketHighlight.foreground5': '#9ca3af',
-            'editorBracketHighlight.foreground6': '#9ca3af',
+            'editorBracketHighlight.foreground1': '#737373',
+            'editorBracketHighlight.foreground2': '#737373',
+            'editorBracketHighlight.foreground3': '#737373',
+            'editorBracketHighlight.foreground4': '#737373',
+            'editorBracketHighlight.foreground5': '#737373',
+            'editorBracketHighlight.foreground6': '#737373',
             'editorBracketPairGuide.activeBackground1': '#00000000',
             'editorBracketPairGuide.activeBackground2': '#00000000',
             'editorBracketPairGuide.activeBackground3': '#00000000',
@@ -47,35 +51,35 @@ export function defineCustomTheme(monaco: Monaco) {
         base: 'vs',
         inherit: true,
         rules: [
-            { token: 'keyword', foreground: '7c3aed' },     // violet-600
-            { token: 'type', foreground: 'b45309' },         // amber-700
-            { token: 'string', foreground: '15803d' },       // green-700
-            { token: 'number', foreground: 'c2410c' },       // orange-700
-            { token: 'comment', foreground: '94a3b8' },      // slate-400
-            { token: 'string.key.json', foreground: '2563eb' },  // blue-600
-            { token: 'string.value.json', foreground: '15803d' },// green-700
-            { token: 'number.json', foreground: 'c2410c' },     // orange-700
-            { token: 'keyword.json', foreground: '7c3aed' },    // violet-600
+            { token: 'keyword', foreground: 'b45309' },           // amber-700
+            { token: 'type', foreground: 'b45309' },              // amber-700
+            { token: 'string', foreground: '525252' },            // neutral-600
+            { token: 'number', foreground: '737373' },            // neutral-500
+            { token: 'comment', foreground: 'a3a3a3' },           // neutral-400
+            { token: 'string.key.json', foreground: '404040' },   // neutral-700
+            { token: 'string.value.json', foreground: '525252' }, // neutral-600
+            { token: 'number.json', foreground: '737373' },       // neutral-500
+            { token: 'keyword.json', foreground: 'b45309' },      // amber-700
         ],
         colors: {
-            'editor.background': '#00000000',
+            'editor.background': '#f5f5f5',
             'editor.lineHighlightBackground': '#00000006',
-            'editor.selectionBackground': '#7c3aed20',
-            'editorLineNumber.foreground': '#94a3b8',
-            'editorLineNumber.activeForeground': '#64748b',
-            'editorCursor.foreground': '#7c3aed',
-            'editor.selectionHighlightBackground': '#7c3aed10',
+            'editor.selectionBackground': '#b4530920',
+            'editorLineNumber.foreground': '#a3a3a3',
+            'editorLineNumber.activeForeground': '#737373',
+            'editorCursor.foreground': '#b45309',
+            'editor.selectionHighlightBackground': '#b4530910',
             'editorIndentGuide.background': '#00000010',
             'editorIndentGuide.activeBackground': '#00000020',
             'scrollbarSlider.background': '#00000015',
             'scrollbarSlider.hoverBackground': '#00000025',
             'scrollbarSlider.activeBackground': '#00000030',
-            'editorBracketHighlight.foreground1': '#6b7280',
-            'editorBracketHighlight.foreground2': '#6b7280',
-            'editorBracketHighlight.foreground3': '#6b7280',
-            'editorBracketHighlight.foreground4': '#6b7280',
-            'editorBracketHighlight.foreground5': '#6b7280',
-            'editorBracketHighlight.foreground6': '#6b7280',
+            'editorBracketHighlight.foreground1': '#737373',
+            'editorBracketHighlight.foreground2': '#737373',
+            'editorBracketHighlight.foreground3': '#737373',
+            'editorBracketHighlight.foreground4': '#737373',
+            'editorBracketHighlight.foreground5': '#737373',
+            'editorBracketHighlight.foreground6': '#737373',
             'editorBracketPairGuide.activeBackground1': '#00000000',
             'editorBracketPairGuide.activeBackground2': '#00000000',
             'editorBracketPairGuide.activeBackground3': '#00000000',

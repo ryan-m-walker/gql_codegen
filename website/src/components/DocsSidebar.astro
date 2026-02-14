@@ -1,0 +1,33 @@
+---
+import { docsNav } from '../data/docs-nav';
+
+const currentPath = Astro.url.pathname.replace(/\/$/, '');
+---
+
+<nav class="space-y-5">
+  {docsNav.map((group) => (
+    <div>
+      <h4 class="text-[11px] font-semibold uppercase tracking-wider text-text-muted px-3 mb-1.5">
+        {group.group}
+      </h4>
+      <div class="space-y-0.5">
+        {group.items.map((item) => {
+          const isActive = currentPath === item.href;
+          return (
+            <a
+              href={item.href}
+              class:list={[
+                'block px-3 py-1.5 text-sm rounded border-l-2',
+                isActive
+                  ? 'text-text-heading font-medium border-amber-400'
+                  : 'text-text-muted hover:text-text-heading hover:bg-surface-raised border-transparent',
+              ]}
+            >
+              {item.title}
+            </a>
+          );
+        })}
+      </div>
+    </div>
+  ))}
+</nav>

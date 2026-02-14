@@ -1,0 +1,100 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+import CodeBlock from '../../components/CodeBlock.astro';
+
+const inputExample = `query GetUser($id: ID!) {
+  user(id: $id) {
+    id
+    name
+    email
+    role
+    posts {
+      id
+      title
+    }
+  }
+}
+
+mutation CreateUser($input: CreateUserInput!) {
+  createUser(input: $input) {
+    id
+    name
+  }
+}`;
+
+const outputExample = `export type GetUserQueryVariables = {
+  readonly id: string;
+};
+
+export type GetUserQuery = {
+  readonly user: {
+    readonly __typename: 'User';
+    readonly id: string;
+    readonly name: string;
+    readonly email: string | null;
+    readonly role: Role;
+    readonly posts: ReadonlyArray<{
+      readonly __typename: 'Post';
+      readonly id: string;
+      readonly title: string;
+    }>;
+  } | null;
+};
+
+export type CreateUserMutationVariables = {
+  readonly input: CreateUserInput;
+};
+
+export type CreateUserMutation = {
+  readonly createUser: {
+    readonly __typename: 'User';
+    readonly id: string;
+    readonly name: string;
+  } | null;
+};`;
+
+const usageExample = `outputs: {
+  './src/generated/types.ts': {
+    generators: ['schema-types', 'operation-types']
+  }
+}`;
+---
+
+<DocsLayout title="operation-types">
+  <h1 class="text-2xl font-semibold mb-2">operation-types</h1>
+  <p class="text-text-muted mb-8">
+    Generates TypeScript types for your GraphQL operations &mdash; queries, mutations, subscriptions, and fragments.
+  </p>
+
+  <h2 class="text-xl font-semibold mb-3">Usage</h2>
+  <CodeBlock code={usageExample} lang="typescript" />
+
+  <div class="bg-surface-raised rounded-lg p-4 mt-4 mb-8 text-sm text-text-muted">
+    <strong class="text-text-heading">Note:</strong> This generator should be listed after <a href="/docs/generator-schema-types" class="text-amber-500 hover:underline">schema-types</a>, as it builds on the base schema types.
+  </div>
+
+  <h2 class="text-xl font-semibold mt-6 mb-3">What it generates</h2>
+  <ul class="list-disc list-inside text-text-secondary space-y-2 mb-6">
+    <li><strong>Query result types</strong> &mdash; <code class="bg-surface-inset px-1 rounded text-xs">GetUserQuery</code>, shaped exactly like the selection set</li>
+    <li><strong>Variable types</strong> &mdash; <code class="bg-surface-inset px-1 rounded text-xs">GetUserQueryVariables</code>, typed from the operation's argument definitions</li>
+    <li><strong>Mutation &amp; subscription types</strong> &mdash; same pattern, named by operation type</li>
+    <li><strong>Fragment types</strong> &mdash; reusable type definitions for named fragments</li>
+  </ul>
+
+  <h2 class="text-xl font-semibold mt-10 mb-3">Example</h2>
+
+  <h3 class="text-base font-semibold mt-6 mb-2 text-text-muted">Input &mdash; GraphQL operations</h3>
+  <CodeBlock code={inputExample} lang="graphql" />
+
+  <h3 class="text-base font-semibold mt-6 mb-2 text-text-muted">Output &mdash; TypeScript</h3>
+  <CodeBlock code={outputExample} lang="typescript" />
+
+  <div class="bg-surface-raised rounded-lg p-4 mt-8 text-sm text-text-muted">
+    <strong class="text-text-heading">How types are named:</strong>
+    <ul class="list-disc list-inside mt-2 space-y-1">
+      <li>Queries: <code class="bg-surface-inset px-1 rounded text-xs">{'{OperationName}'}Query</code> + <code class="bg-surface-inset px-1 rounded text-xs">{'{OperationName}'}QueryVariables</code></li>
+      <li>Mutations: <code class="bg-surface-inset px-1 rounded text-xs">{'{OperationName}'}Mutation</code> + <code class="bg-surface-inset px-1 rounded text-xs">{'{OperationName}'}MutationVariables</code></li>
+      <li>Subscriptions: <code class="bg-surface-inset px-1 rounded text-xs">{'{OperationName}'}Subscription</code> + <code class="bg-surface-inset px-1 rounded text-xs">{'{OperationName}'}SubscriptionVariables</code></li>
+    </ul>
+  </div>
+</DocsLayout>

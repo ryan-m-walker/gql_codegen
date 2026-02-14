@@ -1,5 +1,7 @@
+import { useCallback } from 'react'
 import Editor from '@monaco-editor/react'
 import type { InputTab } from './types'
+import CopyButton from './CopyButton'
 import {
     defineCustomTheme,
     configureMonacoSchema,
@@ -35,25 +37,32 @@ export default function InputPanel({
     isMounted,
     monacoTheme,
 }: InputPanelProps) {
-    return (
-        <div className="w-1/2 flex flex-col border-r border-border-default">
-            <div className="flex border-b border-border-default">
-                {(['schema', 'operations', 'config'] as const).map((tab) => (
-                    <button
-                        key={tab}
-                        onClick={() => onTabChange(tab)}
-                        className={`px-4 py-2 text-sm font-medium transition-colors ${
-                            inputTab === tab
-                                ? 'text-text-heading border-b-2 border-green-500 bg-surface-raised/50'
-                                : 'text-text-muted hover:text-text-heading'
-                        }`}
-                    >
-                        {tab.charAt(0).toUpperCase() + tab.slice(1)}
-                    </button>
-                ))}
-            </div>
+    const getCopyText = useCallback(() => {
+        return inputTab === 'schema' ? schema : inputTab === 'operations' ? operations : configJson
+    }, [inputTab, schema, operations, configJson])
 
-            <div className="flex-1 overflow-hidden">
+    return (
+        <div className="flex flex-col min-w-0">
+            <div className="flex items-center justify-between h-10 px-3 my-1">
+                <div className="flex items-center gap-1">
+                    <span className="text-sm font-bold text-text-heading mr-2 pr-3 border-r border-border-muted">Input</span>
+                    {(['schema', 'operations', 'config'] as const).map((tab) => (
+                        <button
+                            key={tab}
+                            onClick={() => onTabChange(tab)}
+                            className={`px-3 py-1 text-xs font-medium rounded ${
+                                inputTab === tab
+                                    ? 'bg-amber-400 text-neutral-900'
+                                    : 'bg-transparent text-text-muted hover:text-text-heading hover:bg-surface-raised'
+                            }`}
+                        >
+                            {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                        </button>
+                    ))}
+                </div>
+                <CopyButton getText={getCopyText} />
+            </div>
+            <div className="flex-1 overflow-hidden mx-3 mb-3 rounded-lg bg-surface-raised border border-border-default">
                 {!isMounted ? (
                     <div className="p-4 text-text-faint font-mono text-sm">
                         Loading editor...

@@ -1,0 +1,21 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+---
+
+<DocsLayout title="Documents">
+  <h1 class="text-2xl font-semibold mb-4">Documents</h1>
+  <p class="text-text-muted mb-4">
+    The <code class="bg-surface-inset px-2 py-1 rounded">documents</code> option specifies where to find your GraphQL operations (queries, mutations, subscriptions, fragments):
+  </p>
+  <div class="bg-surface-raised rounded-lg p-4 font-mono text-sm">
+    <pre class="text-text-secondary"><span class="text-code-comment">// Find operations in TypeScript/JavaScript files</span>
+documents: <span class="text-code-string">'src/**/*.tsx'</span>
+
+<span class="text-code-comment">// Multiple patterns</span>
+documents: [
+  <span class="text-code-string">'src/**/*.tsx'</span>,
+  <span class="text-code-string">'src/**/*.ts'</span>,
+  <span class="text-code-string">'!src/generated/**'</span>  <span class="text-code-comment">// Exclude generated files</span>
+]</pre>
+  </div>
+</DocsLayout>

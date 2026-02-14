@@ -3,57 +3,59 @@ import Layout from '../layouts/Layout.astro';
 import CodeTransform from '../components/CodeTransform';
 ---
 
-<Layout title="Home">
+<Layout title="Home" navClass="text-gray-950">
   <!-- Hero -->
-  <section class="px-6 py-16 md:py-24">
-    <div class="max-w-6xl mx-auto flex flex-col lg:flex-row gap-12 lg:gap-16 items-center">
+  <section class="bg-amber-300 text-gray-950 -mt-[72px] pt-[72px] px-6 py-16 md:py-24">
+    <div class="max-w-7xl mx-auto flex flex-col lg:flex-row gap-10 lg:gap-16 items-center">
       <!-- Left: hero content -->
-      <div class="lg:w-5/12 text-center lg:text-left shrink-0">
-        <h1 class="text-4xl md:text-5xl lg:text-6xl font-bold mb-6">
-          <span class="text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500">
-            Speedy
-          </span> GraphQL Codegen
+      <div class="lg:w-1/2 text-center lg:text-left shrink-0">
+        <h1 class="text-4xl md:text-5xl lg:text-6xl font-black text-gray-950 mb-6">
+          Speedy GraphQL Codegen
         </h1>
-        <p class="text-lg md:text-xl text-text-muted mb-8">
+        <p class="text-lg md:text-xl text-gray-950/70 mb-8">
           An opinionated, fast GraphQL code generator built in Rust.
-          Smart defaults, minimal config, <span class="text-text-heading font-semibold">instant results</span>.
+          Smart defaults, minimal config, <span class="text-gray-950 font-semibold">instant results</span>.
         </p>
         <div class="flex gap-4 justify-center lg:justify-start mb-8">
-          <a href="/docs" class="bg-text-heading text-surface px-6 py-3 rounded-lg font-semibold hover:opacity-90 transition-opacity">
+          <a href="/docs" class="bg-neutral-900 text-amber-300 px-6 py-3 rounded-xl font-semibold hover:bg-neutral-700 focus-visible:!shadow-[0_0_0_2px_#fcd34d,0_0_0_4px_#0a0a0a]">
             Get Started
           </a>
-          <a href="/playground" class="border border-border-muted px-6 py-3 rounded-lg font-semibold hover:border-text-faint transition-colors">
+          <a href="/playground" class="border-2 border-gray-950/30 text-gray-950 px-6 py-3 rounded-xl font-semibold hover:border-gray-950/60 hover:bg-gray-950/5 focus-visible:!shadow-[0_0_0_2px_#fcd34d,0_0_0_4px_#0a0a0a]">
             Try Playground
           </a>
         </div>
-        <div class="bg-surface-raised rounded-lg p-4 font-mono text-sm inline-block">
-          <span class="text-text-faint">$</span> <span class="text-code-command">pnpm add</span> -D @sgc/cli
+        <div class="bg-gray-950/10 rounded-lg p-4 font-mono text-sm inline-block text-gray-950/70">
+          <span class="text-gray-950/40 pointer-none pointer-events-none">$</span> <span class="text-gray-950">npm install</span> -D @sgc/cli
         </div>
       </div>
-      <!-- Right: code animation -->
-      <div class="lg:w-7/12 w-full min-w-0">
-        <CodeTransform client:visible />
+      <!-- Right: code animation — dark code, white glitches -->
+      <div
+        class="lg:w-1/2 w-full min-w-0"
+        style="--text-primary: rgba(0,0,0,0.85); --text-secondary: rgba(0,0,0,0.45); --text-faint: rgba(255,255,255,0.8); --text-muted: rgba(0,0,0,0.4); --code-keyword: rgba(0,0,0,0.9); --code-value: rgba(0,0,0,0.65);"
+      >
+        <CodeTransform client:visible className="relative font-mono text-sm md:text-base overflow-x-auto whitespace-pre p-4 md:p-6 rounded-xl border border-gray-950/15 shadow-md shadow-gray-950/8" />
       </div>
     </div>
   </section>
 
+
   <!-- Performance -->
   <section class="px-6 py-16">
     <div class="max-w-4xl mx-auto">
-      <h2 class="text-3xl font-bold text-center mb-12">Performance</h2>
+      <h2 class="text-3xl font-black text-center mb-12">Performance</h2>
       <div class="grid md:grid-cols-3 gap-6">
         <div class="bg-surface-raised rounded-lg p-6 text-center">
-          <div class="text-4xl font-bold text-green-500 mb-2">~14ms</div>
+          <div class="text-4xl font-bold text-amber-300 mb-2">~14ms</div>
           <div class="text-text-muted text-sm">Cache hit</div>
           <div class="text-text-faint text-xs mt-1">Nothing changed? Instant.</div>
         </div>
         <div class="bg-surface-raised rounded-lg p-6 text-center">
-          <div class="text-4xl font-bold text-green-500 mb-2">~80ms</div>
+          <div class="text-4xl font-bold text-amber-300 mb-2">~80ms</div>
           <div class="text-text-muted text-sm">Full generation</div>
           <div class="text-text-faint text-xs mt-1">275 operations, 875 fragments</div>
         </div>
         <div class="bg-surface-raised rounded-lg p-6 text-center">
-          <div class="text-4xl font-bold text-text-heading mb-2">1477</div>
+          <div class="text-4xl font-bold text-amber-300 mb-2">1477</div>
           <div class="text-text-muted text-sm">Source files scanned</div>
           <div class="text-text-faint text-xs mt-1">Parallel parsing with Rayon</div>
         </div>
@@ -64,41 +66,40 @@ import CodeTransform from '../components/CodeTransform';
   <!-- Features -->
   <section class="px-6 py-16">
     <div class="max-w-4xl mx-auto">
-      <h2 class="text-3xl font-bold text-center mb-12">Features</h2>
+      <h2 class="text-3xl font-black text-center mb-12">Features</h2>
       <div class="grid md:grid-cols-3 gap-6">
-        <!-- TODO(human): Write the feature card descriptions -->
         <div class="bg-surface-raised rounded-lg p-6">
-          <h3 class="font-semibold mb-2">Native Speed</h3>
+          <h3 class="font-bold mb-2">Native Speed</h3>
           <p class="text-text-muted text-sm">
-            Written in high performance Rust, leveraging all the cores of your computer. 
+            Written in high performance Rust, leveraging all the cores of your computer.
           </p>
         </div>
         <div class="bg-surface-raised rounded-lg p-6">
-          <h3 class="font-semibold mb-2">No non-standard types</h3>
+          <h3 class="font-bold mb-2">No non-standard types</h3>
           <p class="text-text-muted text-sm">
             Defaults to only emitting types that can be stripped so it works with `node --experimental-strip-types` out of the box.
           </p>
         </div>
         <div class="bg-surface-raised rounded-lg p-6">
-          <h3 class="font-semibold mb-2">Optimized Caching</h3>
+          <h3 class="font-bold mb-2">Optimized Caching</h3>
           <p class="text-text-muted text-sm">
             TODO(human)
           </p>
         </div>
         <div class="bg-surface-raised rounded-lg p-6">
-          <h3 class="font-semibold mb-2">TypeScript First</h3>
+          <h3 class="font-bold mb-2">TypeScript First</h3>
           <p class="text-text-muted text-sm">
             Optimized for more performant TypeScript code using modern best practices. Inline types, no fancy utility type, etc...
           </p>
         </div>
         <div class="bg-surface-raised rounded-lg p-6">
-          <h3 class="font-semibold mb-2">Opinionated Defaults</h3>
+          <h3 class="font-bold mb-2">Opinionated Defaults</h3>
           <p class="text-text-muted text-sm">
             Safe defaults like future-proof enums and unions to help prevent breaking changes in your application.
           </p>
         </div>
         <div class="bg-surface-raised rounded-lg p-6">
-          <h3 class="font-semibold mb-2">Optimized for type checking</h3>
+          <h3 class="font-bold mb-2">Optimized for type checking</h3>
           <p class="text-text-muted text-sm">
             Uses interfaces over expensive intersection types, inlines types to avoid type map lookups, and more.
           </p>
@@ -110,7 +111,7 @@ import CodeTransform from '../components/CodeTransform';
   <!-- Quick Start -->
   <section class="px-6 py-16">
     <div class="max-w-2xl mx-auto">
-      <h2 class="text-3xl font-bold text-center mb-8">Quick Start</h2>
+      <h2 class="text-3xl font-black text-center mb-8">Quick Start</h2>
       <div class="bg-surface-raised rounded-lg p-6 font-mono text-sm space-y-4">
         <div>
           <span class="text-code-comment"># Install</span>
