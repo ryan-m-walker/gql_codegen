@@ -20,7 +20,7 @@ use apollo_compiler::{Name, Schema};
 use indexmap::IndexMap;
 
 use crate::Result;
-use crate::config::{NamingCase, NamingConvention, PluginOptions};
+use crate::config::{NamingCase, NamingConvention, GeneratorOptions};
 use crate::diagnostic::{Diagnostic, DiagnosticCategory, Diagnostics};
 use crate::documents::{ParsedFragment, ParsedOperation};
 
@@ -29,7 +29,7 @@ pub struct GeneratorContext<'a> {
     pub schema: &'a Valid<Schema>,
     pub operations: &'a IndexMap<Name, ParsedOperation<'a>>,
     pub fragments: &'a IndexMap<Name, ParsedFragment<'a>>,
-    pub options: &'a PluginOptions,
+    pub options: &'a GeneratorOptions,
     pub writer: &'a mut dyn Write,
     pub diagnostics: &'a mut Diagnostics,
 }
@@ -49,7 +49,7 @@ impl GeneratorContext<'_> {
         let (case, transform_underscore) = get_type_name_case(self.options);
         let cased = case.apply(name, transform_underscore);
 
-        match (&self.options.types_prefix, &self.options.types_suffix) {
+        match (&self.options.type_name_prefix, &self.options.type_name_suffix) {
             (None, None) => cased,
             (prefix, suffix) => {
                 let prefix = prefix.as_deref().unwrap_or("");
@@ -61,7 +61,7 @@ impl GeneratorContext<'_> {
 }
 
 /// Extract the naming case for type names from options.
-fn get_type_name_case(options: &PluginOptions) -> (NamingCase, bool) {
+fn get_type_name_case(options: &GeneratorOptions) -> (NamingCase, bool) {
     match &options.naming_convention {
         None => (NamingCase::Keep, false),
         Some(NamingConvention::Simple(case)) => (*case, false),
@@ -75,13 +75,12 @@ fn get_type_name_case(options: &PluginOptions) -> (NamingCase, bool) {
 /// Run a named generator
 pub fn run_generator(name: &str, ctx: &mut GeneratorContext) -> Result<()> {
     match name {
-        "typescript" => generate_typescript(ctx),
-        "typescript-operations" => generate_typescript_operations(ctx),
-        "typescript-documents" | "documents" => generate_documents(ctx),
-        // TODO: maybe warn and ignore?
+        "schema-types" | "typescript" => generate_typescript(ctx),
+        "operation-types" | "typescript-operations" => generate_typescript_operations(ctx),
+        "typed-documents" | "typescript-documents" | "documents" => generate_documents(ctx),
         _ => Err(Diagnostic::error(
             DiagnosticCategory::Generation,
-            format!("Unknown plugin: '{name}'"),
+            format!("Unknown generator: '{name}'"),
         )
         .into()),
     }

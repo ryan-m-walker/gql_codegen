@@ -16,11 +16,12 @@ pub(crate) fn indent(ctx: &mut GeneratorContext, depth: usize) -> Result<()> {
 }
 
 pub(crate) fn get_export_kw(ctx: &GeneratorContext) -> &'static str {
-    if ctx.options.no_export { "" } else { "export " }
+    // TODO: maybe this is not needed?
+    "export "
 }
 
 pub(crate) fn get_readonly_kw(ctx: &GeneratorContext) -> &'static str {
-    if ctx.options.immutable_types {
+    if ctx.options.immutable_types() {
         "readonly "
     } else {
         ""
@@ -51,22 +52,16 @@ pub(crate) enum ScalarDirection {
     Output,
 }
 
-// TODO: move to typescript
-pub(crate) fn get_optional_prop_modifier(
-    ctx: &GeneratorContext,
-    field_type: &FieldType,
-) -> &'static str {
-    let normalized = ctx.options.avoid_optionals.normalize();
-
+pub(crate) fn get_optional_prop_modifier(field_type: &FieldType) -> &'static str {
     let avoid = match field_type {
         FieldType::Object(field) => field.ty.is_non_null(),
         FieldType::InputObject(field) => {
             let has_default = field.default_value.is_some();
 
-            if field.ty.is_non_null() {
-                !has_default || normalized.default_value || normalized.input_value
+            if has_default {
+                false
             } else {
-                normalized.input_value
+                field.ty.is_non_null()
             }
         }
     };
@@ -82,15 +77,8 @@ pub(crate) fn unwrap_type_name(ty: &Type) -> Name {
     }
 }
 
-pub(crate) fn wrap_maybe(ctx: &GeneratorContext, value: &str, dir: ScalarDirection) -> String {
-    if ctx.options.use_utility_types {
-        match dir {
-            ScalarDirection::Output => format!("Maybe<{value}>"),
-            ScalarDirection::Input => format!("InputMaybe<{value}>"),
-        }
-    } else {
-        format!("{value} | null | undefined")
-    }
+pub(crate) fn wrap_maybe(value: &str) -> String {
+    format!("{value} | null | undefined")
 }
 
 /// Recursively render a type, handling nullability at each level
@@ -100,12 +88,12 @@ pub(crate) fn render_type(ctx: &GeneratorContext, ty: &Type, dir: ScalarDirectio
     match ty {
         Type::Named(name) => {
             let field = render_field_type(ctx, name, dir);
-            wrap_maybe(ctx, &field, dir)
+            wrap_maybe(&field)
         }
         Type::NonNullNamed(name) => render_field_type(ctx, name, dir).into_owned(),
         Type::List(inner) => {
             let inner_type = render_type(ctx, inner.as_ref(), dir);
-            wrap_maybe(ctx, &format!("{array_type}<{inner_type}>"), dir)
+            wrap_maybe(&format!("{array_type}<{inner_type}>"))
         }
         Type::NonNullList(inner) => {
             let inner_type = render_type(ctx, inner.as_ref(), dir);
@@ -118,7 +106,7 @@ pub(crate) fn render_type(ctx: &GeneratorContext, ty: &Type, dir: ScalarDirectio
 /// immutable_types == true -> ReadonlyArray
 /// immutable_types == false -> Array
 pub(crate) fn get_array_type(ctx: &GeneratorContext) -> &'static str {
-    if ctx.options.immutable_types {
+    if ctx.options.immutable_types() {
         "ReadonlyArray"
     } else {
         "Array"
@@ -149,10 +137,6 @@ pub(crate) fn render_field_type(
     };
 
     if ctx.schema.get_scalar(name).is_some() {
-        if ctx.options.use_utility_types {
-            return Cow::Owned(format!("Scalars['{name_str}']['{scalar_type}']"));
-        }
-
         if let Some(mapped) = ctx.options.scalars.get(name_str) {
             match mapped {
                 ScalarConfig::Simple(value) => return Cow::Owned(value.clone()),

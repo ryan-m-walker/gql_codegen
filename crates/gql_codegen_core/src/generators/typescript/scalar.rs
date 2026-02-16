@@ -3,13 +3,12 @@ use std::collections::HashSet;
 use apollo_compiler::Node;
 use apollo_compiler::schema::{ExtendedType, ScalarType};
 
-use crate::config::ScalarConfig;
-use crate::generators::GeneratorContext;
-use crate::generators::common::helpers::{get_export_kw, render_decl_closing};
-use crate::generators::common::helpers::render_decl_opening;
-use crate::generators::typescript::helpers::render_description;
 use crate::Result;
+use crate::config::ScalarConfig;
 use crate::diagnostic::{Diagnostic, DiagnosticCategory};
+use crate::generators::GeneratorContext;
+use crate::generators::common::helpers::{get_export_kw, render_decl_closing, render_decl_opening};
+use crate::generators::typescript::helpers::render_description;
 
 const DEFAULT_SCALARS: [(&str, &str); 5] = [
     ("ID", "string"),
@@ -24,16 +23,6 @@ fn is_builtin_scalar(name: &str) -> bool {
 }
 
 pub(crate) fn render_scalar(ctx: &mut GeneratorContext, scalar: &Node<ScalarType>) -> Result<()> {
-    if ctx.options.only_enums {
-        return Ok(());
-    }
-
-    // If using utility types, scalars are rendered as references
-    // to the top level Scalars type so we skip rendering them here.
-    if ctx.options.use_utility_types {
-        return Ok(());
-    }
-
     let raw_name = scalar.name.as_str();
     let export = get_export_kw(ctx);
 

@@ -107,12 +107,13 @@ pub struct NamingConventionConfig {
 /// - `capitalCase`, `dotCase`, `headerCase`, `paramCase`, `pathCase`, `noCase`
 ///
 /// Also accepts `change-case-all#functionName` format strings.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, JsonSchema)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub enum NamingCase {
     /// Keep original name unchanged
     Keep,
     /// PascalCase (e.g., MyTypeName)
+    #[default]
     PascalCase,
     /// camelCase (e.g., myTypeName)
     CamelCase,
@@ -141,12 +142,6 @@ pub enum NamingCase {
     PathCase,
 }
 
-impl Default for NamingCase {
-    fn default() -> Self {
-        Self::PascalCase
-    }
-}
-
 impl NamingCase {
     /// Apply this naming case transformation to a string.
     pub fn apply<'a>(&self, s: &'a str, transform_underscore: bool) -> Cow<'a, str> {
@@ -173,36 +168,17 @@ const DEPRECATED_CASES: &[(&str, NamingCase, &str)] = &[
     ("sentenceCase", NamingCase::CapitalCase, "capitalCase"),
     ("titleCase", NamingCase::CapitalCase, "capitalCase"),
     ("spongeCase", NamingCase::Keep, "keep"),
-    (
-        "localeLowerCase",
-        NamingCase::Lowercase,
-        "lowerCase",
-    ),
-    (
-        "localeUpperCase",
-        NamingCase::Uppercase,
-        "upperCase",
-    ),
-    (
-        "lowerCaseFirst",
-        NamingCase::CamelCase,
-        "camelCase",
-    ),
-    (
-        "upperCaseFirst",
-        NamingCase::PascalCase,
-        "pascalCase",
-    ),
+    ("localeLowerCase", NamingCase::Lowercase, "lowerCase"),
+    ("localeUpperCase", NamingCase::Uppercase, "upperCase"),
+    ("lowerCaseFirst", NamingCase::CamelCase, "camelCase"),
+    ("upperCaseFirst", NamingCase::PascalCase, "pascalCase"),
 ];
 
 /// Parse a naming case string, supporting both direct names and `change-case-all#fn` format.
 /// Returns the NamingCase and an optional deprecation warning message.
 fn parse_naming_case(s: &str) -> Result<(NamingCase, Option<String>), String> {
     // Strip `change-case-all#` or similar `module#` prefix
-    let case_name = s
-        .rsplit_once('#')
-        .map(|(_, name)| name)
-        .unwrap_or(s);
+    let case_name = s.rsplit_once('#').map(|(_, name)| name).unwrap_or(s);
 
     // Check first-class + compat cases
     let case = match case_name {
@@ -273,14 +249,35 @@ mod tests {
 
     #[test]
     fn test_parse_direct_names() {
-        assert_eq!(parse_naming_case("pascalCase").unwrap().0, NamingCase::PascalCase);
-        assert_eq!(parse_naming_case("camelCase").unwrap().0, NamingCase::CamelCase);
-        assert_eq!(parse_naming_case("constantCase").unwrap().0, NamingCase::ConstantCase);
-        assert_eq!(parse_naming_case("snakeCase").unwrap().0, NamingCase::SnakeCase);
+        assert_eq!(
+            parse_naming_case("pascalCase").unwrap().0,
+            NamingCase::PascalCase
+        );
+        assert_eq!(
+            parse_naming_case("camelCase").unwrap().0,
+            NamingCase::CamelCase
+        );
+        assert_eq!(
+            parse_naming_case("constantCase").unwrap().0,
+            NamingCase::ConstantCase
+        );
+        assert_eq!(
+            parse_naming_case("snakeCase").unwrap().0,
+            NamingCase::SnakeCase
+        );
         assert_eq!(parse_naming_case("keep").unwrap().0, NamingCase::Keep);
-        assert_eq!(parse_naming_case("capitalCase").unwrap().0, NamingCase::CapitalCase);
-        assert_eq!(parse_naming_case("paramCase").unwrap().0, NamingCase::ParamCase);
-        assert_eq!(parse_naming_case("kebabCase").unwrap().0, NamingCase::ParamCase);
+        assert_eq!(
+            parse_naming_case("capitalCase").unwrap().0,
+            NamingCase::CapitalCase
+        );
+        assert_eq!(
+            parse_naming_case("paramCase").unwrap().0,
+            NamingCase::ParamCase
+        );
+        assert_eq!(
+            parse_naming_case("kebabCase").unwrap().0,
+            NamingCase::ParamCase
+        );
     }
 
     #[test]

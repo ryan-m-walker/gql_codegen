@@ -10,8 +10,8 @@ pub(crate) fn render_typename(ctx: &mut GeneratorContext, type_name: &str) -> Re
     }
 
     let readonly = get_readonly_kw(ctx);
-    let optional = if ctx.options.non_optional_typename { "" } else { "?" };
-    writeln!(ctx.writer, "  {readonly}__typename{optional}: '{type_name}';")?;
+    // TODO: optional ? or not
+    writeln!(ctx.writer, "  {readonly}__typename: '{type_name}';")?;
 
     Ok(())
 }

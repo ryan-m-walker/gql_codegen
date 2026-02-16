@@ -86,20 +86,13 @@ fn run(args: &CliArgs, logger: &Logger) -> Result<()> {
     })?;
 
     // Use baseDir from config if set (e.g., from Node CLI), otherwise derive from config path
-    let base_dir = config
-        .base_dir
-        .as_ref()
-        .map(PathBuf::from)
-        .unwrap_or_else(|| resolve_base_dir(&args.config));
-    config.base_dir = Some(base_dir.to_string_lossy().into_owned());
 
     logger.debug(&format!("Config: {}", args.config.display()));
-    logger.debug(&format!("Base: {}", base_dir.display()));
 
     let mut cache: Box<dyn Cache> = if args.no_cache {
         Box::new(NoCache)
     } else {
-        Box::new(FsCache::new(base_dir.join(".sgc")))
+        Box::new(FsCache::new(".sgc"))
     };
 
     // Handle --clean flag

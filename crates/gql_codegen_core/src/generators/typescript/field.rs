@@ -15,7 +15,7 @@ pub(crate) fn render_field(
     field_type: &FieldType,
 ) -> Result<()> {
     let readonly = get_readonly_kw(ctx);
-    let optional_field = get_optional_prop_modifier(ctx, field_type);
+    let optional_field = get_optional_prop_modifier(field_type);
     let array_type = get_array_type(ctx);
     let dir = field_type.direction();
 
@@ -30,7 +30,7 @@ pub(crate) fn render_field(
     match &ty {
         Type::Named(name) => {
             let field = render_field_type(ctx, name, dir);
-            let maybe_value = wrap_maybe(ctx, field.as_ref(), dir);
+            let maybe_value = wrap_maybe(field.as_ref());
             writeln!(ctx.writer, "{optional_field}: {maybe_value};")?;
         }
         Type::NonNullNamed(name) => {
@@ -39,7 +39,7 @@ pub(crate) fn render_field(
         }
         Type::List(inner) => {
             let inner_type = render_type(ctx, inner.as_ref(), dir);
-            let array = wrap_maybe(ctx, &format!("{array_type}<{inner_type}>"), dir);
+            let array = wrap_maybe(&format!("{array_type}<{inner_type}>"));
             writeln!(ctx.writer, "{optional_field}: {array};")?;
         }
         Type::NonNullList(inner) => {

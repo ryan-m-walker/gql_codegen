@@ -21,10 +21,6 @@ pub(crate) fn render_description(
     description: &Option<Node<str>>,
     indent_level: usize,
 ) -> Result<()> {
-    if ctx.options.disable_descriptions {
-        return Ok(());
-    }
-
     let Some(description) = description else {
         return Ok(());
     };
@@ -56,10 +52,9 @@ pub(crate) fn render_description(
 
 #[cfg(test)]
 mod test {
-    use crate::DeclarationKind;
-    use crate::PluginOptions;
     use crate::generators::common::helpers::{render_decl_closing, render_decl_opening};
     use crate::test_utils::TestCtxBuilder;
+    use crate::{DeclarationKind, GeneratorOptions};
 
     use super::*;
 
@@ -80,7 +75,7 @@ mod test {
 
     #[test]
     fn decl_opening_interface() {
-        let ctx = TestCtxBuilder::new().options(PluginOptions {
+        let ctx = TestCtxBuilder::new().options(GeneratorOptions {
             declaration_kind: Some(DeclarationKind::Interface),
             ..Default::default()
         });
@@ -95,7 +90,7 @@ mod test {
 
     #[test]
     fn decl_opening_class() {
-        let ctx = TestCtxBuilder::new().options(PluginOptions {
+        let ctx = TestCtxBuilder::new().options(GeneratorOptions {
             declaration_kind: Some(DeclarationKind::Class),
             ..Default::default()
         });
@@ -110,7 +105,7 @@ mod test {
 
     #[test]
     fn decl_opening_abstract_class() {
-        let ctx = TestCtxBuilder::new().options(PluginOptions {
+        let ctx = TestCtxBuilder::new().options(GeneratorOptions {
             declaration_kind: Some(DeclarationKind::AbstractClass),
             ..Default::default()
         });
@@ -125,7 +120,7 @@ mod test {
 
     #[test]
     fn decl_opening_no_export() {
-        let ctx = TestCtxBuilder::new().options(PluginOptions {
+        let ctx = TestCtxBuilder::new().options(GeneratorOptions {
             no_export: true,
             ..Default::default()
         });
@@ -165,7 +160,7 @@ mod test {
                 "interface Node { id: ID! }
                  type User implements Node { id: ID!, name: String }",
             )
-            .options(PluginOptions {
+            .options(GeneratorOptions {
                 declaration_kind: Some(DeclarationKind::Type),
                 ..Default::default()
             })
@@ -188,7 +183,7 @@ mod test {
                  interface Timestamped { createdAt: String }
                  type User implements Node & Timestamped { id: ID!, createdAt: String }",
             )
-            .options(PluginOptions {
+            .options(GeneratorOptions {
                 declaration_kind: Some(DeclarationKind::Class),
                 ..Default::default()
             })
@@ -234,7 +229,7 @@ mod test {
                  interface Timestamped { createdAt: String }
                  type User implements Node & Timestamped { id: ID!, createdAt: String }",
             )
-            .options(PluginOptions {
+            .options(GeneratorOptions {
                 declaration_kind: Some(DeclarationKind::Type),
                 ..Default::default()
             })
@@ -266,7 +261,7 @@ mod test {
 
     #[test]
     fn decl_closing_type_has_semicolon() {
-        let ctx = TestCtxBuilder::new().options(PluginOptions {
+        let ctx = TestCtxBuilder::new().options(GeneratorOptions {
             declaration_kind: Some(DeclarationKind::Type),
             ..Default::default()
         });
@@ -281,7 +276,7 @@ mod test {
 
     #[test]
     fn decl_closing_interface_no_semicolon() {
-        let ctx = TestCtxBuilder::new().options(PluginOptions {
+        let ctx = TestCtxBuilder::new().options(GeneratorOptions {
             declaration_kind: Some(DeclarationKind::Interface),
             ..Default::default()
         });
@@ -296,7 +291,7 @@ mod test {
 
     #[test]
     fn decl_closing_class_no_semicolon() {
-        let ctx = TestCtxBuilder::new().options(PluginOptions {
+        let ctx = TestCtxBuilder::new().options(GeneratorOptions {
             declaration_kind: Some(DeclarationKind::Class),
             ..Default::default()
         });
@@ -409,7 +404,7 @@ mod test {
                 r#""""Should not appear"""
                 type User { id: ID! }"#,
             )
-            .options(PluginOptions {
+            .options(GeneratorOptions {
                 disable_descriptions: true,
                 ..Default::default()
             })
@@ -457,7 +452,7 @@ mod test {
 
     #[test]
     fn full_type_declaration() {
-        let ctx = TestCtxBuilder::new().options(PluginOptions {
+        let ctx = TestCtxBuilder::new().options(GeneratorOptions {
             declaration_kind: Some(DeclarationKind::Type),
             ..Default::default()
         });
@@ -473,7 +468,7 @@ mod test {
 
     #[test]
     fn full_interface_declaration() {
-        let ctx = TestCtxBuilder::new().options(PluginOptions {
+        let ctx = TestCtxBuilder::new().options(GeneratorOptions {
             declaration_kind: Some(DeclarationKind::Interface),
             ..Default::default()
         });

@@ -16,7 +16,7 @@ pub(crate) fn render_field(
     depth: usize,
 ) -> Result<()> {
     let readonly = get_readonly_kw(ctx);
-    let optional = get_optional_prop_modifier(ctx, field);
+    let optional = get_optional_prop_modifier(field);
 
     indent(ctx, depth)?;
     write!(ctx.writer, "{readonly}{response_type}{optional}: ")?;
@@ -98,16 +98,8 @@ fn inner_element_type(ty: &Type) -> &Type {
     }
 }
 
-fn get_optional_prop_modifier(
-    ctx: &mut GeneratorContext,
-    field: &NormalizedSelection,
-) -> &'static str {
-    let avoid_optionals = ctx.options.avoid_optionals.normalize();
+fn get_optional_prop_modifier(field: &NormalizedSelection) -> &'static str {
+    // TODO: null type?
     let is_nullable = !field.field_type.is_non_null() || field.has_conditional;
-
-    if is_nullable && !avoid_optionals.field {
-        "?"
-    } else {
-        ""
-    }
+    if is_nullable { "?" } else { "" }
 }

@@ -8,7 +8,7 @@ use std::collections::BTreeMap;
 
 use gql_codegen_core::test_utils::TestGen;
 use gql_codegen_core::{
-    DeclarationKind, NamingCase, NamingConvention, NamingConventionConfig, PluginOptions,
+    DeclarationKind, NamingCase, NamingConvention, NamingConventionConfig, GeneratorOptions,
     ScalarConfig, TypenamePolicy,
 };
 
@@ -19,11 +19,11 @@ fn numeric_enums() {
     let output = TestGen::new()
         .no_base_schema()
         .schema_str("type Query { ok: Boolean }\nenum Status { ACTIVE INACTIVE PENDING }")
-        .options(PluginOptions {
+        .options(GeneratorOptions {
             enums_as_types: Some(false),
             numeric_enums: true,
             typename_policy: Some(TypenamePolicy::Skip),
-            ..PluginOptions::default()
+            ..GeneratorOptions::default()
         })
         .generate();
 
@@ -51,11 +51,11 @@ fn numeric_enums_suppresses_const() {
     let output = TestGen::new()
         .no_base_schema()
         .schema_str("type Query { ok: Boolean }\nenum Color { RED GREEN }")
-        .options(PluginOptions {
+        .options(GeneratorOptions {
             enums_as_types: Some(false),
             numeric_enums: true,
             const_enums: true,
-            ..PluginOptions::default()
+            ..GeneratorOptions::default()
         })
         .generate();
 
@@ -73,10 +73,10 @@ fn declaration_kind_type_alias() {
     let output = TestGen::new()
         .no_base_schema()
         .schema_str("type Query { ok: Boolean! }")
-        .options(PluginOptions {
+        .options(GeneratorOptions {
             declaration_kind: Some(DeclarationKind::Type),
             typename_policy: Some(TypenamePolicy::Skip),
-            ..PluginOptions::default()
+            ..GeneratorOptions::default()
         })
         .generate();
 
@@ -97,10 +97,10 @@ fn declaration_kind_class() {
     let output = TestGen::new()
         .no_base_schema()
         .schema_str("type Query { ok: Boolean! }")
-        .options(PluginOptions {
+        .options(GeneratorOptions {
             declaration_kind: Some(DeclarationKind::Class),
             typename_policy: Some(TypenamePolicy::Skip),
-            ..PluginOptions::default()
+            ..GeneratorOptions::default()
         })
         .generate();
 
@@ -121,9 +121,9 @@ fn declaration_kind_abstract_class() {
     let output = TestGen::new()
         .no_base_schema()
         .schema_str("type Query { ok: Boolean! }")
-        .options(PluginOptions {
+        .options(GeneratorOptions {
             declaration_kind: Some(DeclarationKind::AbstractClass),
-            ..PluginOptions::default()
+            ..GeneratorOptions::default()
         })
         .generate();
 
@@ -147,9 +147,9 @@ union SearchResult = User
 scalar DateTime
 ",
         )
-        .options(PluginOptions {
+        .options(GeneratorOptions {
             only_enums: true,
-            ..PluginOptions::default()
+            ..GeneratorOptions::default()
         })
         .generate();
 
@@ -170,9 +170,9 @@ fn use_utility_types_renders_scalars_map() {
     let output = TestGen::new()
         .no_base_schema()
         .schema_str("type Query { ok: Boolean }\nscalar DateTime")
-        .options(PluginOptions {
+        .options(GeneratorOptions {
             use_utility_types: true,
-            ..PluginOptions::default()
+            ..GeneratorOptions::default()
         })
         .generate();
 
@@ -195,9 +195,9 @@ fn use_utility_types_wraps_nullable_fields() {
     let output = TestGen::new()
         .no_base_schema()
         .schema_str("type Query { name: String }")
-        .options(PluginOptions {
+        .options(GeneratorOptions {
             use_utility_types: true,
-            ..PluginOptions::default()
+            ..GeneratorOptions::default()
         })
         .generate();
 
@@ -221,9 +221,9 @@ fn scalars_detailed_input_output() {
     let output = TestGen::new()
         .no_base_schema()
         .schema_str("type Query { ok: Boolean }\nscalar DateTime")
-        .options(PluginOptions {
+        .options(GeneratorOptions {
             scalars,
-            ..PluginOptions::default()
+            ..GeneratorOptions::default()
         })
         .generate();
 
@@ -245,9 +245,9 @@ type User { name: String! }
 type Query { user: User }
 ",
         )
-        .options(PluginOptions {
+        .options(GeneratorOptions {
             disable_descriptions: true,
-            ..PluginOptions::default()
+            ..GeneratorOptions::default()
         })
         .generate();
 
@@ -266,7 +266,7 @@ type User { name: String! }
 type Query { user: User }
 ",
         )
-        .options(PluginOptions::default())
+        .options(GeneratorOptions::default())
         .generate();
 
     assert!(output.contains("/** A user in the system */"));
@@ -279,10 +279,10 @@ fn non_optional_typename() {
     let output = TestGen::new()
         .no_base_schema()
         .schema_str("type Query { ok: Boolean! }")
-        .options(PluginOptions {
+        .options(GeneratorOptions {
             non_optional_typename: true,
             typename_policy: Some(TypenamePolicy::Always),
-            ..PluginOptions::default()
+            ..GeneratorOptions::default()
         })
         .generate();
 
@@ -296,9 +296,9 @@ fn non_optional_typename_default_is_optional() {
     let output = TestGen::new()
         .no_base_schema()
         .schema_str("type Query { ok: Boolean! }")
-        .options(PluginOptions {
+        .options(GeneratorOptions {
             typename_policy: Some(TypenamePolicy::Always),
-            ..PluginOptions::default()
+            ..GeneratorOptions::default()
         })
         .generate();
 
@@ -306,10 +306,10 @@ fn non_optional_typename_default_is_optional() {
     assert!(output.contains("__typename?: 'Query';"));
 }
 
-// ── types_prefix / types_suffix ────────────────────────────────────
+// ── type_name_prefix / type_name_suffix ────────────────────────────────────
 
 #[test]
-fn types_prefix_applied_to_all_types() {
+fn type_name_prefix_applied_to_all_types() {
     let output = TestGen::new()
         .no_base_schema()
         .schema_str(
@@ -318,9 +318,9 @@ type Query { role: Role }
 enum Role { ADMIN USER }
 ",
         )
-        .options(PluginOptions {
-            types_prefix: Some("I".to_string()),
-            ..PluginOptions::default()
+        .options(GeneratorOptions {
+            type_name_prefix: Some("I".to_string()),
+            ..GeneratorOptions::default()
         })
         .generate();
 
@@ -333,13 +333,13 @@ enum Role { ADMIN USER }
 }
 
 #[test]
-fn types_suffix_applied_to_all_types() {
+fn type_name_suffix_applied_to_all_types() {
     let output = TestGen::new()
         .no_base_schema()
         .schema_str("type Query { ok: Boolean! }")
-        .options(PluginOptions {
-            types_suffix: Some("GQL".to_string()),
-            ..PluginOptions::default()
+        .options(GeneratorOptions {
+            type_name_suffix: Some("GQL".to_string()),
+            ..GeneratorOptions::default()
         })
         .generate();
 
@@ -347,14 +347,14 @@ fn types_suffix_applied_to_all_types() {
 }
 
 #[test]
-fn types_prefix_does_not_affect_typename_value() {
+fn type_name_prefix_does_not_affect_typename_value() {
     let output = TestGen::new()
         .no_base_schema()
         .schema_str("type Query { ok: Boolean! }")
-        .options(PluginOptions {
-            types_prefix: Some("I".to_string()),
+        .options(GeneratorOptions {
+            type_name_prefix: Some("I".to_string()),
             typename_policy: Some(TypenamePolicy::Always),
-            ..PluginOptions::default()
+            ..GeneratorOptions::default()
         })
         .generate();
 
@@ -371,9 +371,9 @@ fn enums_as_const() {
     let output = TestGen::new()
         .no_base_schema()
         .schema_str("type Query { ok: Boolean }\nenum Status { ACTIVE INACTIVE }")
-        .options(PluginOptions {
+        .options(GeneratorOptions {
             enums_as_const: true,
-            ..PluginOptions::default()
+            ..GeneratorOptions::default()
         })
         .generate();
 
@@ -390,9 +390,9 @@ fn enums_as_const_with_values() {
     let output = TestGen::new()
         .no_base_schema()
         .schema_str("type Query { ok: Boolean }\nenum Color { RED GREEN BLUE }")
-        .options(PluginOptions {
+        .options(GeneratorOptions {
             enums_as_const: true,
-            ..PluginOptions::default()
+            ..GeneratorOptions::default()
         })
         .generate();
 
@@ -409,10 +409,10 @@ fn numeric_enums_overrides_enums_as_const() {
     let output = TestGen::new()
         .no_base_schema()
         .schema_str("type Query { ok: Boolean }\nenum Status { ACTIVE INACTIVE }")
-        .options(PluginOptions {
+        .options(GeneratorOptions {
             enums_as_const: true,
             numeric_enums: true,
-            ..PluginOptions::default()
+            ..GeneratorOptions::default()
         })
         .generate();
 
@@ -428,9 +428,9 @@ fn enums_as_const_full_output() {
     let output = TestGen::new()
         .no_base_schema()
         .schema_str("type Query { ok: Boolean }\nenum Role { ADMIN USER GUEST }")
-        .options(PluginOptions {
+        .options(GeneratorOptions {
             enums_as_const: true,
-            ..PluginOptions::default()
+            ..GeneratorOptions::default()
         })
         .generate();
 
@@ -456,10 +456,10 @@ fn future_proof_enums_not_added_to_ts_enums() {
     let output = TestGen::new()
         .no_base_schema()
         .schema_str("type Query { ok: Boolean }\nenum Status { ACTIVE INACTIVE }")
-        .options(PluginOptions {
+        .options(GeneratorOptions {
             enums_as_types: Some(false),
-            future_proof_enums: true,
-            ..PluginOptions::default()
+            future_proof_enums: Some(true),
+            ..GeneratorOptions::default()
         })
         .generate();
 
@@ -474,10 +474,10 @@ fn future_proof_enums_added_to_type_unions() {
     let output = TestGen::new()
         .no_base_schema()
         .schema_str("type Query { ok: Boolean }\nenum Status { ACTIVE INACTIVE }")
-        .options(PluginOptions {
+        .options(GeneratorOptions {
             enums_as_types: Some(true),
-            future_proof_enums: true,
-            ..PluginOptions::default()
+            future_proof_enums: Some(true),
+            ..GeneratorOptions::default()
         })
         .generate();
 
@@ -490,10 +490,10 @@ fn future_proof_enums_not_added_to_const_objects() {
     let output = TestGen::new()
         .no_base_schema()
         .schema_str("type Query { ok: Boolean }\nenum Status { ACTIVE INACTIVE }")
-        .options(PluginOptions {
+        .options(GeneratorOptions {
             enums_as_const: true,
-            future_proof_enums: true,
-            ..PluginOptions::default()
+            future_proof_enums: Some(true),
+            ..GeneratorOptions::default()
         })
         .generate();
 
@@ -519,9 +519,9 @@ fn naming_simple_camel_case_transforms_type_names() {
     let output = TestGen::new()
         .no_base_schema()
         .schema_str(CASING_SCHEMA)
-        .options(PluginOptions {
+        .options(GeneratorOptions {
             naming_convention: Some(NamingConvention::Simple(NamingCase::CamelCase)),
-            ..PluginOptions::default()
+            ..GeneratorOptions::default()
         })
         .generate();
 
@@ -543,9 +543,9 @@ fn naming_simple_camel_case_also_transforms_enum_values() {
     let output = TestGen::new()
         .no_base_schema()
         .schema_str("type Query { ok: Boolean }\nenum Status { ACTIVE_USER INACTIVE_USER }")
-        .options(PluginOptions {
+        .options(GeneratorOptions {
             naming_convention: Some(NamingConvention::Simple(NamingCase::CamelCase)),
-            ..PluginOptions::default()
+            ..GeneratorOptions::default()
         })
         .generate();
 
@@ -559,9 +559,9 @@ fn naming_simple_constant_case() {
     let output = TestGen::new()
         .no_base_schema()
         .schema_str("type Query { ok: Boolean }\nenum UserRole { AdminUser RegularUser }")
-        .options(PluginOptions {
+        .options(GeneratorOptions {
             naming_convention: Some(NamingConvention::Simple(NamingCase::ConstantCase)),
-            ..PluginOptions::default()
+            ..GeneratorOptions::default()
         })
         .generate();
 
@@ -577,9 +577,9 @@ fn naming_simple_snake_case() {
     let output = TestGen::new()
         .no_base_schema()
         .schema_str("type Query { ok: Boolean }\ntype UserProfile { firstName: String! }")
-        .options(PluginOptions {
+        .options(GeneratorOptions {
             naming_convention: Some(NamingConvention::Simple(NamingCase::SnakeCase)),
-            ..PluginOptions::default()
+            ..GeneratorOptions::default()
         })
         .generate();
 
@@ -594,13 +594,13 @@ fn naming_detailed_separate_type_and_enum() {
     let output = TestGen::new()
         .no_base_schema()
         .schema_str("type Query { role: Role }\nenum Role { ADMIN_USER GUEST_USER }")
-        .options(PluginOptions {
+        .options(GeneratorOptions {
             naming_convention: Some(NamingConvention::Detailed(NamingConventionConfig {
                 type_names: Some(NamingCase::PascalCase),
                 enum_values: Some(NamingCase::CamelCase),
                 transform_underscore: false,
             })),
-            ..PluginOptions::default()
+            ..GeneratorOptions::default()
         })
         .generate();
 
@@ -616,13 +616,13 @@ fn naming_detailed_transform_underscore_removes_underscores() {
     let output = TestGen::new()
         .no_base_schema()
         .schema_str("type Query { ok: Boolean }\nenum Status { ACTIVE_USER INACTIVE_USER }")
-        .options(PluginOptions {
+        .options(GeneratorOptions {
             naming_convention: Some(NamingConvention::Detailed(NamingConventionConfig {
                 type_names: Some(NamingCase::PascalCase),
                 enum_values: Some(NamingCase::CamelCase),
                 transform_underscore: true,
             })),
-            ..PluginOptions::default()
+            ..GeneratorOptions::default()
         })
         .generate();
 
@@ -636,13 +636,13 @@ fn naming_detailed_constant_case_enum_values() {
     let output = TestGen::new()
         .no_base_schema()
         .schema_str("type Query { ok: Boolean }\nenum Role { adminUser guestUser }")
-        .options(PluginOptions {
+        .options(GeneratorOptions {
             naming_convention: Some(NamingConvention::Detailed(NamingConventionConfig {
                 type_names: Some(NamingCase::Keep),
                 enum_values: Some(NamingCase::ConstantCase),
                 transform_underscore: false,
             })),
-            ..PluginOptions::default()
+            ..GeneratorOptions::default()
         })
         .generate();
 
@@ -659,13 +659,13 @@ fn naming_detailed_type_names_only() {
     let output = TestGen::new()
         .no_base_schema()
         .schema_str("type Query { ok: Boolean }\nenum UserRole { ADMIN GUEST }")
-        .options(PluginOptions {
+        .options(GeneratorOptions {
             naming_convention: Some(NamingConvention::Detailed(NamingConventionConfig {
                 type_names: Some(NamingCase::SnakeCase),
                 enum_values: None, // defaults to Keep
                 transform_underscore: false,
             })),
-            ..PluginOptions::default()
+            ..GeneratorOptions::default()
         })
         .generate();
 
@@ -684,9 +684,9 @@ fn naming_transforms_field_type_references() {
     let output = TestGen::new()
         .no_base_schema()
         .schema_str("type Query { user: UserProfile }\ntype UserProfile { name: String! }")
-        .options(PluginOptions {
+        .options(GeneratorOptions {
             naming_convention: Some(NamingConvention::Simple(NamingCase::SnakeCase)),
-            ..PluginOptions::default()
+            ..GeneratorOptions::default()
         })
         .generate();
 
@@ -699,9 +699,9 @@ fn naming_transforms_union_member_references() {
     let output = TestGen::new()
         .no_base_schema()
         .schema_str("type Query { ok: Boolean }\ntype Dog { name: String! }\ntype Cat { name: String! }\nunion Pet = Dog | Cat")
-        .options(PluginOptions {
+        .options(GeneratorOptions {
             naming_convention: Some(NamingConvention::Simple(NamingCase::ConstantCase)),
-            ..PluginOptions::default()
+            ..GeneratorOptions::default()
         })
         .generate();
 
@@ -718,9 +718,9 @@ fn naming_does_not_transform_field_names() {
     let output = TestGen::new()
         .no_base_schema()
         .schema_str("type Query { ok: Boolean! }\ntype UserProfile { firstName: String! }")
-        .options(PluginOptions {
+        .options(GeneratorOptions {
             naming_convention: Some(NamingConvention::Simple(NamingCase::ConstantCase)),
-            ..PluginOptions::default()
+            ..GeneratorOptions::default()
         })
         .generate();
 
@@ -735,10 +735,10 @@ fn naming_does_not_transform_typename_value() {
     let output = TestGen::new()
         .no_base_schema()
         .schema_str("type Query { ok: Boolean! }")
-        .options(PluginOptions {
+        .options(GeneratorOptions {
             naming_convention: Some(NamingConvention::Simple(NamingCase::SnakeCase)),
             typename_policy: Some(TypenamePolicy::Always),
-            ..PluginOptions::default()
+            ..GeneratorOptions::default()
         })
         .generate();
 
@@ -755,14 +755,14 @@ fn naming_with_ts_enums() {
     let output = TestGen::new()
         .no_base_schema()
         .schema_str("type Query { ok: Boolean }\nenum UserRole { ADMIN_USER GUEST_USER }")
-        .options(PluginOptions {
+        .options(GeneratorOptions {
             enums_as_types: Some(false),
             naming_convention: Some(NamingConvention::Detailed(NamingConventionConfig {
                 type_names: Some(NamingCase::PascalCase),
                 enum_values: Some(NamingCase::CamelCase),
                 transform_underscore: true,
             })),
-            ..PluginOptions::default()
+            ..GeneratorOptions::default()
         })
         .generate();
 
@@ -777,14 +777,14 @@ fn naming_with_const_objects() {
     let output = TestGen::new()
         .no_base_schema()
         .schema_str("type Query { ok: Boolean }\nenum UserRole { ADMIN_USER GUEST_USER }")
-        .options(PluginOptions {
+        .options(GeneratorOptions {
             enums_as_const: true,
             naming_convention: Some(NamingConvention::Detailed(NamingConventionConfig {
                 type_names: Some(NamingCase::PascalCase),
                 enum_values: Some(NamingCase::CamelCase),
                 transform_underscore: true,
             })),
-            ..PluginOptions::default()
+            ..GeneratorOptions::default()
         })
         .generate();
 
@@ -799,7 +799,7 @@ fn naming_with_numeric_enums() {
     let output = TestGen::new()
         .no_base_schema()
         .schema_str("type Query { ok: Boolean }\nenum UserRole { ADMIN_USER GUEST_USER }")
-        .options(PluginOptions {
+        .options(GeneratorOptions {
             enums_as_types: Some(false),
             numeric_enums: true,
             naming_convention: Some(NamingConvention::Detailed(NamingConventionConfig {
@@ -807,7 +807,7 @@ fn naming_with_numeric_enums() {
                 enum_values: Some(NamingCase::CamelCase),
                 transform_underscore: true,
             })),
-            ..PluginOptions::default()
+            ..GeneratorOptions::default()
         })
         .generate();
 
@@ -819,14 +819,14 @@ fn naming_with_numeric_enums() {
 // ── casing + prefix/suffix interaction ────────────────────────────
 
 #[test]
-fn naming_with_types_prefix_applies_after_casing() {
+fn naming_with_type_name_prefix_applies_after_casing() {
     let output = TestGen::new()
         .no_base_schema()
         .schema_str("type Query { ok: Boolean! }\ntype user_profile { name: String! }")
-        .options(PluginOptions {
-            types_prefix: Some("I".to_string()),
+        .options(GeneratorOptions {
+            type_name_prefix: Some("I".to_string()),
             naming_convention: Some(NamingConvention::Simple(NamingCase::PascalCase)),
-            ..PluginOptions::default()
+            ..GeneratorOptions::default()
         })
         .generate();
 
@@ -840,14 +840,14 @@ fn naming_with_enum_prefix_and_casing() {
     let output = TestGen::new()
         .no_base_schema()
         .schema_str("type Query { ok: Boolean }\nenum user_role { ADMIN GUEST }")
-        .options(PluginOptions {
+        .options(GeneratorOptions {
             enum_prefix: Some("E".to_string()),
             naming_convention: Some(NamingConvention::Detailed(NamingConventionConfig {
                 type_names: Some(NamingCase::PascalCase),
                 enum_values: None,
                 transform_underscore: true,
             })),
-            ..PluginOptions::default()
+            ..GeneratorOptions::default()
         })
         .generate();
 

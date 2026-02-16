@@ -2,14 +2,14 @@
 
 use std::collections::BTreeMap;
 
-use gql_codegen_core::{PluginOptions, ScalarConfig};
+use gql_codegen_core::{GeneratorOptions, ScalarConfig};
 
 use super::{generate_with_options, try_generate_with_options};
 
 #[test]
 fn test_scalars_default() {
     // Without mappings, custom scalars become `unknown`
-    let output = generate_with_options(&["schemas/scalar.graphql"], PluginOptions::default());
+    let output = generate_with_options(&["schemas/scalar.graphql"], GeneratorOptions::default());
     insta::assert_snapshot!(output);
 }
 
@@ -22,9 +22,9 @@ fn test_scalars_with_mappings() {
 
     let output = generate_with_options(
         &["schemas/scalar.graphql"],
-        PluginOptions {
+        GeneratorOptions {
             scalars,
-            ..PluginOptions::default()
+            ..GeneratorOptions::default()
         },
     );
     insta::assert_snapshot!(output);
@@ -35,9 +35,9 @@ fn test_scalars_default_scalar_type() {
     // Use "any" instead of "unknown" for unmapped scalars
     let output = generate_with_options(
         &["schemas/scalar.graphql"],
-        PluginOptions {
+        GeneratorOptions {
             default_scalar_type: Some("any".to_string()),
-            ..PluginOptions::default()
+            ..GeneratorOptions::default()
         },
     );
     insta::assert_snapshot!(output);
@@ -53,10 +53,10 @@ fn test_scalars_strict_with_all_mapped() {
 
     let output = generate_with_options(
         &["schemas/scalar.graphql"],
-        PluginOptions {
+        GeneratorOptions {
             scalars,
             strict_scalars: true,
-            ..PluginOptions::default()
+            ..GeneratorOptions::default()
         },
     );
     insta::assert_snapshot!(output);
@@ -69,10 +69,10 @@ fn test_scalars_strict_missing_scalar_errors() {
     // because that's when render_scalars is called
     let result = try_generate_with_options(
         &["schemas/scalar.graphql"],
-        PluginOptions {
+        GeneratorOptions {
             strict_scalars: true,
             use_utility_types: true,
-            ..PluginOptions::default()
+            ..GeneratorOptions::default()
         },
     );
 

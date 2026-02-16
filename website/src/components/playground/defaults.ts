@@ -75,9 +75,9 @@ query Nodes($ids: [ID!]!) {
 }`
 
 export const defaultConfig: CodegenConfig = {
-    generates: {
+    outputs: {
         'types.ts': {
-            plugins: ['typescript', 'typescript-operations'],
+            generators: ['schema-types', 'operation-types'],
         },
     },
 }

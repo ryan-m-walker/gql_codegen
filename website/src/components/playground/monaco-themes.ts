@@ -98,7 +98,7 @@ export async function configureMonacoSchema(
     try {
         const wasm = await loadWasm()
         const schemaJson = wasm.getConfigSchema()
-        const pluginOptionsSchema = JSON.parse(schemaJson) as Record<
+        const generatorOptionsSchema = JSON.parse(schemaJson) as Record<
             string,
             unknown
         >
@@ -112,26 +112,26 @@ export async function configureMonacoSchema(
                     description:
                         'Preset for default configuration values. "sgc" is optimized for TypeScript performance, "graphql-codegen" is compatible with graphql-codegen output.',
                 },
-                generates: {
+                outputs: {
                     type: 'object',
                     additionalProperties: {
                         type: 'object',
                         properties: {
-                            plugins: {
+                            generators: {
                                 type: 'array',
                                 items: {
                                     type: 'string',
                                     enum: [
-                                        'typescript',
-                                        'typescript-operations',
+                                        'schema-types',
+                                        'operation-types',
+                                        'typed-documents',
                                     ],
                                 },
                                 description:
-                                    'Plugins to run for this output file',
+                                    'Generators to run for this output file',
                             },
-                            config: pluginOptionsSchema,
+                            config: generatorOptionsSchema,
                         },
-                        required: ['plugins'],
                     },
                     description: 'Output file configurations',
                 },

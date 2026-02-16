@@ -11,9 +11,9 @@
  * export default defineConfig({
  *   schema: './schema.graphql',
  *   documents: './src/*.graphql',
- *   generates: {
+ *   outputs: {
  *     './src/generated/types.ts': {
- *       plugins: ['typescript', 'typescript-operations'],
+ *       generators: ['schema-types', 'operation-types'],
  *     },
  *   },
  * });
@@ -24,8 +24,8 @@
 export type {
     CodegenConfig,
     OutputConfig,
-    PluginConfig,
-    PluginOptions,
+    GeneratorConfig,
+    GeneratorOptions,
 } from './types.js'
 
 // Config helper

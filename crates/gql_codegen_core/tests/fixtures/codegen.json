@@ -1,12 +1,12 @@
 {
   "schema": "schemas/basic.graphql",
   "documents": ["documents/*.graphql", "documents/*.tsx"],
-  "generates": {
+  "outputs": {
     "__generated__/types.ts": {
-      "plugins": ["typescript", "typescript-operations"]
+      "generators": ["schema-types", "operation-types"]
     },
     "__generated__/documents.ts": {
-      "plugins": ["typescript-documents"]
+      "generators": ["typed-documents"]
     }
   }
 }

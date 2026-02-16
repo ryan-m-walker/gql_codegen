@@ -14,7 +14,7 @@ use apollo_compiler::{Node, Schema};
 use indexmap::IndexMap;
 
 use crate::codegen::{GenerateResult, GeneratedFile};
-use crate::config::PluginOptions;
+use crate::config::GeneratorOptions;
 use crate::documents::collect_documents;
 use crate::extract::ExtractConfig;
 use crate::generators::{GeneratorContext, run_generator};
@@ -48,34 +48,34 @@ enum Source {
 /// // From fixture files
 /// let output = TestGen::new()
 ///     .schema("schemas/enum.graphql")
-///     .options(PluginOptions { enums_as_types: Some(true), ..Default::default() })
+///     .options(GeneratorOptions { enums_as_types: Some(true), ..Default::default() })
 ///     .generate();
 ///
 /// // From inline strings
 /// let output = TestGen::new()
 ///     .schema_str("type Query { hello: String }")
 ///     .operations_str("query Hello { hello }")
-///     .plugin("typescript-operations")
+///     .generator("operation-types")
 ///     .generate();
 /// ```
 pub struct TestGen {
     schemas: Vec<Source>,
     operations: Vec<Source>,
-    plugin: String,
-    options: PluginOptions,
+    generator: String,
+    options: GeneratorOptions,
     include_base_schema: bool,
 }
 
 impl TestGen {
     /// Create a new builder with sensible defaults.
     ///
-    /// Defaults: `"typescript"` plugin, SGC defaults, auto-includes `schemas/base.graphql`.
+    /// Defaults: `"schema-types"` generator, SGC defaults, auto-includes `schemas/base.graphql`.
     pub fn new() -> Self {
         Self {
             schemas: Vec::new(),
             operations: Vec::new(),
-            plugin: "typescript".to_string(),
-            options: PluginOptions::default(),
+            generator: "schema-types".to_string(),
+            options: GeneratorOptions::default(),
             include_base_schema: true,
         }
     }
@@ -104,14 +104,14 @@ impl TestGen {
         self
     }
 
-    /// Set the plugin name (default: `"typescript"`).
-    pub fn plugin(mut self, name: &str) -> Self {
-        self.plugin = name.to_string();
+    /// Set the generator name (default: `"schema-types"`).
+    pub fn generator(mut self, name: &str) -> Self {
+        self.generator = name.to_string();
         self
     }
 
-    /// Set plugin options.
-    pub fn options(mut self, options: PluginOptions) -> Self {
+    /// Set generator options.
+    pub fn options(mut self, options: GeneratorOptions) -> Self {
         self.options = options;
         self
     }
@@ -137,7 +137,7 @@ impl TestGen {
     /// Run generation and return a [`Result`] for error testing.
     ///
     /// Bypasses `generate_from_input` and `merge_options` — the supplied
-    /// `PluginOptions` are passed directly to the generator, so test
+    /// `GeneratorOptions` are passed directly to the generator, so test
     /// overrides like `immutable_types: false` work without being
     /// discarded by the production merge logic.
     pub fn try_generate(&self) -> Result<GenerateResult> {
@@ -223,7 +223,7 @@ impl TestGen {
             diagnostics: &mut diagnostics,
         };
 
-        run_generator(&self.plugin, &mut ctx)?;
+        run_generator(&self.generator, &mut ctx)?;
 
         let content =
             String::from_utf8(buffer).expect("generator output should be valid UTF-8");
@@ -268,7 +268,7 @@ const DEFAULT_SCHEMA: &str = "type Query { _: Boolean }";
 /// ```
 pub struct TestCtxBuilder {
     schemas: Vec<Source>,
-    options: PluginOptions,
+    options: GeneratorOptions,
     include_default_schema: bool,
 }
 
@@ -285,7 +285,7 @@ impl TestCtxBuilder {
     pub fn new() -> Self {
         Self {
             schemas: Vec::new(),
-            options: PluginOptions::default(),
+            options: GeneratorOptions::default(),
             include_default_schema: true,
         }
     }
@@ -295,7 +295,7 @@ impl TestCtxBuilder {
     pub fn with_schema(path: &str) -> Self {
         Self {
             schemas: vec![Source::File(path.to_string())],
-            options: PluginOptions::default(),
+            options: GeneratorOptions::default(),
             include_default_schema: false,
         }
     }
@@ -305,13 +305,13 @@ impl TestCtxBuilder {
     pub fn with_schema_str(sdl: &str) -> Self {
         Self {
             schemas: vec![Source::Inline(sdl.to_string())],
-            options: PluginOptions::default(),
+            options: GeneratorOptions::default(),
             include_default_schema: false,
         }
     }
 
-    /// Set plugin options.
-    pub fn options(mut self, options: PluginOptions) -> Self {
+    /// Set generator options.
+    pub fn options(mut self, options: GeneratorOptions) -> Self {
         self.options = options;
         self
     }
@@ -383,7 +383,7 @@ impl TestCtxBuilder {
 /// to extract specific types from the schema.
 pub struct TestCtx {
     pub schema: Valid<Schema>,
-    pub options: PluginOptions,
+    pub options: GeneratorOptions,
 }
 
 impl TestCtx {

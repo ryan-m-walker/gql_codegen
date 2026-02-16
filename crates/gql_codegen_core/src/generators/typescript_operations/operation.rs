@@ -28,6 +28,7 @@ pub(crate) fn render_operation(
     writeln!(ctx.writer, "{{")?;
     render_normalized(ctx, &normalized, 0)?;
     render_decl_closing(ctx)?;
+    writeln!(ctx.writer)?;
 
     render_variables(ctx, &name, operation)?;
 

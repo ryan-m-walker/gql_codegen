@@ -1,13 +1,13 @@
 //! Focused tests for typescript-operations config options using inline schemas
 //! and string assertions.
 //!
-//! Uses TestGen with `.plugin("typescript-operations")` and inline schemas/operations
+//! Uses TestGen with `.generator("operation-types")` and inline schemas/operations
 //! to test individual config knobs against expected output.
 
 use std::collections::BTreeMap;
 
 use gql_codegen_core::test_utils::TestGen;
-use gql_codegen_core::{PluginOptions, ScalarConfig, TypenamePolicy};
+use gql_codegen_core::{GeneratorOptions, ScalarConfig, TypenamePolicy};
 
 const SCHEMA: &str = "\
 type Query { user(id: ID!): User, users: [User!]! }
@@ -25,12 +25,12 @@ query GetUser($id: ID!) {
 ";
 
 /// Helper: generate typescript-operations from inline schema + query
-fn gen_ops(schema: &str, query: &str, options: PluginOptions) -> String {
+fn gen_ops(schema: &str, query: &str, options: GeneratorOptions) -> String {
     TestGen::new()
         .no_base_schema()
         .schema_str(schema)
         .operations_str(query)
-        .plugin("typescript-operations")
+        .generator("operation-types")
         .options(options)
         .generate()
 }
@@ -39,7 +39,7 @@ fn gen_ops(schema: &str, query: &str, options: PluginOptions) -> String {
 
 #[test]
 fn baseline_generates_query_and_variables() {
-    let output = gen_ops(SCHEMA, QUERY, PluginOptions::default());
+    let output = gen_ops(SCHEMA, QUERY, GeneratorOptions::default());
 
     // Should generate result type (operation name + root type suffix, respects declarationKind)
     assert!(output.contains("export interface GetUserQuery {"));
@@ -61,9 +61,9 @@ fn immutable_types_adds_readonly() {
     let output = gen_ops(
         SCHEMA,
         QUERY,
-        PluginOptions {
-            immutable_types: true,
-            ..PluginOptions::default()
+        GeneratorOptions {
+            immutable_types: Some(true),
+            ..GeneratorOptions::default()
         },
     );
 
@@ -79,10 +79,10 @@ fn mutable_types_no_readonly() {
         .no_base_schema()
         .schema_str(SCHEMA)
         .operations_str(QUERY)
-        .plugin("typescript-operations")
-        .options(PluginOptions {
-            immutable_types: false,
-            ..PluginOptions::default()
+        .generator("operation-types")
+        .options(GeneratorOptions {
+            immutable_types: Some(false),
+            ..GeneratorOptions::default()
         })
         .generate();
 
@@ -97,9 +97,9 @@ fn skip_typename_omits_typename_field() {
     let output = gen_ops(
         SCHEMA,
         query,
-        PluginOptions {
+        GeneratorOptions {
             skip_typename: true,
-            ..PluginOptions::default()
+            ..GeneratorOptions::default()
         },
     );
 
@@ -110,7 +110,7 @@ fn skip_typename_omits_typename_field() {
 #[test]
 fn typename_included_by_default() {
     let query = "query GetUser($id: ID!) { user(id: $id) { __typename id } }";
-    let output = gen_ops(SCHEMA, query, PluginOptions::default());
+    let output = gen_ops(SCHEMA, query, GeneratorOptions::default());
 
     // SGC default: typename_policy: Always → __typename is always optional
     assert!(output.contains("__typename?: 'User';"));
@@ -124,9 +124,9 @@ fn typename_policy_always_injects_even_when_not_selected() {
     let output = gen_ops(
         SCHEMA,
         query,
-        PluginOptions {
+        GeneratorOptions {
             typename_policy: Some(TypenamePolicy::Always),
-            ..PluginOptions::default()
+            ..GeneratorOptions::default()
         },
     );
 
@@ -140,9 +140,9 @@ fn typename_policy_as_selected_only_when_queried() {
     let output = gen_ops(
         SCHEMA,
         query,
-        PluginOptions {
+        GeneratorOptions {
             typename_policy: Some(TypenamePolicy::AsSelected),
-            ..PluginOptions::default()
+            ..GeneratorOptions::default()
         },
     );
 
@@ -156,9 +156,9 @@ fn typename_policy_as_selected_non_optional_when_queried() {
     let output = gen_ops(
         SCHEMA,
         query,
-        PluginOptions {
+        GeneratorOptions {
             typename_policy: Some(TypenamePolicy::AsSelected),
-            ..PluginOptions::default()
+            ..GeneratorOptions::default()
         },
     );
 
@@ -172,9 +172,9 @@ fn typename_policy_skip_never_emits() {
     let output = gen_ops(
         SCHEMA,
         query,
-        PluginOptions {
+        GeneratorOptions {
             typename_policy: Some(TypenamePolicy::Skip),
-            ..PluginOptions::default()
+            ..GeneratorOptions::default()
         },
     );
 
@@ -188,9 +188,9 @@ fn skip_typename_bool_backwards_compat() {
     let output = gen_ops(
         SCHEMA,
         query,
-        PluginOptions {
+        GeneratorOptions {
             skip_typename: true,
-            ..PluginOptions::default()
+            ..GeneratorOptions::default()
         },
     );
 
@@ -203,10 +203,10 @@ fn typename_policy_always_with_non_optional() {
     let output = gen_ops(
         SCHEMA,
         query,
-        PluginOptions {
+        GeneratorOptions {
             typename_policy: Some(TypenamePolicy::Always),
             non_optional_typename: true,
-            ..PluginOptions::default()
+            ..GeneratorOptions::default()
         },
     );
 
@@ -229,9 +229,9 @@ scalar DateTime
     let output = gen_ops(
         schema,
         query,
-        PluginOptions {
+        GeneratorOptions {
             scalars,
-            ..PluginOptions::default()
+            ..GeneratorOptions::default()
         },
     );
 
@@ -257,9 +257,9 @@ scalar DateTime
     let output = gen_ops(
         schema,
         query,
-        PluginOptions {
+        GeneratorOptions {
             scalars,
-            ..PluginOptions::default()
+            ..GeneratorOptions::default()
         },
     );
 
@@ -271,7 +271,7 @@ scalar DateTime
 
 #[test]
 fn variables_non_null_no_optional() {
-    let output = gen_ops(SCHEMA, QUERY, PluginOptions::default());
+    let output = gen_ops(SCHEMA, QUERY, GeneratorOptions::default());
 
     // $id: ID! — non-null, should not have ?
     // Variables type uses operation name + root type suffix
@@ -282,7 +282,7 @@ fn variables_non_null_no_optional() {
 fn variables_with_default_value_are_optional() {
     let schema = "type Query { greet(name: String!): String! }";
     let query = "query Greet($name: String! = \"World\") { greet(name: $name) }";
-    let output = gen_ops(schema, query, PluginOptions::default());
+    let output = gen_ops(schema, query, GeneratorOptions::default());
 
     // Variable with default value — currently rendered without optional marker
     // TODO: variables with default values should be optional (name?: string)
@@ -293,7 +293,7 @@ fn variables_with_default_value_are_optional() {
 fn variables_nullable_are_optional() {
     let schema = "type Query { search(query: String): [String!]! }";
     let query = "query Search($query: String) { search(query: $query) }";
-    let output = gen_ops(schema, query, PluginOptions::default());
+    let output = gen_ops(schema, query, GeneratorOptions::default());
 
     // Nullable variable — type includes `| null` but no `?:` optional marker
     // TODO: nullable variables should use optional marker (query?: string | null)
@@ -310,7 +310,7 @@ type Mutation { createUser(name: String!): User! }
 type User { id: ID!, name: String! }
 ";
     let mutation = "mutation CreateUser($name: String!) { createUser(name: $name) { id name } }";
-    let output = gen_ops(schema, mutation, PluginOptions::default());
+    let output = gen_ops(schema, mutation, GeneratorOptions::default());
 
     assert!(output.contains("export interface CreateUserMutation {"));
     assert!(output.contains("export interface CreateUserMutationVariables {"));
@@ -327,7 +327,7 @@ type User { id: ID!, profile: Profile }
 type Profile { bio: String, avatar: String }
 ";
     let query = "query GetUser { user { id profile { bio avatar } } }";
-    let output = gen_ops(schema, query, PluginOptions::default());
+    let output = gen_ops(schema, query, GeneratorOptions::default());
 
     // Nested selection should render as inline object
     assert!(output.contains("profile"));
@@ -342,9 +342,9 @@ fn no_export_removes_export_keyword() {
     let output = gen_ops(
         SCHEMA,
         QUERY,
-        PluginOptions {
+        GeneratorOptions {
             no_export: true,
-            ..PluginOptions::default()
+            ..GeneratorOptions::default()
         },
     );
 
@@ -365,7 +365,7 @@ fragment UserFields on User {
   email
 }
 ";
-    let output = gen_ops(SCHEMA, query, PluginOptions::default());
+    let output = gen_ops(SCHEMA, query, GeneratorOptions::default());
 
     // Fragment name gets "Fragment" suffix, respects declarationKind
     assert!(output.contains("export interface UserFieldsFragment {"));
@@ -379,7 +379,7 @@ fragment UserFields on User {
 #[test]
 fn list_field_renders_array_type() {
     let query = "query GetUsers { users { id name } }";
-    let output = gen_ops(SCHEMA, query, PluginOptions::default());
+    let output = gen_ops(SCHEMA, query, GeneratorOptions::default());
 
     // TODO: list fields with sub-selections should wrap with ReadonlyArray<>
     // Currently renders as inline object without array wrapper
@@ -393,7 +393,7 @@ fn list_field_renders_array_type() {
 #[test]
 fn include_directive_makes_field_optional() {
     let query = "query GetUser($id: ID!, $withEmail: Boolean!) { user(id: $id) { id name email @include(if: $withEmail) } }";
-    let output = gen_ops(SCHEMA, query, PluginOptions::default());
+    let output = gen_ops(SCHEMA, query, GeneratorOptions::default());
 
     // email with @include should be optional regardless of schema nullability
     assert!(output.contains("email?:"));
@@ -402,7 +402,7 @@ fn include_directive_makes_field_optional() {
 #[test]
 fn skip_directive_makes_field_optional() {
     let query = "query GetUser($id: ID!, $skipName: Boolean!) { user(id: $id) { id name @skip(if: $skipName) } }";
-    let output = gen_ops(SCHEMA, query, PluginOptions::default());
+    let output = gen_ops(SCHEMA, query, GeneratorOptions::default());
 
     // name with @skip should be optional even though it's non-null in schema
     assert!(output.contains("name?:"));
@@ -429,7 +429,7 @@ query Search {
     ... on Movie { imdbId title }
   }
 }";
-    let output = gen_ops(UNION_SCHEMA, query, PluginOptions::default());
+    let output = gen_ops(UNION_SCHEMA, query, GeneratorOptions::default());
 
     assert!(output.contains("| {"), "Expected discriminated union branch");
     assert!(output.contains("'Book'"), "Expected Book typename literal");
@@ -448,7 +448,7 @@ query GetNode {
     ... on Comment { text }
   }
 }";
-    let output = gen_ops(UNION_SCHEMA, query, PluginOptions::default());
+    let output = gen_ops(UNION_SCHEMA, query, GeneratorOptions::default());
 
     // Should produce discriminated union with shared `id` in each variant
     assert!(output.contains("'Article'"), "Expected Article typename");
@@ -468,7 +468,7 @@ query GetNode {
     ... on Comment { id text }
   }
 }";
-    let output = gen_ops(UNION_SCHEMA, query, PluginOptions::default());
+    let output = gen_ops(UNION_SCHEMA, query, GeneratorOptions::default());
 
     // node is nullable (Node, not Node!), so should include | null
     assert!(output.contains("| null"), "Expected | null for nullable interface field");

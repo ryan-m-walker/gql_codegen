@@ -4,10 +4,9 @@ use apollo_compiler::schema::ObjectType;
 use crate::Result;
 use crate::config::NamingCase;
 use crate::generators::GeneratorContext;
-use crate::generators::common::helpers::{FieldType, render_decl_closing};
+use crate::generators::common::helpers::{FieldType, render_decl_closing, render_decl_opening};
 use crate::generators::common::typename::render_typename;
 use crate::generators::typescript::field::render_field;
-use crate::generators::common::helpers::render_decl_opening;
 use crate::generators::typescript::helpers::render_description;
 
 /// Render a GraphQL object type as TypeScript type to the current writer.
@@ -33,10 +32,6 @@ use crate::generators::typescript::helpers::render_description;
 /// };
 /// ```
 pub(crate) fn render_object(ctx: &mut GeneratorContext, object: &Node<ObjectType>) -> Result<()> {
-    if ctx.options.only_enums {
-        return Ok(());
-    }
-
     let raw_name = object.name.as_str();
     let type_name = ctx.transform_type_name(raw_name);
 

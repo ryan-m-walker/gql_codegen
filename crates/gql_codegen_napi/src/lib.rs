@@ -69,23 +69,15 @@ pub fn generate(options: GenerateOptions) -> Result<GenerateResult> {
         Error::from_reason(diagnostic::render_diagnostics_string(&ds, max_diag))
     })?;
 
-    // Set up cache
-    let base_dir = config
-        .base_dir
-        .as_ref()
-        .map(|s| PathBuf::from(s.as_str()))
-        .unwrap_or_else(|| PathBuf::from("."));
-
     let mut cache: Box<dyn Cache> = if options.no_cache.unwrap_or(false) {
         Box::new(NoCache)
     } else {
-        Box::new(FsCache::new(base_dir.join(".sgc")))
+        Box::new(FsCache::new(".sgc"))
     };
 
     // Run generation — render structured diagnostics on error
-    let result = gql_codegen_core::generate_cached(&config, cache.as_mut()).map_err(|e| {
-        Error::from_reason(diagnostic::render_diagnostics_string(&e, max_diag))
-    })?;
+    let result = gql_codegen_core::generate_cached(&config, cache.as_mut())
+        .map_err(|e| Error::from_reason(diagnostic::render_diagnostics_string(&e, max_diag)))?;
 
     // Convert to NAPI result
     match result {
@@ -178,4 +170,3 @@ pub fn clear_cache(base_dir: String) -> Result<bool> {
         .clear()
         .map_err(|e| Error::from_reason(format!("Failed to clear cache: {e}")))
 }
-

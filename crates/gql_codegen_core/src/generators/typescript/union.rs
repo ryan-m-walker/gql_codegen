@@ -10,10 +10,6 @@ pub(crate) fn render_union(
     name: &Name,
     union: &Node<UnionType>,
 ) -> Result<()> {
-    if ctx.options.only_enums {
-        return Ok(());
-    }
-
     let export = get_export_kw(ctx);
     let readonly = get_readonly_kw(ctx);
     let type_name = ctx.transform_type_name(name.as_str());
@@ -30,7 +26,7 @@ pub(crate) fn render_union(
         }
     }
 
-    if ctx.options.future_proof_unions {
+    if ctx.options.future_proof_unions() {
         write!(ctx.writer, " | {{ {readonly}__typename?: '%other' }}")?;
     }
 

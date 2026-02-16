@@ -4,7 +4,7 @@ use apollo_compiler::Node;
 use apollo_compiler::schema::EnumType;
 
 use crate::Result;
-use crate::config::{NamingCase, NamingConvention, PluginOptions};
+use crate::config::{GeneratorOptions, NamingCase, NamingConvention};
 use crate::generators::GeneratorContext;
 use crate::generators::common::helpers::get_export_kw;
 use crate::generators::typescript::helpers::render_description;
@@ -30,17 +30,8 @@ pub(crate) fn render_enum(ctx: &mut GeneratorContext, enum_type: &Node<EnumType>
     let cased_name = ctx.transform_type_name(enum_type.name.as_str());
     let enum_name = apply_enum_affixes(&cased_name, ctx.options);
 
-    // Priority: numeric_enums > enums_as_const > enums_as_types > ts enum
-    // (matches JS lib: numeric forces TS enum path regardless of other options)
-    if ctx.options.numeric_enums {
-        render_as_ts_enum(ctx, &enum_name, enum_type)?;
-    } else if ctx.options.enums_as_const {
-        render_as_const_object(ctx, &enum_name, enum_type)?;
-    } else if ctx.options.enums_as_types.unwrap_or(true) {
-        render_as_type_union(ctx, &enum_name, enum_type)?;
-    } else {
-        render_as_ts_enum(ctx, &enum_name, enum_type)?;
-    }
+    // TODO: maybe as const enum is ok?
+    render_as_type_union(ctx, &enum_name, enum_type)?;
 
     writeln!(ctx.writer)?;
     Ok(())
@@ -65,7 +56,7 @@ fn render_as_type_union(
     for (i, value) in values.iter().enumerate() {
         let transformed = transform_enum_value(value.as_str(), ctx.options);
 
-        let semi = if i == values.len() - 1 && !ctx.options.future_proof_enums {
+        let semi = if i == values.len() - 1 && !ctx.options.future_proof_enums() {
             ";"
         } else {
             ""
@@ -74,53 +65,10 @@ fn render_as_type_union(
         writeln!(ctx.writer, "  | '{transformed}'{semi}")?;
     }
 
-    if ctx.options.future_proof_enums {
+    if ctx.options.future_proof_enums() {
         writeln!(ctx.writer, "  | '%future added value';")?;
     }
 
-    Ok(())
-}
-
-/// Render as actual TypeScript enum.
-///
-/// **Example:**
-/// ``` typescript
-/// enum Status {
-///     ACTIVE = 'ACTIVE',
-///     INACTIVE = 'INACTIVE',
-/// }
-/// ```
-fn render_as_ts_enum(
-    ctx: &mut GeneratorContext,
-    enum_name: &str,
-    enum_type: &Node<EnumType>,
-) -> Result<()> {
-    let export = get_export_kw(ctx);
-
-    // TODO: warn of config conflict
-    let const_kw = if ctx.options.const_enums && !ctx.options.numeric_enums {
-        "const "
-    } else {
-        ""
-    };
-
-    writeln!(ctx.writer, "{export}{const_kw}enum {enum_name} {{")?;
-
-    for (i, key) in enum_type.values.keys().enumerate() {
-        // TODO: this doesn't work right?
-        let transformed = transform_enum_value(key.as_str(), ctx.options);
-
-        let value = if ctx.options.numeric_enums {
-            i.to_string()
-        } else {
-            format!("'{key}'")
-        };
-
-        // Enum member name is transformed, value stays original
-        writeln!(ctx.writer, "  {transformed} = {value},")?;
-    }
-
-    writeln!(ctx.writer, "}}")?;
     Ok(())
 }
 
@@ -135,7 +83,7 @@ fn render_as_ts_enum(
 ///
 /// export type Status = typeof Status[keyof typeof Status];
 /// ```
-fn render_as_const_object(
+fn _render_as_const_object(
     ctx: &mut GeneratorContext,
     enum_name: &str,
     enum_type: &Node<EnumType>,
@@ -160,8 +108,8 @@ fn render_as_const_object(
 }
 
 /// Apply enum prefix and suffix to a type name based on user configuration
-fn apply_enum_affixes<'a>(type_name: &'a str, options: &PluginOptions) -> Cow<'a, str> {
-    match (&options.enum_prefix, &options.enum_suffix) {
+fn apply_enum_affixes<'a>(type_name: &'a str, options: &GeneratorOptions) -> Cow<'a, str> {
+    match (&options.type_name_prefix, &options.type_name_suffix) {
         (None, None) => Cow::Borrowed(type_name),
         (prefix, suffix) => {
             let prefix = prefix.as_deref().unwrap_or("");
@@ -172,7 +120,7 @@ fn apply_enum_affixes<'a>(type_name: &'a str, options: &PluginOptions) -> Cow<'a
 }
 
 /// Apply naming convention to an enum value
-fn transform_enum_value<'a>(value: &'a str, options: &PluginOptions) -> Cow<'a, str> {
+fn transform_enum_value<'a>(value: &'a str, options: &GeneratorOptions) -> Cow<'a, str> {
     let (case, transform_underscore) = match &options.naming_convention {
         None => (NamingCase::Keep, false),
         Some(NamingConvention::Simple(case)) => (*case, false),

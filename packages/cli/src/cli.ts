@@ -18,8 +18,8 @@ import type { CodegenConfig } from './types.js'
 
 /**
  * Validate that an unknown config value has the fields Node needs to process.
- * Only checks fields used by the Node wrapper (schema, generates).
- * Rust core handles deep validation of plugin configs and documents.
+ * Only checks fields used by the Node wrapper (schema, outputs).
+ * Rust core handles deep validation of generator configs and documents.
  */
 function validateConfig(value: unknown): CodegenConfig {
     if (typeof value !== 'object' || value === null) {
@@ -54,14 +54,14 @@ function validateConfig(value: unknown): CodegenConfig {
     }
 
     if (
-        !('generates' in config) ||
-        typeof config.generates !== 'object' ||
-        config.generates === null
+        !('outputs' in config) ||
+        typeof config.outputs !== 'object' ||
+        config.outputs === null
     ) {
         throw new Error(
-            'Invalid config: missing "generates" field.\n' +
+            'Invalid config: missing "outputs" field.\n' +
                 'Add output targets, e.g.:\n' +
-                '  generates: { "./src/types.ts": { plugins: ["typescript"] } }',
+                '  outputs: { "./src/types.ts": { generators: ["schema-types"] } }',
         )
     }
 
@@ -101,15 +101,6 @@ function toGenerateOptions(
 function formatError(error: unknown): string {
     const message = error instanceof Error ? error.message : String(error)
     return message.endsWith('\n') ? message : `${message}\n`
-}
-
-function getOutputHooks(config: CodegenConfig, filePath: string) {
-    for (const [outputPath, outputConfig] of Object.entries(config.generates)) {
-        if (filePath.endsWith(outputPath) || outputPath.endsWith(filePath)) {
-            return outputConfig.hooks
-        }
-    }
-    return undefined
 }
 
 function plural(count: number, word: string): string {
@@ -181,30 +172,8 @@ function handleResult(
     }
 
     // Run lifecycle hooks on written files
-    if (writeResult.written.length > 0) {
-        const rootHooks = config.hooks
-
-        // afterOneFileWrite — per file, output-level hooks first
-        for (const filePath of writeResult.written) {
-            const outputHooks = getOutputHooks(config, filePath)
-            if (outputHooks?.afterOneFileWrite?.length) {
-                runHooks(outputHooks.afterOneFileWrite, [filePath])
-            }
-            if (rootHooks?.afterOneFileWrite?.length) {
-                runHooks(rootHooks.afterOneFileWrite, [filePath])
-            }
-        }
-
-        // afterAllFileWrite — output-level first (per output), then root-level (all files)
-        for (const filePath of writeResult.written) {
-            const outputHooks = getOutputHooks(config, filePath)
-            if (outputHooks?.afterAllFileWrite?.length) {
-                runHooks(outputHooks.afterAllFileWrite, [filePath])
-            }
-        }
-        if (rootHooks?.afterAllFileWrite?.length) {
-            runHooks(rootHooks.afterAllFileWrite, writeResult.written)
-        }
+    if (writeResult.written.length > 0 && config.hooks?.afterGenerate?.length) {
+        runHooks(config.hooks.afterGenerate, writeResult.written)
     }
 
     if (writeResult.errors.length > 0) {
@@ -253,7 +222,7 @@ export async function run(): Promise<void> {
         // Merge extracted scalars into output configs (user-defined take precedence)
         if (Object.keys(scalars).length > 0) {
             for (const outputConfig of Object.values(
-                resolvedConfig.generates,
+                resolvedConfig.outputs,
             )) {
                 const existing = outputConfig.config?.scalars ?? {}
                 outputConfig.config ??= {}

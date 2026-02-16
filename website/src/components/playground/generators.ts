@@ -15,7 +15,7 @@ import type {
 
 // Helper to extract first output config
 function getOutputConfig(config: CodegenConfig): OutputConfig | null {
-    const outputs = Object.values(config.generates || {})
+    const outputs = Object.values(config.outputs || {})
     return outputs[0] || null
 }
 
@@ -46,9 +46,9 @@ export async function runGraphQLCodegen(
 
     try {
         const outputConfig = getOutputConfig(config)
-        if (!outputConfig || outputConfig.plugins.length === 0) {
+        if (!outputConfig || !outputConfig.generators?.length) {
             return {
-                output: '// No plugins configured',
+                output: '// No generators configured',
                 timeMs: performance.now() - start,
                 warnings: [],
             }
@@ -59,14 +59,15 @@ export async function runGraphQLCodegen(
             ? [{ document: parse(operationsStr) }]
             : []
 
+        // Map SGC generator names to graphql-codegen plugins
         const plugins: Array<Record<string, unknown>> = []
         const pluginMap: Record<string, unknown> = {}
 
-        for (const pluginName of outputConfig.plugins) {
-            if (pluginName === 'typescript') {
+        for (const generatorName of outputConfig.generators) {
+            if (generatorName === 'schema-types' || generatorName === 'typescript') {
                 plugins.push({ typescript: {} })
                 pluginMap.typescript = typescriptPlugin
-            } else if (pluginName === 'typescript-operations') {
+            } else if (generatorName === 'operation-types' || generatorName === 'typescript-operations') {
                 plugins.push({ 'typescript-operations': {} })
                 pluginMap['typescript-operations'] = typescriptOperationsPlugin
             }
@@ -74,7 +75,7 @@ export async function runGraphQLCodegen(
 
         if (plugins.length === 0) {
             return {
-                output: '// No supported plugins configured',
+                output: '// No supported generators configured',
                 timeMs: performance.now() - start,
                 warnings: [],
             }
@@ -110,9 +111,9 @@ export async function runSGC(
     const start = performance.now()
 
     const outputConfig = getOutputConfig(config)
-    if (!outputConfig || outputConfig.plugins.length === 0) {
+    if (!outputConfig || !outputConfig.generators?.length) {
         return {
-            output: '// No plugins configured',
+            output: '// No generators configured',
             timeMs: performance.now() - start,
             warnings: [],
         }

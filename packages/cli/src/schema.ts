@@ -76,7 +76,7 @@ export async function resolveSchemas(
     }
 
     for (const schemaPath of paths) {
-        const loaded = await loadSchema(schemaPath, cacheDir)
+        const loaded = await loadSchema(schemaPath)
 
         if (loaded) {
             result.schemaContent.push(loaded.sdl)

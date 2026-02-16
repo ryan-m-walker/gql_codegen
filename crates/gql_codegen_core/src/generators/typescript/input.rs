@@ -3,9 +3,8 @@ use apollo_compiler::schema::InputObjectType;
 
 use crate::Result;
 use crate::generators::GeneratorContext;
-use crate::generators::common::helpers::{FieldType, render_decl_closing};
+use crate::generators::common::helpers::{FieldType, render_decl_closing, render_decl_opening};
 use crate::generators::typescript::field::render_field;
-use crate::generators::common::helpers::render_decl_opening;
 use crate::generators::typescript::helpers::render_description;
 
 /// Render a GraphQL input object type as TypeScript type to the current writer.
@@ -29,10 +28,6 @@ pub(crate) fn render_input(
     ctx: &mut GeneratorContext,
     input: &Node<InputObjectType>,
 ) -> Result<()> {
-    if ctx.options.only_enums {
-        return Ok(());
-    }
-
     let type_name = ctx.transform_type_name(input.name.as_str());
 
     render_description(ctx, &input.description, 0)?;

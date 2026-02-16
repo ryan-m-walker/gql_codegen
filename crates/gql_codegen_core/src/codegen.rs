@@ -15,7 +15,7 @@ use apollo_compiler::validation::Valid;
 use crate::cache::{
     Cache, MetadataCheckResult, compute_hashes_from_cache, create_glob_cache, is_glob_cache_valid,
 };
-use crate::config::{AvoidOptionals, OutputConfig, PluginOptions};
+use crate::config::{GeneratorConfig, GeneratorOptions, OutputConfig};
 use crate::diagnostic::{Diagnostic, DiagnosticCategory, Diagnostics};
 use crate::documents::{
     CollectedDocuments, collect_documents, expand_document_globs, load_sources_from_paths,
@@ -26,6 +26,9 @@ use crate::schema::{load_schema_from_contents, resolve_schema_paths};
 use crate::source_cache::SourceCache;
 use crate::validation::validate_options;
 use crate::{CodegenConfig, Result};
+
+/// Default generators when none are specified in config
+const DEFAULT_GENERATOR_NAMES: [&str; 2] = ["schema-types", "operation-types"];
 
 /// Result of code generation
 #[derive(Debug, Clone)]
@@ -63,7 +66,7 @@ pub struct GenerateInput<'a> {
     /// Collected operations and fragments
     pub documents: &'a CollectedDocuments<'a>,
     /// Output configurations
-    pub generates: &'a HashMap<String, OutputConfig>,
+    pub outputs: &'a HashMap<String, OutputConfig>,
 }
 
 /// Pure generation function - NO filesystem access
@@ -74,12 +77,12 @@ pub fn generate_from_input(input: &GenerateInput) -> Result<GenerateResult> {
     let mut diagnostics = input.documents.diagnostics.clone();
 
     let mut result = GenerateResult {
-        files: Vec::with_capacity(input.generates.len()),
+        files: Vec::with_capacity(input.outputs.len()),
         diagnostics: Diagnostics::new(),
     };
 
     // Generate each output file
-    for (output_path, output_config) in input.generates {
+    for (output_path, output_config) in input.outputs {
         let mut content = String::new();
 
         // Add prelude if configured
@@ -88,8 +91,8 @@ pub fn generate_from_input(input: &GenerateInput) -> Result<GenerateResult> {
             content.push('\n');
         }
 
-        // Start with SGC defaults, then merge user scalars from config
-        let mut base_options = PluginOptions::default();
+        // Start with SGC defaults, then merge user config
+        let mut base_options = GeneratorOptions::default();
         if let Some(ref config_options) = output_config.config {
             base_options = merge_options(&base_options, Some(config_options));
         }
@@ -97,9 +100,19 @@ pub fn generate_from_input(input: &GenerateInput) -> Result<GenerateResult> {
         // Validate resolved options and collect config warnings
         validate_options(&base_options, &mut diagnostics);
 
-        for plugin in &output_config.plugins {
-            let plugin_name = plugin.name();
-            let options = merge_options(&base_options, plugin.options());
+        // Resolve generators — use defaults if omitted
+        let default_generators: Vec<GeneratorConfig> = DEFAULT_GENERATOR_NAMES
+            .iter()
+            .map(|name| GeneratorConfig::Name(name.to_string()))
+            .collect();
+        let generators = output_config
+            .generators
+            .as_deref()
+            .unwrap_or(&default_generators);
+
+        for generator in generators {
+            let generator_name = generator.name();
+            let options = merge_options(&base_options, generator.options());
 
             let mut buffer = Vec::new();
 
@@ -113,8 +126,8 @@ pub fn generate_from_input(input: &GenerateInput) -> Result<GenerateResult> {
             };
 
             let t0 = web_time::Instant::now();
-            run_generator(plugin_name, &mut ctx)?;
-            crate::timing!(format!("  Plugin '{}'", plugin_name), t0.elapsed());
+            run_generator(generator_name, &mut ctx)?;
+            crate::timing!(format!("  Generator '{}'", generator_name), t0.elapsed());
 
             // Safe: our generators only output valid UTF-8
             content.push_str(
@@ -137,11 +150,8 @@ pub fn generate_from_input(input: &GenerateInput) -> Result<GenerateResult> {
 /// Reads schema and document files from disk based on config paths.
 /// For more control over I/O and caching, use [`generate_from_input`] instead.
 pub fn generate(config: &CodegenConfig) -> Result<GenerateResult> {
-    let base_dir = config
-        .base_dir
-        .as_ref()
-        .map(|s| PathBuf::from(s.as_str()))
-        .unwrap_or_else(|| PathBuf::from("."));
+    // TODO: simplify this
+    let base_dir = PathBuf::from(".");
 
     // Build schema from both file paths and pre-resolved SDL content
     let schema_paths = resolve_schema_paths(&config.schema.as_vec(), Some(&base_dir));
@@ -177,116 +187,81 @@ pub fn generate(config: &CodegenConfig) -> Result<GenerateResult> {
     let input = GenerateInput {
         schema: &schema,
         documents: &documents,
-        generates: &config.generates,
+        outputs: &config.outputs,
     };
 
     generate_from_input(&input)
 }
 
-/// What `#[serde(skip)]` produces for each field — the type-level defaults
-/// (bool → false, Option → None, etc.), NOT the SGC defaults.
+/// What `#[serde(skip)]` and `#[serde(default)]` produce for each field —
+/// the type-level defaults (bool → false, Option → None, etc.),
+/// NOT the SGC defaults.
 ///
 /// Used by `merge_options` to detect which fields were explicitly set.
-fn serde_field_defaults() -> PluginOptions {
-    PluginOptions {
+fn serde_field_defaults() -> GeneratorOptions {
+    GeneratorOptions {
         scalars: BTreeMap::new(),
-        use_utility_types: false,
-        inline_fragments: false,
-        dedupe_selections: false,
-        disable_descriptions: false,
+        // Exposed Option fields: None means "not set" in deserialized JSON
+        immutable_types: None,
+        enums_as_types: None,
+        future_proof_enums: None,
+        future_proof_unions: None,
+        declaration_kind: None,
+        type_name_prefix: None,
+        type_name_suffix: None,
+        // Internal fields: type defaults
         strict_scalars: false,
         default_scalar_type: None,
-        immutable_types: false,
-        enums_as_types: None,
-        enums_as_const: false,
-        future_proof_enums: false,
-        future_proof_unions: false,
-        enum_prefix: None,
-        enum_suffix: None,
-        const_enums: false,
-        numeric_enums: false,
-        only_enums: false,
-        no_export: false,
-        only_operation_types: false,
-        skip_typename: false,
-        non_optional_typename: false,
-        avoid_optionals: AvoidOptionals::default(),
-        maybe_value: None,
-        input_maybe_value: None,
-        declaration_kind: None,
-        types_prefix: None,
-        types_suffix: None,
-        use_type_imports: false,
-        graphql_tag: None,
         naming_convention: None,
         typename_policy: None,
-        pretty_documents: false,
+        only_referenced_types: false,
     }
 }
 
-/// Merge base options with plugin-specific overrides.
+/// Merge base options with generator-specific overrides.
 ///
 /// Compares each field against `serde_field_defaults()` — the type-level
-/// defaults that `#[serde(skip)]` produces. If a field differs from that
-/// baseline, it was explicitly set (either in test code or by a future
-/// config path) and takes precedence over the base (SGC defaults).
-///
-/// In the production path, deserialized JSON configs have all `#[serde(skip)]`
-/// fields at type defaults, so only `scalars` can differ and override the base.
-/// In tests, Rust code can construct `PluginOptions { immutable_types: false, .. }`
-/// and the override is preserved.
-fn merge_options(base: &PluginOptions, plugin: Option<&PluginOptions>) -> PluginOptions {
-    let Some(p) = plugin else {
+/// defaults that serde produces for unset fields. If a field differs from
+/// that baseline, it was explicitly set and takes precedence over the base
+/// (SGC defaults).
+fn merge_options(
+    base: &GeneratorOptions,
+    generator: Option<&GeneratorOptions>,
+) -> GeneratorOptions {
+    let Some(g) = generator else {
         return base.clone();
     };
 
     let defaults = serde_field_defaults();
 
     macro_rules! merge_field {
-        ($result:expr, $plugin:expr, $defaults:expr, $($field:ident),+ $(,)?) => {
+        ($result:expr, $generator:expr, $defaults:expr, $($field:ident),+ $(,)?) => {
             $(
-                if $plugin.$field != $defaults.$field {
-                    $result.$field = $plugin.$field.clone();
+                if $generator.$field != $defaults.$field {
+                    $result.$field = $generator.$field.clone();
                 }
             )+
         };
     }
 
     let mut result = base.clone();
+
     merge_field!(
-        result, p, defaults,
+        result,
+        g,
+        defaults,
         scalars,
-        use_utility_types,
-        inline_fragments,
-        dedupe_selections,
-        disable_descriptions,
         strict_scalars,
         default_scalar_type,
         immutable_types,
         enums_as_types,
-        enums_as_const,
         future_proof_enums,
         future_proof_unions,
-        enum_prefix,
-        enum_suffix,
-        const_enums,
-        numeric_enums,
-        only_enums,
-        no_export,
-        only_operation_types,
-        skip_typename,
-        non_optional_typename,
-        avoid_optionals,
-        maybe_value,
-        input_maybe_value,
         declaration_kind,
-        types_prefix,
-        types_suffix,
-        use_type_imports,
-        graphql_tag,
+        type_name_prefix,
+        type_name_suffix,
         naming_convention,
         typename_policy,
-        pretty_documents,
     );
     result
 }
@@ -306,11 +281,8 @@ pub fn generate_cached(
 ) -> Result<GenerateCachedResult> {
     let start = web_time::Instant::now();
 
-    let base_dir = config
-        .base_dir
-        .as_ref()
-        .map(|s| PathBuf::from(s.as_str()))
-        .unwrap_or_else(|| PathBuf::from("."));
+    // TODO: simplify this
+    let base_dir = PathBuf::from(".");
 
     let schema_paths = resolve_schema_paths(&config.schema.as_vec(), Some(&base_dir));
 
@@ -419,7 +391,7 @@ pub fn generate_cached(
     let input = GenerateInput {
         schema: &schema,
         documents: &documents,
-        generates: &config.generates,
+        outputs: &config.outputs,
     };
     let result = generate_from_input(&input)?;
     crate::timing!("Code generation", t0.elapsed());

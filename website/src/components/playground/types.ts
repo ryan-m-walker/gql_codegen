@@ -3,12 +3,12 @@ export type OutputTab = 'output' | 'diagnostics'
 
 // Matches SGC config structure
 export interface OutputConfig {
-    plugins: string[]
+    generators?: string[]
     config?: Record<string, unknown>
 }
 
 export interface CodegenConfig {
-    generates: {
+    outputs: {
         [outputPath: string]: OutputConfig
     }
 }

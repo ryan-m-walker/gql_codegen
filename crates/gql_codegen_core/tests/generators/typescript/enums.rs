@@ -1,12 +1,12 @@
 //! Tests for enum generation with different configuration options
 
-use gql_codegen_core::PluginOptions;
+use gql_codegen_core::GeneratorOptions;
 
 use super::generate_with_options;
 
 #[test]
 fn test_enums_default() {
-    let output = generate_with_options(&["schemas/enum.graphql"], PluginOptions::default());
+    let output = generate_with_options(&["schemas/enum.graphql"], GeneratorOptions::default());
     insta::assert_snapshot!(output);
 }
 
@@ -14,9 +14,9 @@ fn test_enums_default() {
 fn test_enums_as_types() {
     let output = generate_with_options(
         &["schemas/enum.graphql"],
-        PluginOptions {
+        GeneratorOptions {
             enums_as_types: Some(true),
-            ..PluginOptions::default()
+            ..GeneratorOptions::default()
         },
     );
     insta::assert_snapshot!(output);
@@ -26,10 +26,10 @@ fn test_enums_as_types() {
 fn test_enums_future_proof() {
     let output = generate_with_options(
         &["schemas/enum.graphql"],
-        PluginOptions {
+        GeneratorOptions {
             enums_as_types: Some(true),
-            future_proof_enums: true,
-            ..PluginOptions::default()
+            future_proof_enums: Some(true),
+            ..GeneratorOptions::default()
         },
     );
     insta::assert_snapshot!(output);
@@ -39,10 +39,10 @@ fn test_enums_future_proof() {
 fn test_const_enums() {
     let output = generate_with_options(
         &["schemas/enum.graphql"],
-        PluginOptions {
+        GeneratorOptions {
             enums_as_types: Some(false),
             const_enums: true,
-            ..PluginOptions::default()
+            ..GeneratorOptions::default()
         },
     );
     insta::assert_snapshot!(output);

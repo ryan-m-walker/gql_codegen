@@ -1,12 +1,12 @@
 //! Tests for union type generation
 
-use gql_codegen_core::PluginOptions;
+use gql_codegen_core::GeneratorOptions;
 
 use super::generate_with_options;
 
 #[test]
 fn test_unions_default() {
-    let output = generate_with_options(&["schemas/union.graphql"], PluginOptions::default());
+    let output = generate_with_options(&["schemas/union.graphql"], GeneratorOptions::default());
     insta::assert_snapshot!(output);
 }
 
@@ -14,9 +14,9 @@ fn test_unions_default() {
 fn test_unions_skip_typename() {
     let output = generate_with_options(
         &["schemas/union.graphql"],
-        PluginOptions {
+        GeneratorOptions {
             skip_typename: true,
-            ..PluginOptions::default()
+            ..GeneratorOptions::default()
         },
     );
     insta::assert_snapshot!(output);

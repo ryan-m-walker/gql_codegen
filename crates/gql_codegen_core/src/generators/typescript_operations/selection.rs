@@ -255,17 +255,12 @@ fn _render_field(
     depth: usize,
 ) -> Result<()> {
     let readonly = get_readonly_kw(ctx);
-    let avoid_optionals = ctx.options.avoid_optionals.normalize();
 
     indent(ctx, depth)?;
 
     let is_nullable = !field.field_type.is_non_null() || field.has_conditional;
 
-    let optional = if is_nullable && !avoid_optionals.field {
-        "?"
-    } else {
-        ""
-    };
+    let optional = if is_nullable { "?" } else { "" };
 
     write!(ctx.writer, "{readonly}{response_name}{optional}: ")?;
 
@@ -426,7 +421,7 @@ pub(crate) fn render_variants(
         writeln!(ctx.writer, "}}")?;
     }
 
-    if ctx.options.future_proof_unions {
+    if ctx.options.future_proof_unions() {
         let readonly = get_readonly_kw(ctx);
         indent(ctx, depth)?;
         write!(ctx.writer, "| {{ {readonly}__typename?: '%other' }}")?;

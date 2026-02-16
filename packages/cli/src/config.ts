@@ -125,15 +125,15 @@ export function resolveConfigPaths(
         ...config,
         schema: resolvePaths(config.schema),
         documents: resolvePaths(config.documents),
-        generates: {},
+        outputs: {},
         // Set baseDir so the Rust CLI knows where the original config was
         baseDir: baseDir,
     }
 
     // Resolve output paths
-    for (const [outputPath, outputConfig] of Object.entries(config.generates)) {
+    for (const [outputPath, outputConfig] of Object.entries(config.outputs)) {
         const resolvedOutputPath = resolvePath(outputPath)
-        resolved.generates[resolvedOutputPath] = outputConfig
+        resolved.outputs[resolvedOutputPath] = outputConfig
     }
 
     return resolved

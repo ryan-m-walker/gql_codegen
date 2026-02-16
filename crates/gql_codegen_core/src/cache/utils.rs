@@ -153,34 +153,35 @@ pub fn normalize_path(path: &str, base_dir: &Path) -> PathBuf {
 pub fn hash_config_options(config: &CodegenConfig) -> u64 {
     let mut hasher = DefaultHasher::new();
 
-    let mut generates: Vec<_> = config.generates.iter().collect();
-    generates.sort_by_key(|(k, _)| *k);
+    let mut outputs: Vec<_> = config.outputs.iter().collect();
+    outputs.sort_by_key(|(k, _)| *k);
 
-    for (output_path, output_config) in generates {
+    for (output_path, output_config) in outputs {
         if let Some(filename) = Path::new(output_path).file_name() {
             filename.hash(&mut hasher);
         }
 
-        for plugin in &output_config.plugins {
-            plugin.name().hash(&mut hasher);
-            if let Some(opts) = plugin.options() {
-                hash_plugin_options(opts, &mut hasher);
+        if let Some(generators) = &output_config.generators {
+            for generator in generators {
+                generator.name().hash(&mut hasher);
+                if let Some(opts) = generator.options() {
+                    hash_generator_options(opts, &mut hasher);
+                }
             }
         }
 
         if let Some(opts) = &output_config.config {
-            hash_plugin_options(opts, &mut hasher);
+            hash_generator_options(opts, &mut hasher);
         }
 
-        output_config.documents_only.hash(&mut hasher);
         output_config.prelude.hash(&mut hasher);
     }
 
     hasher.finish()
 }
 
-fn hash_plugin_options(opts: &crate::config::PluginOptions, hasher: &mut DefaultHasher) {
-    // PluginOptions derives Hash with BTreeMap for deterministic ordering
+fn hash_generator_options(opts: &crate::config::GeneratorOptions, hasher: &mut DefaultHasher) {
+    // GeneratorOptions derives Hash with BTreeMap for deterministic ordering
     opts.hash(hasher);
 }
 

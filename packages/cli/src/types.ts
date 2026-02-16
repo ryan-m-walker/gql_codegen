@@ -12,7 +12,7 @@ export interface CodegenConfig {
     documents: string | string[]
 
     /** Output configurations keyed by output path */
-    generates: Record<string, OutputConfig>
+    outputs: Record<string, OutputConfig>
 
     /** Lifecycle hooks — shell commands run after generation */
     hooks?: HooksConfig
@@ -33,35 +33,44 @@ export interface CodegenConfig {
 }
 
 export interface OutputConfig {
-    /** Plugins to run for this output */
-    plugins: PluginConfig[]
+    /** Generators to run for this output (defaults to all three when omitted) */
+    generators?: GeneratorConfig[]
 
     /** Content to prepend to the output */
     prelude?: string
 
-    /** Shared config for all plugins */
-    config?: PluginOptions
-
-    /** Only generate for documents, skip schema types */
-    documentsOnly?: boolean
-
-    /** Lifecycle hooks — shell commands run after this output is written */
-    hooks?: HooksConfig
+    /** Shared config for all generators */
+    config?: GeneratorOptions
 }
 
-export type PluginConfig = string | Record<string, PluginOptions>
+export type GeneratorConfig = string | Record<string, GeneratorOptions>
 
-export interface PluginOptions {
+export interface GeneratorOptions {
     /** Custom scalar type mappings */
     scalars?: Record<string, string | { input: string; output: string }>
+    /** Whether to generate readonly types */
+    immutableTypes?: boolean
+    /** Use string union types instead of TS enums */
+    enumsAsTypes?: boolean
+    /** Add '%future added value' to enum unions */
+    futureProofEnums?: boolean
+    /** Add '%other' fallback to union types */
+    futureProofUnions?: boolean
+    /** Declaration kind: 'type', 'interface', 'class', or 'abstract class' */
+    declarationKind?: 'type' | 'interface' | 'class' | 'abstract class'
+    /** Prefix for generated type names */
+    typeNamePrefix?: string
+    /** Suffix for generated type names */
+    typeNameSuffix?: string
+
+    strictScalars?: boolean
+
+    onlyReferencedTypes?: boolean
 }
 
 export interface HooksConfig {
-    /** Commands to run after each file is written (receives single file path) */
-    afterOneFileWrite?: string[]
-
-    /** Commands to run after all files are written (receives all file paths) */
-    afterAllFileWrite?: string[]
+    /** Commands to run after generation completes (receives all written file paths) */
+    afterGenerate?: string[]
 }
 
 /**
@@ -74,10 +83,10 @@ export interface HooksConfig {
  *
  * export default defineConfig({
  *   schema: './schema.graphql',
- *   documents: './src/** /*.graphql',
- *   generates: {
+ *   documents: './src/**\/*.graphql',
+ *   outputs: {
  *     './src/generated/types.ts': {
- *       plugins: ['typescript', 'typescript-operations'],
+ *       generators: ['schema-types', 'operation-types'],
  *     },
  *   },
  * });

@@ -1,6 +1,6 @@
 ---
 source: crates/gql_codegen_core/tests/generators/typescript_operations/mod.rs
-assertion_line: 95
+assertion_line: 93
 expression: output
 ---
 export interface GetNodeQuery {
@@ -17,5 +17,6 @@ export interface GetNodeQuery {
       readonly text: string;
     }
     | { readonly __typename?: '%other' }
-   | null | undefined;
+    | null | undefined
+  ;
 }

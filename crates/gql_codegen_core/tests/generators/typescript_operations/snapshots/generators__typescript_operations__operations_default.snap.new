@@ -1,6 +1,6 @@
 ---
 source: crates/gql_codegen_core/tests/generators/typescript_operations/mod.rs
-assertion_line: 65
+assertion_line: 63
 expression: output
 ---
 export interface CreateUserMutation {

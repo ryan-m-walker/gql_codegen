@@ -1,8 +1,8 @@
 use apollo_compiler::Name;
 
+use crate::Result;
 use crate::generators::GeneratorContext;
 use crate::generators::common::helpers::{get_readonly_kw, indent};
-use crate::{Result, TypenamePolicy};
 
 pub(crate) fn render_op_typename(
     ctx: &mut GeneratorContext,
@@ -12,26 +12,12 @@ pub(crate) fn render_op_typename(
 ) -> Result<bool> {
     let policy = ctx.options.resolved_typename_policy();
 
-    let optional = match policy {
-        TypenamePolicy::AsSelected => "",
-        TypenamePolicy::Skip => return Ok(false),
-        TypenamePolicy::Always => {
-            if ctx.options.non_optional_typename {
-                ""
-            } else {
-                "?"
-            }
-        }
-    };
+    // TODO: optional ? or not
 
     let readonly = get_readonly_kw(ctx);
 
     indent(ctx, depth)?;
-    writeln!(
-        ctx.writer,
-        "{readonly}{response_name}{optional}: '{parent_type}';",
-    )?;
+    writeln!(ctx.writer, "{readonly}{response_name}: '{parent_type}';",)?;
 
     Ok(true)
 }
-

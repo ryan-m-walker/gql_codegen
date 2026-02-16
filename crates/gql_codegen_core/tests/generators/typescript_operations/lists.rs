@@ -5,7 +5,7 @@
 //! - Object fields (with sub-selections)
 //! - Variant fields (unions/interfaces with inline fragments)
 
-use gql_codegen_core::PluginOptions;
+use gql_codegen_core::GeneratorOptions;
 use gql_codegen_core::test_utils::TestGen;
 
 /// Helper: generate typescript-operations from inline schema + query
@@ -14,8 +14,8 @@ fn gen_ops(schema: &str, query: &str) -> String {
         .no_base_schema()
         .schema_str(schema)
         .operations_str(query)
-        .plugin("typescript-operations")
-        .options(PluginOptions::default())
+        .generator("operation-types")
+        .options(GeneratorOptions::default())
         .generate()
 }
 
@@ -421,10 +421,10 @@ fn immutable_types_uses_readonly_array() {
         .no_base_schema()
         .schema_str(schema)
         .operations_str(query)
-        .plugin("typescript-operations")
-        .options(PluginOptions {
-            immutable_types: true,
-            ..PluginOptions::default()
+        .generator("operation-types")
+        .options(GeneratorOptions {
+            immutable_types: Some(true),
+            ..GeneratorOptions::default()
         })
         .generate();
 
@@ -439,10 +439,10 @@ fn mutable_types_uses_array() {
         .no_base_schema()
         .schema_str(schema)
         .operations_str(query)
-        .plugin("typescript-operations")
-        .options(PluginOptions {
-            immutable_types: false,
-            ..PluginOptions::default()
+        .generator("operation-types")
+        .options(GeneratorOptions {
+            immutable_types: Some(false),
+            ..GeneratorOptions::default()
         })
         .generate();
 

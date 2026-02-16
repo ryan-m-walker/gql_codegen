@@ -9,12 +9,12 @@ mod scalars;
 mod unions;
 
 use gql_codegen_core::test_utils::TestGen;
-use gql_codegen_core::{Diagnostics, GenerateResult, PluginOptions};
+use gql_codegen_core::{Diagnostics, GenerateResult, GeneratorOptions};
 
 /// Helper to generate TypeScript output from schema files with given options.
 ///
 /// Always includes base.graphql plus any additional schema files specified.
-pub fn generate_with_options(schema_files: &[&str], options: PluginOptions) -> String {
+pub fn generate_with_options(schema_files: &[&str], options: GeneratorOptions) -> String {
     let mut builder = TestGen::new();
     for file in schema_files {
         builder = builder.schema(file);
@@ -25,7 +25,7 @@ pub fn generate_with_options(schema_files: &[&str], options: PluginOptions) -> S
 /// Like generate_with_options but returns Result for error testing.
 pub fn try_generate_with_options(
     schema_files: &[&str],
-    options: PluginOptions,
+    options: GeneratorOptions,
 ) -> Result<GenerateResult, Diagnostics> {
     let mut builder = TestGen::new();
     for file in schema_files {
