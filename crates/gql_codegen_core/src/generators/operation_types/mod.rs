@@ -1,9 +1,11 @@
 use apollo_compiler::Name;
 use apollo_compiler::ast::OperationDefinition;
+use apollo_compiler::schema::ExtendedType;
 
 use crate::generators::GeneratorContext;
-use crate::generators::typescript_operations::fragment::render_fragment;
-use crate::generators::typescript_operations::operation::render_operation;
+use crate::generators::operation_types::fragment::render_fragment;
+use crate::generators::operation_types::operation::render_operation;
+use crate::generators::schema_types::r#enum::render_enum;
 use crate::{ParsedFragment, Result};
 
 mod field;
@@ -45,6 +47,21 @@ enum GenerateItem<'a> {
 pub fn generate_typescript_operations(ctx: &mut GeneratorContext) -> Result<()> {
     let mut items: Vec<GenerateItem> =
         Vec::with_capacity(ctx.fragments.len() + ctx.operations.len());
+
+    let schema_types_generator = ctx.generators.iter().find(|g| g.name() == "schema-types");
+
+    // need to render dependencies if schema types plugin is not available
+    if schema_types_generator.is_none() {
+        for (name, ty) in &ctx.schema.types {
+            if let ExtendedType::Enum(en) = ty {
+                if name.starts_with("__") {
+                    continue;
+                }
+
+                render_enum(ctx, en)?;
+            }
+        }
+    }
 
     for (name, fragment) in ctx.fragments.iter() {
         items.push(GenerateItem::Fragment(name, fragment));

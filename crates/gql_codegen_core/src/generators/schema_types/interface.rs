@@ -4,8 +4,8 @@ use apollo_compiler::schema::InterfaceType;
 use crate::Result;
 use crate::generators::GeneratorContext;
 use crate::generators::common::helpers::{FieldType, render_decl_closing, render_decl_opening};
-use crate::generators::typescript::field::render_field;
-use crate::generators::typescript::helpers::render_description;
+use crate::generators::schema_types::field::render_field;
+use crate::generators::schema_types::helpers::render_description;
 
 /// Render a GraphQL interface type as TypeScript type to the current writer.
 ///
@@ -31,6 +31,7 @@ pub(crate) fn render_interface(
     ctx: &mut GeneratorContext,
     interface: &Node<InterfaceType>,
 ) -> Result<()> {
+    // TODO: typename prefix and suffix
     let type_name = ctx.transform_type_name(interface.name.as_str());
 
     render_description(ctx, &interface.description, 0)?;

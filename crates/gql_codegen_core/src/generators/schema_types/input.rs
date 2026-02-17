@@ -4,8 +4,8 @@ use apollo_compiler::schema::InputObjectType;
 use crate::Result;
 use crate::generators::GeneratorContext;
 use crate::generators::common::helpers::{FieldType, render_decl_closing, render_decl_opening};
-use crate::generators::typescript::field::render_field;
-use crate::generators::typescript::helpers::render_description;
+use crate::generators::schema_types::field::render_field;
+use crate::generators::schema_types::helpers::render_description;
 
 /// Render a GraphQL input object type as TypeScript type to the current writer.
 ///

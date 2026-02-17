@@ -4,10 +4,10 @@ use apollo_compiler::ast::OperationDefinition;
 use crate::Result;
 use crate::generators::GeneratorContext;
 use crate::generators::common::helpers::{render_decl_closing, render_decl_prefix};
-use crate::generators::typescript_operations::selection::{
+use crate::generators::operation_types::selection::{
     NormalizedSelectionSet, collect_selection_set, render_normalized,
 };
-use crate::generators::typescript_operations::variables::render_variables;
+use crate::generators::operation_types::variables::render_variables;
 
 pub(crate) fn render_operation(
     ctx: &mut GeneratorContext,

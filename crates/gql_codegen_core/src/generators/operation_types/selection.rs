@@ -6,12 +6,9 @@ use indexmap::IndexMap;
 use crate::Result;
 use crate::config::TypenamePolicy;
 use crate::generators::GeneratorContext;
-use crate::generators::common::helpers::{
-    FieldType, ScalarDirection, get_array_type, get_optional_prop_modifier, get_readonly_kw,
-    indent, render_decl_closing, render_type,
-};
-use crate::generators::typescript_operations::field::render_field;
-use crate::generators::typescript_operations::typename::render_op_typename;
+use crate::generators::common::helpers::{get_array_type, get_readonly_kw, indent};
+use crate::generators::operation_types::field::render_field;
+use crate::generators::operation_types::typename::render_op_typename;
 
 #[derive(Debug, Clone)]
 pub(crate) struct NormalizedSelection {
@@ -399,14 +396,14 @@ pub(crate) fn render_variants(
         writeln!(ctx.writer, "| {{")?;
 
         // __typename for this variant
-        render_op_typename(ctx, "__typename", type_name, depth + 1)?;
+        render_op_typename(ctx, "__typename", type_name, depth + 2)?;
 
         // Shared fields (from parent's fields, skip __typename — already rendered above)
         for (name, field) in &selection_set.fields {
             if field.field_name == "__typename" {
                 continue;
             }
-            render_field(ctx, name, field, depth + 1)?;
+            render_field(ctx, name, field, depth + 2)?;
         }
 
         // Variant-specific fields
@@ -414,10 +411,10 @@ pub(crate) fn render_variants(
             if field.field_name == "__typename" {
                 continue;
             }
-            render_field(ctx, name, field, depth + 1)?;
+            render_field(ctx, name, field, depth + 2)?;
         }
 
-        indent(ctx, depth)?;
+        indent(ctx, depth + 1)?;
         writeln!(ctx.writer, "}}")?;
     }
 

@@ -123,6 +123,7 @@ pub fn generate_from_input(input: &GenerateInput) -> Result<GenerateResult> {
                 options: &options,
                 writer: &mut buffer,
                 diagnostics: &mut diagnostics,
+                generators,
             };
 
             let t0 = web_time::Instant::now();

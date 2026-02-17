@@ -13,15 +13,15 @@ use apollo_compiler::validation::Valid;
 use apollo_compiler::{Node, Schema};
 use indexmap::IndexMap;
 
+use crate::Result;
 use crate::codegen::{GenerateResult, GeneratedFile};
 use crate::config::GeneratorOptions;
+use crate::diagnostic::{Diagnostic, DiagnosticCategory, Diagnostics};
 use crate::documents::collect_documents;
 use crate::extract::ExtractConfig;
 use crate::generators::{GeneratorContext, run_generator};
 use crate::schema::load_schema_from_contents;
 use crate::source_cache::SourceCache;
-use crate::Result;
-use crate::diagnostic::{Diagnostic, DiagnosticCategory, Diagnostics};
 
 /// Get the path to the test fixtures directory.
 pub fn fixtures_dir() -> PathBuf {
@@ -148,11 +148,12 @@ impl TestGen {
 
         if self.include_base_schema {
             let base = fixtures.join("schemas/base.graphql");
-            let content = std::fs::read_to_string(&base)
-                .map_err(|e| Diagnostics::from(Diagnostic::error(
+            let content = std::fs::read_to_string(&base).map_err(|e| {
+                Diagnostics::from(Diagnostic::error(
                     DiagnosticCategory::Schema,
                     format!("Failed to read schema '{}': {}", base.display(), e),
-                )))?;
+                ))
+            })?;
             schema_files.push((base, content));
         }
 
@@ -161,11 +162,12 @@ impl TestGen {
             match source {
                 Source::File(path) => {
                     let full = fixtures.join(path);
-                    let content = std::fs::read_to_string(&full)
-                        .map_err(|e| Diagnostics::from(Diagnostic::error(
+                    let content = std::fs::read_to_string(&full).map_err(|e| {
+                        Diagnostics::from(Diagnostic::error(
                             DiagnosticCategory::Schema,
                             format!("Failed to read schema '{}': {}", full.display(), e),
-                        )))?;
+                        ))
+                    })?;
                     schema_files.push((full, content));
                 }
                 Source::Inline(sdl) => {
@@ -188,11 +190,12 @@ impl TestGen {
             match source {
                 Source::File(path) => {
                     let full = fixtures.join(path);
-                    let content = std::fs::read_to_string(&full)
-                        .map_err(|e| Diagnostics::from(Diagnostic::error(
+                    let content = std::fs::read_to_string(&full).map_err(|e| {
+                        Diagnostics::from(Diagnostic::error(
                             DiagnosticCategory::Document,
                             format!("Failed to read '{}': {}", full.display(), e),
-                        )))?;
+                        ))
+                    })?;
                     source_cache.push(full, content);
                 }
                 Source::Inline(ops) => {
@@ -221,12 +224,12 @@ impl TestGen {
             options: &self.options,
             writer: &mut buffer,
             diagnostics: &mut diagnostics,
+            generators: &[],
         };
 
         run_generator(&self.generator, &mut ctx)?;
 
-        let content =
-            String::from_utf8(buffer).expect("generator output should be valid UTF-8");
+        let content = String::from_utf8(buffer).expect("generator output should be valid UTF-8");
 
         Ok(GenerateResult {
             files: vec![GeneratedFile {
@@ -406,6 +409,7 @@ impl TestCtx {
             options: &self.options,
             writer: &mut buffer,
             diagnostics: &mut diagnostics,
+            generators: &[],
         };
 
         f(&mut ctx).expect("renderer should not error");

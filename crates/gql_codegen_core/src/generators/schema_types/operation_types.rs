@@ -218,4 +218,3 @@ fn collect_type_name(ty: &Type, out: &mut HashSet<String>) {
         }
     }
 }
-

@@ -7,15 +7,15 @@ use apollo_compiler::schema::ExtendedType;
 
 use super::GeneratorContext;
 use crate::Result;
-use crate::generators::typescript::r#enum::render_enum;
-use crate::generators::typescript::input::render_input;
-use crate::generators::typescript::interface::render_interface;
-use crate::generators::typescript::object::render_object;
-use crate::generators::typescript::operation_types::collect_operation_types;
-use crate::generators::typescript::scalar::render_scalar;
-use crate::generators::typescript::union::render_union;
+use crate::generators::schema_types::r#enum::render_enum;
+use crate::generators::schema_types::input::render_input;
+use crate::generators::schema_types::interface::render_interface;
+use crate::generators::schema_types::object::render_object;
+use crate::generators::schema_types::operation_types::collect_operation_types;
+use crate::generators::schema_types::scalar::render_scalar;
+use crate::generators::schema_types::union::render_union;
 
-mod r#enum;
+pub(crate) mod r#enum;
 mod field;
 mod helpers;
 mod input;
@@ -24,6 +24,7 @@ mod object;
 mod operation_types;
 mod scalar;
 mod union;
+mod variables;
 
 /// Main entry point for the TypeScript generator.
 /// Generates TypeScript types from the GraphQL schema.
@@ -54,7 +55,6 @@ pub fn generate_typescript(ctx: &mut GeneratorContext) -> Result<()> {
         }
 
         let Some(ty) = &ctx.schema.types.get(name) else {
-            // TODO: warn?
             continue;
         };
 

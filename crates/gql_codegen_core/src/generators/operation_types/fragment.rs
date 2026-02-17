@@ -2,7 +2,7 @@ use apollo_compiler::Name;
 
 use crate::generators::GeneratorContext;
 use crate::generators::common::helpers::render_decl_prefix;
-use crate::generators::typescript_operations::selection::{
+use crate::generators::operation_types::selection::{
     NormalizedSelectionSet, collect_selection_set, render_normalized,
 };
 use crate::{ParsedFragment, Result};

@@ -1,12 +1,13 @@
 use std::borrow::Cow;
 
 use apollo_compiler::Name;
-use apollo_compiler::ast::{FieldDefinition, InputValueDefinition, Type};
+use apollo_compiler::ast::{FieldDefinition, InputValueDefinition, Type, VariableDefinition};
 use apollo_compiler::collections::IndexSet;
 use apollo_compiler::schema::{Component, ComponentName};
 
 use crate::config::ScalarConfig;
 use crate::generators::GeneratorContext;
+use crate::generators::common::list::{render_list_closing, render_list_opening};
 use crate::{DeclarationKind, Result};
 
 pub(crate) fn indent(ctx: &mut GeneratorContext, depth: usize) -> Result<()> {
@@ -16,7 +17,6 @@ pub(crate) fn indent(ctx: &mut GeneratorContext, depth: usize) -> Result<()> {
 }
 
 pub(crate) fn get_export_kw(ctx: &GeneratorContext) -> &'static str {
-    // TODO: maybe this is not needed?
     "export "
 }
 
@@ -29,9 +29,29 @@ pub(crate) fn get_readonly_kw(ctx: &GeneratorContext) -> &'static str {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NullableLocation {
+    Field,
+    List,
+}
+
+pub(crate) fn render_nullable_closing(
+    ctx: &mut GeneratorContext,
+    loc: NullableLocation,
+) -> Result<()> {
+    write!(ctx.writer, " | null")?;
+
+    if loc == NullableLocation::List {
+        write!(ctx.writer, " | undefined")?;
+    }
+
+    Ok(())
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum FieldType<'a> {
     Object(&'a Component<FieldDefinition>),
     InputObject(&'a InputValueDefinition),
+    Variable(&'a VariableDefinition),
 }
 
 impl FieldType<'_> {
@@ -39,6 +59,7 @@ impl FieldType<'_> {
         match self {
             FieldType::Object(_) => ScalarDirection::Output,
             FieldType::InputObject(_) => ScalarDirection::Input,
+            FieldType::Variable(_) => ScalarDirection::Input,
         }
     }
 }
@@ -55,6 +76,7 @@ pub(crate) enum ScalarDirection {
 pub(crate) fn get_optional_prop_modifier(field_type: &FieldType) -> &'static str {
     let avoid = match field_type {
         FieldType::Object(field) => field.ty.is_non_null(),
+        FieldType::Variable(field) => field.ty.is_non_null(),
         FieldType::InputObject(field) => {
             let has_default = field.default_value.is_some();
 
@@ -77,29 +99,38 @@ pub(crate) fn unwrap_type_name(ty: &Type) -> Name {
     }
 }
 
-pub(crate) fn wrap_maybe(value: &str) -> String {
-    format!("{value} | null | undefined")
-}
-
+/// TODO: make this actually render, not return string
 /// Recursively render a type, handling nullability at each level
-pub(crate) fn render_type(ctx: &GeneratorContext, ty: &Type, dir: ScalarDirection) -> String {
-    let array_type = get_array_type(ctx);
-
+pub(crate) fn render_type(
+    ctx: &mut GeneratorContext,
+    ty: &Type,
+    dir: ScalarDirection,
+) -> Result<()> {
     match ty {
         Type::Named(name) => {
             let field = render_field_type(ctx, name, dir);
-            wrap_maybe(&field)
+            write!(ctx.writer, "{field}")?;
+            render_nullable_closing(ctx, NullableLocation::Field)?;
         }
-        Type::NonNullNamed(name) => render_field_type(ctx, name, dir).into_owned(),
+        Type::NonNullNamed(name) => {
+            // TODO: make this a render only helper?
+            let field = render_field_type(ctx, name, dir);
+            write!(ctx.writer, "{field}")?;
+        }
         Type::List(inner) => {
-            let inner_type = render_type(ctx, inner.as_ref(), dir);
-            wrap_maybe(&format!("{array_type}<{inner_type}>"))
+            render_list_opening(ctx, ty)?;
+            render_type(ctx, inner.as_ref(), dir)?;
+            render_list_closing(ctx, ty)?;
+            render_nullable_closing(ctx, NullableLocation::Field)?;
         }
         Type::NonNullList(inner) => {
-            let inner_type = render_type(ctx, inner.as_ref(), dir);
-            format!("{array_type}<{inner_type}>")
+            render_list_opening(ctx, ty)?;
+            render_type(ctx, inner.as_ref(), dir)?;
+            render_list_closing(ctx, ty)?;
         }
     }
+
+    Ok(())
 }
 
 /// Gets the array type for a field base on immutable types option
@@ -188,6 +219,7 @@ pub(crate) fn render_decl_prefix(
 
     write!(ctx.writer, "{export}{decl_kind} {name}{separator}")?;
 
+    // TODO: use transformed name (prefix + suffix) for interface name
     if let Some(interfaces) = implements_interfaces.filter(|i| !i.is_empty()) {
         let (kw, joiner, end) = match ctx.options.declaration_kind {
             Some(DeclarationKind::Type) | None => (None, " & ", Some(" &")),

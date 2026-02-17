@@ -7,9 +7,10 @@ use crate::Result;
 use crate::config::{GeneratorOptions, NamingCase, NamingConvention};
 use crate::generators::GeneratorContext;
 use crate::generators::common::helpers::get_export_kw;
-use crate::generators::typescript::helpers::render_description;
+use crate::generators::schema_types::helpers::render_description;
 
 // TODO: js lib is not persisting enum key for ts enums
+// TODO: maybe move this to common since it's shared in operation_types
 
 /// Render a GraphQL enum type as TypeScript type to the current writer.
 ///

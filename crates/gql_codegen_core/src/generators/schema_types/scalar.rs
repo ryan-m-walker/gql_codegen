@@ -8,7 +8,7 @@ use crate::config::ScalarConfig;
 use crate::diagnostic::{Diagnostic, DiagnosticCategory};
 use crate::generators::GeneratorContext;
 use crate::generators::common::helpers::{get_export_kw, render_decl_closing, render_decl_opening};
-use crate::generators::typescript::helpers::render_description;
+use crate::generators::schema_types::helpers::render_description;
 
 const DEFAULT_SCALARS: [(&str, &str); 5] = [
     ("ID", "string"),

@@ -3,9 +3,19 @@ use apollo_compiler::ast::OperationDefinition;
 use crate::Result;
 use crate::generators::GeneratorContext;
 use crate::generators::common::helpers::{
-    ScalarDirection, get_readonly_kw, indent, render_decl_closing, render_decl_opening, render_type,
+    FieldType, ScalarDirection, get_optional_prop_modifier, get_readonly_kw, indent,
+    render_decl_closing, render_decl_opening, render_type,
 };
 
+/// Renders variable for operations as a distinct type.
+///
+/// **Example:**
+///
+/// ``` typescript
+/// export interface GetUserQueryVariables {
+///   readonly id: string;
+/// }
+/// ```
 pub(crate) fn render_variables(
     ctx: &mut GeneratorContext,
     op_name: &str,
@@ -22,10 +32,13 @@ pub(crate) fn render_variables(
     render_decl_opening(ctx, &name, None)?;
 
     for var in &operation.variables {
-        indent(ctx, 1)?;
-        let var_type = render_type(ctx, &var.ty, ScalarDirection::Input);
+        let optional = get_optional_prop_modifier(&FieldType::Variable(var));
         let name = var.name.as_str();
-        writeln!(ctx.writer, "{readonly}{name}: {var_type};")?;
+
+        indent(ctx, 1)?;
+        write!(ctx.writer, "{readonly}{name}{optional}: ")?;
+        render_type(ctx, &var.ty, ScalarDirection::Input)?;
+        writeln!(ctx.writer, ";")?;
     }
 
     render_decl_closing(ctx)?;

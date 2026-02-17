@@ -5,12 +5,12 @@
 mod common;
 mod document_transform;
 mod documents;
-mod typescript;
-mod typescript_operations;
+mod operation_types;
+mod schema_types;
 
 pub use documents::generate_documents;
-pub use typescript::generate_typescript;
-pub use typescript_operations::generate_typescript_operations;
+pub use operation_types::generate_typescript_operations;
+pub use schema_types::generate_typescript;
 
 use std::borrow::Cow;
 use std::io::Write;
@@ -19,10 +19,10 @@ use apollo_compiler::validation::Valid;
 use apollo_compiler::{Name, Schema};
 use indexmap::IndexMap;
 
-use crate::Result;
-use crate::config::{NamingCase, NamingConvention, GeneratorOptions};
+use crate::config::{GeneratorOptions, NamingCase, NamingConvention};
 use crate::diagnostic::{Diagnostic, DiagnosticCategory, Diagnostics};
 use crate::documents::{ParsedFragment, ParsedOperation};
+use crate::{GeneratorConfig, Result};
 
 /// Context passed to all generators
 pub struct GeneratorContext<'a> {
@@ -32,6 +32,7 @@ pub struct GeneratorContext<'a> {
     pub options: &'a GeneratorOptions,
     pub writer: &'a mut dyn Write,
     pub diagnostics: &'a mut Diagnostics,
+    pub generators: &'a [GeneratorConfig],
 }
 
 impl GeneratorContext<'_> {
@@ -49,7 +50,10 @@ impl GeneratorContext<'_> {
         let (case, transform_underscore) = get_type_name_case(self.options);
         let cased = case.apply(name, transform_underscore);
 
-        match (&self.options.type_name_prefix, &self.options.type_name_suffix) {
+        match (
+            &self.options.type_name_prefix,
+            &self.options.type_name_suffix,
+        ) {
             (None, None) => cased,
             (prefix, suffix) => {
                 let prefix = prefix.as_deref().unwrap_or("");
