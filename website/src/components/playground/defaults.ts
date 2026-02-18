@@ -1,76 +1,27 @@
 import type { CodegenConfig } from './types'
 
-export const DEFAULT_SCHEMA = `scalar DateTime
-
-interface Node {
+export const DEFAULT_SCHEMA = `interface Node {
   id: ID!
-}
-
-type Post implements Node {
-  id: ID!
-  title: String!
-  body: String!
-  published: Boolean!
-  author: User!
-  createdAt: DateTime!
 }
 
 type Query {
   node(id: ID!): Node
-  nodes(ids: [ID!]!): [Node]!
-  user(id: ID!): User
-  users: [User!]!
+  nodes(id: [ID!]!): [Node]
 }
 
-enum Role {
-    ADMIN
-    USER
-}
-
-type User implements Node {
+type Review {
   id: ID!
-  name: String!
-  email: String!
-  role: Role!
-  posts: [Post!]!
-  createdAt: DateTime!
-}`
-
-export const DEFAULT_OPERATIONS = `query GetUser($id: ID!) {
-  node(id: $id) {
-    __typename
-    ... on User {
-      id
-      ... UserFields
-    }
-  }
 }
 
-query GetUsers {
-  users {
-    id
-    name
-  }
+type Subscription {
+  reviewCreated: Review
 }
+`
 
-fragment UserFields on User {
-  name
-  email
-  posts {
-    id
-    title
-    published
-  }
-}
-
-query Nodes($ids: [ID!]!) {
-  nodes(ids: $ids) {
-    ... on User {
-      name
-    }
-    ... on Post {
-      title
-    }
+export const DEFAULT_OPERATIONS = `subscription NewReviewCreated {
+  reviewCreated {
+    rating
+    commentary
   }
 }`
 

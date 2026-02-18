@@ -9,6 +9,7 @@ use crate::generators::operation_types::selection::{
 };
 use crate::generators::operation_types::variables::render_variables;
 
+/// Render a GraphQL operations (`query`, `mutation` or `subscription`) as a TypeScript type
 pub(crate) fn render_operation(
     ctx: &mut GeneratorContext,
     name: &Name,

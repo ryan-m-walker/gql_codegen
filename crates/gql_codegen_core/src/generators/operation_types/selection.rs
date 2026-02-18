@@ -6,7 +6,7 @@ use indexmap::IndexMap;
 use crate::Result;
 use crate::config::TypenamePolicy;
 use crate::generators::GeneratorContext;
-use crate::generators::common::helpers::{get_array_type, get_readonly_kw, indent};
+use crate::generators::common::helpers::{get_readonly_kw, indent};
 use crate::generators::operation_types::field::render_field;
 use crate::generators::operation_types::typename::render_op_typename;
 
@@ -220,9 +220,8 @@ pub(crate) fn render_normalized(
     normalized: &NormalizedSelectionSet,
     depth: usize,
 ) -> Result<()> {
-    // writeln!(ctx.writer, "{{")?;
-
     for (response_name, field) in &normalized.fields {
+        // TODO: check policy?
         // __typename: emit string literal type based on policy
         if field.field_name == "__typename" {
             render_op_typename(ctx, response_name, &field.parent_type, depth + 1)?;
@@ -234,149 +233,7 @@ pub(crate) fn render_normalized(
 
     indent(ctx, depth)?;
 
-    // if depth == 0 {
-    //     render_decl_closing(ctx)?;
-    // } else {
-    //     writeln!(ctx.writer, "}};")?;
-    // }
-
     Ok(())
-}
-
-/// Render a single field entry: indentation, name, optionality, and value.
-/// Shared between `render_normalized` and `render_variants`.
-fn _render_field(
-    ctx: &mut GeneratorContext,
-    response_name: &str,
-    field: &NormalizedSelection,
-    depth: usize,
-) -> Result<()> {
-    let readonly = get_readonly_kw(ctx);
-
-    indent(ctx, depth)?;
-
-    let is_nullable = !field.field_type.is_non_null() || field.has_conditional;
-
-    let optional = if is_nullable { "?" } else { "" };
-
-    write!(ctx.writer, "{readonly}{response_name}{optional}: ")?;
-
-    // if !field.children.variants.is_empty() {
-    //     return render_variant_field(ctx, &field.children, &field.field_type, depth);
-    // }
-    //
-    // if field.children.fields.is_empty() {
-    //     let ts_type = render_type(ctx, &field.field_type, ScalarDirection::Output);
-    //     writeln!(ctx.writer, "{ts_type};")?;
-    //     return Ok(());
-    // }
-
-    // TODO: this doesn't work so right
-    // Wrap in array layers (e.g. `ReadonlyArray<`) for list types
-    // let nullable = !field.field_type.is_non_null();
-    // let list_depth = write_list_open(ctx, &field.field_type)?;
-    //
-    // render_normalized(ctx, &field.children, depth + list_depth)?;
-
-    // if list_depth > 0 {
-    //     // Close list layers with nullability
-    //     for i in (0..list_depth).rev() {
-    //         indent(ctx, depth + i)?;
-    //         write!(ctx.writer, ">")?;
-    //         if !is_non_null_at_depth(&field.field_type, i) {
-    //             write!(ctx.writer, " | null")?;
-    //         }
-    //         if i == 0 {
-    //             writeln!(ctx.writer, ";")?;
-    //         } else {
-    //             writeln!(ctx.writer)?;
-    //         }
-    //     }
-    // } else if nullable {
-    // Non-list nullable: already closed by render_normalized's `};`, need ` | null`
-    // Actually render_normalized writes `};` — we need to adjust
-    // }
-
-    Ok(())
-}
-
-/// Render a field whose children contain union/interface variants.
-/// Handles Array/null wrapping around the inline discriminated union.
-fn render_variant_field(
-    ctx: &mut GeneratorContext,
-    children: &NormalizedSelectionSet,
-    field_type: &Type,
-    depth: usize,
-) -> Result<()> {
-    let nullable = !field_type.is_non_null();
-
-    // Unwrap list layers inline (e.g. `ReadonlyArray<\n`)
-    let list_depth = write_list_open(ctx, field_type)?;
-    let variant_depth = depth + list_depth + 1;
-
-    if list_depth == 0 {
-        writeln!(ctx.writer)?;
-    }
-
-    // Render the union variants
-    render_variants(ctx, children, variant_depth)?;
-
-    if list_depth > 0 {
-        // Nullable inner type gets | null before closing >
-        if nullable {
-            indent(ctx, variant_depth)?;
-            writeln!(ctx.writer, "| null")?;
-        }
-
-        // Close list layers: >; or > | null
-        for i in (0..list_depth).rev() {
-            indent(ctx, depth + i)?;
-            write!(ctx.writer, ">")?;
-            if !is_non_null_at_depth(field_type, i) {
-                write!(ctx.writer, " | null")?;
-            }
-            if i == 0 {
-                writeln!(ctx.writer, ";")?;
-            } else {
-                writeln!(ctx.writer)?;
-            }
-        }
-    } else if nullable {
-        indent(ctx, variant_depth)?;
-        writeln!(ctx.writer, "| null;")?;
-    } else {
-        indent(ctx, depth)?;
-        writeln!(ctx.writer, ";")?;
-    }
-
-    Ok(())
-}
-
-/// Write `Array<` or `ReadonlyArray<` for each list layer, inline after `: `.
-/// Returns the number of list layers written.
-fn write_list_open(ctx: &mut GeneratorContext, ty: &Type) -> Result<usize> {
-    match ty {
-        Type::NonNullList(inner) | Type::List(inner) => {
-            let array_type = get_array_type(ctx);
-            write!(ctx.writer, "{array_type}<")?;
-            let layers = write_list_open(ctx, inner)?;
-            Ok(layers)
-        }
-        _ => Ok(0),
-    }
-}
-
-/// Check if the type at a given list nesting depth is non-null.
-fn is_non_null_at_depth(ty: &Type, target_depth: usize) -> bool {
-    if target_depth == 0 {
-        return ty.is_non_null();
-    }
-    match ty {
-        Type::NonNullList(inner) | Type::List(inner) => {
-            is_non_null_at_depth(inner, target_depth - 1)
-        }
-        _ => ty.is_non_null(),
-    }
 }
 
 /// Render the discriminated union variants.
@@ -395,7 +252,6 @@ pub(crate) fn render_variants(
         indent(ctx, depth)?;
         writeln!(ctx.writer, "| {{")?;
 
-        // __typename for this variant
         render_op_typename(ctx, "__typename", type_name, depth + 2)?;
 
         // Shared fields (from parent's fields, skip __typename — already rendered above)

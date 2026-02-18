@@ -29,6 +29,9 @@ mod documents;
 mod error;
 mod extract;
 mod generators;
+pub mod reader;
+mod run_codegen;
+pub mod runner;
 mod schema;
 mod source_cache;
 pub mod test_utils;
@@ -44,12 +47,10 @@ pub use codegen::{
 };
 pub use config::{
     AvoidOptionals, CodegenConfig, DeclarationKind, GeneratorConfig, GeneratorOptions, GraphqlTag,
-    NamingCase, NamingConvention, NamingConventionConfig, OutputConfig, ScalarConfig, StringOrArray,
-    TypenamePolicy,
+    NamingCase, NamingConvention, NamingConventionConfig, OutputConfig, ScalarConfig,
+    StringOrArray, TypenamePolicy,
 };
-pub use diagnostic::{
-    Diagnostic, DiagnosticCategory, DiagnosticLocation, Diagnostics, Severity,
-};
+pub use diagnostic::{Diagnostic, DiagnosticCategory, DiagnosticLocation, Diagnostics, Severity};
 pub use error::Result;
 
 // Public API - Building blocks for custom I/O handling
@@ -61,7 +62,9 @@ pub use documents::{
 pub use extract::{ExtractConfig, Extracted};
 pub use schema::{load_schema, load_schema_from_contents, resolve_schema_paths};
 pub use source_cache::SourceCache;
-pub use writer::{FsWriter, MemoryWriter, StdoutWriter, WriteResult, Writer, write_outputs};
+pub use writer::{
+    FsWriter, MemoryWriter, NoopWriter, StdoutWriter, WriteResult, Writer, write_outputs,
+};
 
 /// Generate JSON Schema for the configuration types
 /// This can be used for IDE intellisense, validation, etc.

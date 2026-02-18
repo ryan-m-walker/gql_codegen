@@ -14,23 +14,24 @@ pub(crate) fn render_union(
     let readonly = get_readonly_kw(ctx);
     let type_name = ctx.transform_type_name(name.as_str());
 
-    write!(ctx.writer, "{export}type {type_name} = ")?;
+    writeln!(ctx.writer, "{export}type {type_name} = ")?;
 
     for (i, member) in union.members.iter().enumerate() {
         let member_type_name = ctx.transform_type_name(member.name.as_str());
 
-        write!(ctx.writer, "{member_type_name}",)?;
+        write!(ctx.writer, "  | {member_type_name}",)?;
 
-        if i < union.members.len() - 1 {
-            write!(ctx.writer, " | ")?;
+        if i == union.members.len() - 1 && !ctx.options.future_proof_unions() {
+            write!(ctx.writer, ";")?;
         }
+
+        writeln!(ctx.writer)?;
     }
 
     if ctx.options.future_proof_unions() {
-        write!(ctx.writer, " | {{ {readonly}__typename?: '%other' }}")?;
+        writeln!(ctx.writer, "  | {{ {readonly}__typename?: '%other' }};")?;
     }
 
-    writeln!(ctx.writer, ";")?;
     writeln!(ctx.writer)?;
 
     Ok(())

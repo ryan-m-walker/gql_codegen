@@ -6,28 +6,27 @@
  * TypeScript transpilation, ESM/CJS interop, and tsconfig paths.
  */
 
-import pc from 'picocolors'
-import fs from 'node:fs/promises'
-import path, { join, resolve } from 'node:path'
-import { createJiti } from 'jiti'
+import pc from "picocolors";
+import fs from "node:fs/promises";
+import path, { join, resolve } from "node:path";
+import { createJiti } from "jiti";
 
-import type { CodegenConfig } from './types.js'
-import { exists } from './utils.js'
+import type { CodegenConfig } from "./types.js";
+import { exists } from "./utils.js";
 
 const CONFIG_FILES = [
-    'codegen.ts',
-    'codegen.mts',
-    'codegen.cts',
-    'codegen.js',
-    'codegen.mjs',
-    'codegen.cjs',
-    'codegen.json',
-    // 'codegen.yaml',
-]
+    "codegen.ts",
+    "codegen.mts",
+    "codegen.cts",
+    "codegen.js",
+    "codegen.mjs",
+    "codegen.cjs",
+    "codegen.json",
+];
 
 export interface LoadConfigResult {
-    config: unknown
-    configPath: string
+    config: unknown;
+    configPath: string;
 }
 
 /**
@@ -41,59 +40,60 @@ export async function loadConfig(
 ): Promise<LoadConfigResult> {
     const resolvedPath = configPath
         ? resolve(cwd, configPath)
-        : await findConfigFile(cwd)
+        : await findConfigFile(cwd);
 
     if (!resolvedPath) {
         throw new Error(
-            `No config file found. Create one of: ${CONFIG_FILES.join(', ')} or use the --config flag to specify a path.`,
-        )
+            `No config file found. Create one of: ${CONFIG_FILES.join(", ")} or use the --config flag to specify a path.`,
+        );
     }
 
-    const pathExists = await exists(resolvedPath)
+    const pathExists = await exists(resolvedPath);
     if (!pathExists) {
         throw new Error(
             `Config file not found: ${pc.underline(pc.dim(resolvedPath))}`,
-        )
+        );
     }
 
-    const config = await loadConfigFile(resolvedPath)
+    const config = await loadConfigFile(resolvedPath);
 
     return {
         config,
         configPath: resolvedPath,
-    }
+    };
 }
 
 async function findConfigFile(cwd: string): Promise<string | null> {
     for (const filename of CONFIG_FILES) {
-        const fullPath = join(cwd, filename)
+        const fullPath = join(cwd, filename);
         if (await exists(fullPath)) {
-            return fullPath
+            return fullPath;
         }
     }
-    return null
+    return null;
 }
 
 async function loadConfigFile(configPath: string): Promise<unknown> {
-    const ext = path.parse(configPath).ext
+    const ext = path.parse(configPath).ext;
 
-    if (ext === '.json') {
-        return loadJsonConfig(configPath)
+    if (ext === ".json") {
+        return loadJsonConfig(configPath);
     }
 
     // jiti handles .ts, .mts, .cts, .js, .mjs, .cjs, .jsx, .tsx
     const jiti = createJiti(configPath, {
         jsx: true,
-    })
-    return jiti.import(configPath, { default: true })
+    });
+
+    return jiti.import(configPath, { default: true });
 }
 
 async function loadJsonConfig(configPath: string): Promise<unknown> {
-    const content = await fs.readFile(configPath, 'utf-8')
+    const content = await fs.readFile(configPath, "utf-8");
     try {
-        return JSON.parse(content)
+        return JSON.parse(content);
     } catch {
-        throw new Error(`Failed to parse JSON config: ${configPath}`)
+        throw new Error(`Failed to parse JSON config: ${configPath}`);
     }
 }
 
@@ -101,7 +101,7 @@ async function loadJsonConfig(configPath: string): Promise<unknown> {
  * Convert config to JSON for passing to the Rust binary.
  */
 export function configToJson(config: CodegenConfig): string {
-    return JSON.stringify(config, null, 2)
+    return JSON.stringify(config, null, 2);
 }
 
 /**
@@ -113,13 +113,13 @@ export function resolveConfigPaths(
     baseDir: string,
 ): CodegenConfig {
     const resolvePath = (p: string) =>
-        p.startsWith('/') ? p : resolve(baseDir, p)
+        p.startsWith("/") ? p : resolve(baseDir, p);
     const resolvePaths = (paths: string | string[]): string | string[] => {
         if (Array.isArray(paths)) {
-            return paths.map(resolvePath)
+            return paths.map(resolvePath);
         }
-        return resolvePath(paths)
-    }
+        return resolvePath(paths);
+    };
 
     const resolved: CodegenConfig = {
         ...config,
@@ -128,46 +128,46 @@ export function resolveConfigPaths(
         outputs: {},
         // Set baseDir so the Rust CLI knows where the original config was
         baseDir: baseDir,
-    }
+    };
 
     // Resolve output paths
     for (const [outputPath, outputConfig] of Object.entries(config.outputs)) {
-        const resolvedOutputPath = resolvePath(outputPath)
-        resolved.outputs[resolvedOutputPath] = outputConfig
+        const resolvedOutputPath = resolvePath(outputPath);
+        resolved.outputs[resolvedOutputPath] = outputConfig;
     }
 
-    return resolved
+    return resolved;
 }
 
 // TODO: does graphql-codegn support multiple programic schemas?
 export function extractSchema(config: unknown): string | string[] {
-    const output: string[] = []
+    const output: string[] = [];
 
     // TODO: nice errors
-    if (typeof config !== 'object' || config === null) {
-        throw new Error('Invalid config')
+    if (typeof config !== "object" || config === null) {
+        throw new Error("Invalid config");
     }
 
-    if (!('schema' in config)) {
-        throw new Error('Missing schema')
+    if (!("schema" in config)) {
+        throw new Error("Missing schema");
     }
 
     if (Array.isArray(config.schema)) {
         for (const schema of config.schema) {
-            if (typeof schema !== 'string') {
-                throw new Error('Invalid schema type')
+            if (typeof schema !== "string") {
+                throw new Error("Invalid schema type");
             }
 
-            output.push(schema)
+            output.push(schema);
         }
 
-        return output
+        return output;
     }
 
-    if (typeof config.schema === 'string') {
-        output.push(config.schema)
-        return output
+    if (typeof config.schema === "string") {
+        output.push(config.schema);
+        return output;
     }
 
-    throw new Error('Invalid schema type')
+    throw new Error("Invalid schema type");
 }

@@ -23,7 +23,7 @@ mod interface;
 mod object;
 mod operation_types;
 mod scalar;
-mod union;
+pub(crate) mod union;
 mod variables;
 
 /// Main entry point for the TypeScript generator.

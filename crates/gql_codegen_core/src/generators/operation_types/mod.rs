@@ -6,6 +6,7 @@ use crate::generators::GeneratorContext;
 use crate::generators::operation_types::fragment::render_fragment;
 use crate::generators::operation_types::operation::render_operation;
 use crate::generators::schema_types::r#enum::render_enum;
+use crate::generators::schema_types::union::render_union;
 use crate::{ParsedFragment, Result};
 
 mod field;
@@ -14,8 +15,6 @@ mod operation;
 mod selection;
 mod typename;
 mod variables;
-
-// TODO: if typescript plugin isn't available generate necessary scalars
 
 /// Item to generate - either a fragment or operation
 enum GenerateItem<'a> {
@@ -53,12 +52,14 @@ pub fn generate_typescript_operations(ctx: &mut GeneratorContext) -> Result<()> 
     // need to render dependencies if schema types plugin is not available
     if schema_types_generator.is_none() {
         for (name, ty) in &ctx.schema.types {
-            if let ExtendedType::Enum(en) = ty {
-                if name.starts_with("__") {
-                    continue;
-                }
+            if name.starts_with("__") {
+                continue;
+            }
 
-                render_enum(ctx, en)?;
+            match ty {
+                ExtendedType::Enum(en) => render_enum(ctx, en)?,
+                ExtendedType::Union(union) => render_union(ctx, name, union)?,
+                _ => {}
             }
         }
     }

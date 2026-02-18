@@ -3,8 +3,8 @@ use apollo_compiler::ast::Type;
 use crate::Result;
 use crate::generators::GeneratorContext;
 use crate::generators::common::helpers::{
-    NullableLocation, ScalarDirection, get_array_type, get_readonly_kw, indent,
-    render_nullable_closing, render_type,
+    NullableLocation, ScalarDirection, get_readonly_kw, indent, render_nullable_closing,
+    render_type,
 };
 use crate::generators::common::list::{render_list_closing, render_list_opening};
 use crate::generators::operation_types::selection::{
@@ -33,14 +33,16 @@ pub(crate) fn render_field(
         let element = inner_element_type(&field.field_type);
         if !element.is_non_null() {
             writeln!(ctx.writer)?;
-            indent(ctx, depth + 1)?;
+            indent(ctx, depth)?;
+
+            // one space only because `render_nullable_closing` has a leading space already
+            write!(ctx.writer, " ")?;
             render_nullable_closing(ctx, NullableLocation::List)?;
         }
 
-        // indent(ctx, depth)?;
-
         render_list_closing(ctx, &field.field_type)?;
         writeln!(ctx.writer, ";")?;
+
         return Ok(());
     }
 

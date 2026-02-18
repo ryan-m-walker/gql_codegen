@@ -9,12 +9,6 @@ use super::Writer;
 #[derive(Debug, Default)]
 pub struct FsWriter;
 
-impl FsWriter {
-    pub fn new() -> Self {
-        Self
-    }
-}
-
 impl Writer for FsWriter {
     fn write(&self, path: &Path, content: &[u8]) -> io::Result<()> {
         // Create parent directories if needed

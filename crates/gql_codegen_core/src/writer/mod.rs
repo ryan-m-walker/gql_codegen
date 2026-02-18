@@ -6,10 +6,12 @@
 
 mod fs;
 mod memory;
+mod noop;
 mod stdout;
 
 pub use fs::FsWriter;
 pub use memory::MemoryWriter;
+pub use noop::NoopWriter;
 pub use stdout::StdoutWriter;
 
 use std::io;

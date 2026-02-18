@@ -28,11 +28,10 @@ use crate::generators::schema_types::helpers::render_description;
 /// ```
 pub(crate) fn render_enum(ctx: &mut GeneratorContext, enum_type: &Node<EnumType>) -> Result<()> {
     render_description(ctx, &enum_type.description, 0)?;
-    let cased_name = ctx.transform_type_name(enum_type.name.as_str());
-    let enum_name = apply_enum_affixes(&cased_name, ctx.options);
+    let name = ctx.transform_type_name(enum_type.name.as_str());
 
     // TODO: maybe as const enum is ok?
-    render_as_type_union(ctx, &enum_name, enum_type)?;
+    render_as_type_union(ctx, &name, enum_type)?;
 
     writeln!(ctx.writer)?;
     Ok(())
@@ -53,16 +52,18 @@ fn render_as_type_union(
 
     writeln!(ctx.writer, "{export}type {enum_name} =")?;
 
-    let values: Vec<_> = enum_type.values.keys().collect();
-    for (i, value) in values.iter().enumerate() {
-        let transformed = transform_enum_value(value.as_str(), ctx.options);
+    let len = enum_type.values.len();
 
-        let semi = if i == values.len() - 1 && !ctx.options.future_proof_enums() {
+    for (i, value) in enum_type.values.values().enumerate() {
+        let transformed = transform_enum_value(value.value.as_str(), ctx.options);
+
+        let semi = if i == len - 1 && !ctx.options.future_proof_enums() {
             ";"
         } else {
             ""
         };
 
+        render_description(ctx, &value.description, 1)?;
         writeln!(ctx.writer, "  | '{transformed}'{semi}")?;
     }
 
@@ -106,18 +107,6 @@ fn _render_as_const_object(
     )?;
 
     Ok(())
-}
-
-/// Apply enum prefix and suffix to a type name based on user configuration
-fn apply_enum_affixes<'a>(type_name: &'a str, options: &GeneratorOptions) -> Cow<'a, str> {
-    match (&options.type_name_prefix, &options.type_name_suffix) {
-        (None, None) => Cow::Borrowed(type_name),
-        (prefix, suffix) => {
-            let prefix = prefix.as_deref().unwrap_or("");
-            let suffix = suffix.as_deref().unwrap_or("");
-            Cow::Owned(format!("{prefix}{type_name}{suffix}"))
-        }
-    }
 }
 
 /// Apply naming convention to an enum value

@@ -11,12 +11,15 @@ use crate::generators::common::list::{render_list_closing, render_list_opening};
 use crate::{DeclarationKind, Result};
 
 pub(crate) fn indent(ctx: &mut GeneratorContext, depth: usize) -> Result<()> {
-    let indent = "  ".repeat(depth);
-    write!(ctx.writer, "{indent}")?;
+    for _ in 0..depth {
+        write!(ctx.writer, "  ")?;
+    }
+
     Ok(())
 }
 
-pub(crate) fn get_export_kw(ctx: &GeneratorContext) -> &'static str {
+pub(crate) fn get_export_kw(_ctx: &GeneratorContext) -> &'static str {
+    // TODO: make this configurable?
     "export "
 }
 
@@ -99,7 +102,6 @@ pub(crate) fn unwrap_type_name(ty: &Type) -> Name {
     }
 }
 
-/// TODO: make this actually render, not return string
 /// Recursively render a type, handling nullability at each level
 pub(crate) fn render_type(
     ctx: &mut GeneratorContext,
@@ -108,6 +110,7 @@ pub(crate) fn render_type(
 ) -> Result<()> {
     match ty {
         Type::Named(name) => {
+            // TODO: make this a render only helper?
             let field = render_field_type(ctx, name, dir);
             write!(ctx.writer, "{field}")?;
             render_nullable_closing(ctx, NullableLocation::Field)?;

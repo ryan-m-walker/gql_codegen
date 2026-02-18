@@ -31,7 +31,6 @@ pub(crate) fn render_fragment<'a>(
 
     render_normalized(ctx, &normalized, 0)?;
 
-    writeln!(ctx.writer)?;
     writeln!(ctx.writer, "}}")?;
 
     Ok(())

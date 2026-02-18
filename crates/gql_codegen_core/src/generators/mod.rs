@@ -2,16 +2,6 @@
 //!
 //! Each generator takes the schema + documents and produces code.
 
-mod common;
-mod document_transform;
-mod documents;
-mod operation_types;
-mod schema_types;
-
-pub use documents::generate_documents;
-pub use operation_types::generate_typescript_operations;
-pub use schema_types::generate_typescript;
-
 use std::borrow::Cow;
 use std::io::Write;
 
@@ -23,6 +13,16 @@ use crate::config::{GeneratorOptions, NamingCase, NamingConvention};
 use crate::diagnostic::{Diagnostic, DiagnosticCategory, Diagnostics};
 use crate::documents::{ParsedFragment, ParsedOperation};
 use crate::{GeneratorConfig, Result};
+
+pub use documents::generate_documents;
+pub use operation_types::generate_typescript_operations;
+pub use schema_types::generate_typescript;
+
+mod common;
+mod document_transform;
+mod documents;
+mod operation_types;
+mod schema_types;
 
 /// Context passed to all generators
 pub struct GeneratorContext<'a> {

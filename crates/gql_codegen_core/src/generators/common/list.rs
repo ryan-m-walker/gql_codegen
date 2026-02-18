@@ -21,10 +21,6 @@ pub(crate) fn render_list_closing(ctx: &mut GeneratorContext, ty: &Type) -> Resu
     if let Type::List(inner) | Type::NonNullList(inner) = ty {
         render_list_closing(ctx, inner)?;
         write!(ctx.writer, ">")?;
-
-        if matches!(ty, Type::List(_)) {
-            render_nullable_closing(ctx, NullableLocation::List)?;
-        }
     }
 
     Ok(())
